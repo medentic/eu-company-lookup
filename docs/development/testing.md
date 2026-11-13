@@ -4,6 +4,23 @@ Normal tests are offline and use synthetic HTTP fixtures. Collected responses
 are retained locally for separate opt-in regressions. The complete check commands are in
 [CONTRIBUTING.md](../../CONTRIBUTING.md#setup-and-checks).
 
+## Country completion minimum
+
+Before declaring a country's VAT and company-lookup work complete, verify at least
+200 distinct VAT IDs and 200 distinct national company/tax IDs live. This is a
+minimum sample per operation, not permission for unbounded collection or proof of
+exhaustive national coverage. Select sourced identifiers and retain provenance.
+
+Report matched positives, matched negatives, provider failures, parser failures
+and unresolved ambiguities separately. Repeated attempts do not increase distinct
+coverage. Request completion alone is insufficient: retain original observations,
+review source-bound expectations and pass offline replay against the final parser.
+A decoder fix must preserve its original failed observation and be verified using
+that source, rather than replacing expected values to make a test pass.
+
+Ordinary CI remains offline. These are review gates; no background collector or
+automatic live country-completion check is scheduled by this guidance.
+
 ## Test responsibilities
 
 | Location | What it verifies |
@@ -12,6 +29,7 @@ are retained locally for separate opt-in regressions. The complete check command
 | `src/vies/tests/` | VAT syntax, SOAP identity/fault handling and bounded HTTP behavior. |
 | `src/vies/address/` | Address extraction and reviewed VIES regressions. |
 | `src/bg/tests.rs` | Registry identity, fallback, field decoding, failures and reviewed Commercial Register regressions. |
+| `src/ro/tests.rs` | ANAF identity/date matching, source fields, failures and bounded transport. |
 | `src/locations/` | Shared normalization and delivery-line behavior. |
 | `tools/test_*.py` | Collector/report behavior and documentation/distribution boundaries. |
 
@@ -45,6 +63,9 @@ When authorized local corpora are already installed, run only these offline test
 VIES_COUNTRY=BG VIES_REPORT=target/vies-offline-report.json \
   cargo test --locked vies::address::corpus::saved_corpus -- --ignored --exact
 cargo test --locked bg::tests::reviewed_commercial_corpus -- --ignored --exact
+VIES_COUNTRY=RO VIES_REPORT=target/vies-ro-offline-report.json \
+  cargo test --locked vies::address::corpus::saved_corpus -- --ignored --exact
+cargo test --locked ro::probe::reviewed_anaf_corpus -- --ignored --exact
 python3 -m unittest discover -s tools -p 'test_vies_batch.py'
 ```
 
@@ -84,7 +105,8 @@ Test these observed boundaries without exposing endpoint overrides publicly.
 | Local VIES reviews | `src/vies/fixtures/countries/reviews/`: ambiguity, revisions, dates and expectation hashes. |
 | Normalization policy | `src/vies/fixtures/review-policy.json`: current and accepted review versions. |
 | Shared reporting contract | `src/vies/fixtures/report-contract.json`: Rust/Python status precedence cases. |
-| Local Commercial Register cases | `src/bg/fixtures/commercial/`: source hashes and scoped expected fields. |
+| Local Commercial Register cases | `src/bg/fixtures/commercial/bg.json`: one JSON array with raw responses, source hashes, scoped expected fields and review history. |
+| Local ANAF cases | `src/ro/fixtures/anaf/ro.json`: raw responses and source-bound reviewed expectations. |
 | Local input queues | `src/vies/fixtures/ids/` and `src/bg/fixtures/ids/`: identifiers and provenance, not registration assertions. |
 
 Read current counts from the data. Provenance dates describe snapshots and reviews,

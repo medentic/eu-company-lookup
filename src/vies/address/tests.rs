@@ -148,17 +148,20 @@ fn capabilities_do_not_claim_address_rules_for_unsupported_countries() {
     assert_eq!(
         catalog
             .iter()
-            .filter(|c| c.providers[0].address_splitting)
+            .filter(|c| c
+                .providers
+                .iter()
+                .any(|p| p.provider == crate::Provider::Vies && p.address_splitting))
             .count(),
-        19
+        20
     );
-    for prefix in ["DE", "ES", "IE", "RO", "MT", "LV", "HR", "HU", "XI"] {
+    for prefix in ["DE", "ES", "IE", "MT", "LV", "HR", "HU", "XI"] {
         let p = split(prefix, Some("Example 1\n12345 City".into()));
         assert!(p.address.is_none() && p.city.is_none() && p.country.is_some());
         assert!(
             !catalog
                 .iter()
-                .find(|c| c.vat_prefix == prefix)
+                .find(|c| c.vat_prefix == Some(prefix))
                 .unwrap()
                 .providers[0]
                 .address_splitting
@@ -475,4 +478,96 @@ fn canonical_complex_preserves_compound_registry_street_marker() {
         super::normalize::address("BG", "ж.к. КК СЛЪНЧЕВ БРЯГ-ЗАПАД, бул./ул. ВИВА КЛИНИК"),
         "жк. КК СЛЪНЧЕВ БРЯГ-ЗАПАД, бул./ул. ВИВА КЛИНИК"
     );
+}
+
+#[test]
+fn bulgarian_settlement_first_requires_matching_repeated_region() {
+    for (raw, postcode) in [
+        (
+            " с. Примерно , Примерна Област обл.ПРИМЕРНА ОБЛАСТ 1234",
+            Some("1234"),
+        ),
+        ("гр.ПРИМЕРНО, Примерна Област обл.ПРИМЕРНА ОБЛАСТ", None),
+    ] {
+        let p = split("BG", Some(raw.into()));
+        assert_eq!(p.full_address_by_vies.as_deref(), Some(raw));
+        assert_eq!(p.city.as_deref(), Some("Примерно"));
+        assert_eq!(p.region.as_deref(), Some("Примерна Област"));
+        assert_eq!(p.postcode.as_deref(), postcode);
+        assert!(p.address.is_none() && p.address2.is_none());
+    }
+    for raw in [
+        "с. Примерно, Друга Област обл.ПРИМЕРНА ОБЛАСТ 1234",
+        "с. Примерно, Примерна Област обл.ПРИМЕРНА ОБЛАСТ 123",
+        "с. Примерно, ул. Примерна 1 обл.ПРИМЕРНА ОБЛАСТ 1234",
+    ] {
+        let p = split("BG", Some(raw.into()));
+        assert_eq!(p.full_address_by_vies.as_deref(), Some(raw));
+        assert!(p.city.is_none() && p.region.is_none() && p.postcode.is_none());
+    }
+}
+
+#[test]
+fn bulgarian_empty_primary_and_complex_do_not_invent_delivery() {
+    let raw = "- №- бл.- вх.- ет.- ап.- обл.ПРИМЕРНА, с.ПРИМЕРНО 1234";
+    let parsed = split("BG", Some(raw.into()));
+    assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+    assert!(parsed.address.is_none() && parsed.address2.is_none());
+    assert_eq!(parsed.city.as_deref(), Some("Примерно"));
+    let parsed = split(
+        "BG",
+        Some("жк - ул. Примерна №21 обл.ПРИМЕРНА, гр.ПРИМЕРНО -".into()),
+    );
+    assert_eq!(parsed.address.as_deref(), Some("ул. Примерна №21"));
+    assert_eq!(parsed.postcode, None);
+    for line in ["№0", "№1-3", "жк. Пример-1", ". №57"] {
+        assert_eq!(
+            crate::locations::split_delivery(line, "BG").0.as_deref(),
+            Some(line)
+        );
+    }
+    assert_eq!(
+        crate::locations::split_delivery("- №-, ет. -1", "BG"),
+        (None, Some("ет. -1".into()))
+    );
+}
+
+#[test]
+fn bulgarian_star_only_details_need_no_comma_separator() {
+    let raw = "ул. Примерна №1 бл.* вх.б ет.4 ап.11 обл.ПРИМЕРНА, гр.ПРИМЕРНО 1234";
+    let parsed = split("BG", Some(raw.into()));
+    assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+    assert_eq!(parsed.address.as_deref(), Some("ул. Примерна №1"));
+    assert_eq!(parsed.address2.as_deref(), Some("вх. Б ет. 4 ап. 11"));
+    assert_eq!(
+        crate::locations::split_delivery("бл. 2* вх. А* ет. -1 ап. *А", "BG")
+            .1
+            .as_deref(),
+        Some("бл. 2* вх. А* ет. -1 ап. *А")
+    );
+}
+
+#[test]
+fn bulgarian_terminal_ground_floor_annotation_is_delivery_detail() {
+    let raw = "ул. Примерна №11 /партерен етаж/ обл.ПРИМЕРНА, гр.ПРИМЕРНО 1234";
+    let p = split("BG", Some(raw.into()));
+    assert_eq!(p.address.as_deref(), Some("ул. Примерна №11"));
+    assert_eq!(p.address2.as_deref(), Some("/партерен етаж/"));
+    assert_eq!(p.full_address_by_vies.as_deref(), Some(raw));
+    assert_eq!(
+        crate::locations::split_delivery("ул. Примерна №11 /ПАРТЕРЕН ЕТАЖ/", "BG")
+            .1
+            .as_deref(),
+        Some("/ПАРТЕРЕН ЕТАЖ/")
+    );
+    for line in [
+        "ул. Пример/Друг №11",
+        "ул. Партерен етаж №11",
+        "ул. Примерна №11 /партерен етаж/ допълнение",
+    ] {
+        assert_eq!(
+            crate::locations::split_delivery(line, "BG"),
+            (Some(line.into()), None)
+        );
+    }
 }

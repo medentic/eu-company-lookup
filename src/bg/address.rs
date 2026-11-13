@@ -1,4 +1,13 @@
 use crate::CompanyAddress;
+use regex_lite::Regex;
+use std::sync::LazyLock;
+
+static REDUNDANT_STREET_LABEL: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r"(^|, *)[бБ][уУ][лЛ]\./[уУ][лЛ]\.\s+([уУ][лЛ]\.|[бБ][уУ][лЛ]\.|[пП][лЛ]\.|[кК][вВ][аА][рР][тТ][аА][лЛ]\s+|[кК][вВ]\.|[жЖ][кК]\s+|[жЖ]\.[кК]\.)",
+    )
+    .unwrap()
+});
 
 fn value(s: &str) -> Option<String> {
     let s = s.trim();
@@ -82,11 +91,9 @@ pub(super) fn commercial(raw: Option<String>) -> CompanyAddress {
         } else {
             // Portal street labels can follow a residential complex and can
             // directly touch the street name. Remove only redundant labels.
-            let line = line
-                .replace("бул./ул. ул.", "ул.")
-                .replace("бул./ул. бул.", "бул.")
-                .replace("бул./ул. жк ", "жк ")
-                .replace("бул./ул. ж.к.", "ж.к.");
+            let line = REDUNDANT_STREET_LABEL
+                .replace_all(line, "$1$2")
+                .into_owned();
             delivery.push(line);
         }
     }

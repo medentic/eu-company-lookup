@@ -35,20 +35,23 @@ and detail record. An unmatched nonempty report is inconclusive and returns an e
 | `legalForm` | Recognized Bulgarian abbreviation, otherwise the original description or null. |
 | `address` | Decoded source text and conservative structured fields. |
 | `status` | Source-specific lifecycle information; never a VAT-validity flag. |
+| `nativeRegistryStatus` | Original status regardless of mapping: decoded BULSTAT text or the Commercial Register numeric code as a string. Null when unavailable. |
 | `registryDetails` | Provider-specific fields described below. |
 
 The adapter requests Bulgarian data. It does not fetch the portals' English views.
-Recognized legal forms map to ЕТ, ЕООД, ООД, АД and ЕАД. Unknown descriptions are
+Recognized legal forms map to ЕТ, ЕООД, ООД, АД, ЕАД and СД. Unknown descriptions are
 preserved; legal form is not inferred from the company name.
 
 A closed main record, explicit deletion field or recognized deleted-company state
 maps to `closed`, overriding an open subrecord. Recognized open states map to
-`active`; unknown Commercial Register states remain null. BULSTAT status descriptions
-are retained as source text. These values do not establish a universal business status.
+`active`; unknown Commercial Register codes map to `unknown` and are retained in
+`registryDetails.statusCode`. BULSTAT `развиващ дейност` maps to the typed `CompanyStatus::Active`
+(JSON `active`); unrecognized descriptions map to `CompanyStatus::Unknown` (JSON `unknown`).
+The original BULSTAT status is retained in `registryDetails.statusText`. These values do not establish a universal business status.
 
 ### Commercial Register details
 
-`registryDetails` contains `registeredName`, `identifierEntryDate`,
+`registryDetails` contains the original `statusCode`, `registeredName`, `identifierEntryDate`,
 `identifierEntryYear`, `managers`, `owners`, `capital`, `businessActivity`,
 `documents` and `hasInstructions`.
 
@@ -56,6 +59,8 @@ are retained as source text. These values do not establish a universal business 
   incorporation date. Court-file years and other field dates are not substitutes.
 - Managers are the registered managers; owners currently mean sole capital owners.
   A null owners list does not establish absence of partners or other ownership forms.
+  Explicit corporate-holder names can be separated from labelled business-code
+  metadata; ambiguous descriptions remain available in `sourceText`.
 - Role holders retain source descriptions. Names and countries are extracted only
   when recognizable; unknown details remain null.
 - Capital has registered/paid-in values, exact decimal strings, recognized currencies
@@ -69,7 +74,8 @@ are retained as source text. These values do not establish a universal business 
 
 ### BULSTAT details
 
-`registryDetails.subjectText` retains the decoded subject description. The adapter
+`registryDetails.subjectText` retains the decoded subject description;
+`registryDetails.statusText` retains the original status, or null if absent. The adapter
 uses the separately supplied search name, checks it against the detail description,
 and does not split compound names at arbitrary commas. It does not extract managers,
 ownership, historical documents or entry dates from BULSTAT.
@@ -83,7 +89,9 @@ ownership, historical documents or entry dates from BULSTAT.
 Country is derived only from explicit recognized source text and normalized to the
 shared native name. Bulgarian delivery normalization applies only when that country
 is BG. City districts and labelled contact fields remain in the original text but
-are omitted from structured delivery fields. See [address policy](api-stability.md#address-policy).
+are omitted from structured delivery fields. Explicit building details and
+comma-delimited office (`кабинет`) details with values move to `address2`; empty
+labels and words embedded in street names do not trigger that split. See [address policy](api-stability.md#address-policy).
 
 ## Operating limits
 
@@ -94,7 +102,9 @@ These interfaces can change without a library-level stability guarantee.
 
 See the [README](../../README.md#handle-failures-and-configure-limits) for client
 defaults. A total deadline covers the whole chain, including provider spacing.
-Clones share one lookup slot and provider cooldowns. Separate applications require
+By default there is no artificial request spacing: BULSTAT detail retrieval
+starts immediately after a matching search response. Callers can opt into spacing
+with `start_interval`. Clones share one lookup slot and provider cooldowns. Separate applications require
 their own coordination. Successful small samples do not establish a safe bulk quota.
 
 ## Coverage limitations

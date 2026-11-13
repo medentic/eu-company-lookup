@@ -224,6 +224,67 @@ def collect_locked(args, provider_lock, provider_state):
         return current
 
 
+def validate_corpus(cases):
+    if not isinstance(cases, list) or not cases:
+        raise ValueError('corpus must be a nonempty JSON array')
+    seen = set()
+    for case in cases:
+        tax_id = case['taxId']
+        if not (isinstance(tax_id, str) and tax_id.isascii() and tax_id.isdigit()
+                and len(tax_id) in (9, 13)):
+            raise ValueError('invalid corpus identity')
+        if tax_id in seen:
+            raise ValueError('duplicate corpus identity')
+        seen.add(tax_id)
+        review = case['review']
+        if (review.get('schemaVersion') != 1 or review.get('status') != 'passed'
+                or not isinstance(review.get('expected'), dict) or not review['expected']):
+            raise ValueError('corpus requires scoped passed reviews')
+        if hashlib.sha256(case['rawResponse'].encode()).hexdigest() != review['sourceSha256']:
+            raise ValueError('corpus source hash mismatch')
+    return cases
+
+
+def consolidate_corpus(source, output):
+    # Preserve complete objects, including review revisions and unknown metadata.
+    cases = [json.loads(p.read_text()) for p in sorted(source.glob('*.json'))
+             if p.resolve() != output.resolve()]
+    validate_corpus(cases)
+    if output.exists():
+        if json.loads(output.read_text()) != cases:
+            raise ValueError('existing corpus differs; refusing replacement')
+    else:
+        write(output, cases)
+    if json.loads(output.read_text()) != cases:
+        raise ValueError('corpus read-back mismatch')
+    return {'cases': len(cases), 'output': str(output), 'originalsRetained': True}
+
+
+def merge_reviewed_run(folder, output):
+    result = report(folder)  # Validates replay/source bindings before accepting reviews.
+    reviews = json.loads((folder / 'review.json').read_text())
+    cases = validate_corpus(json.loads(output.read_text())) if output.exists() else []
+    existing = {case['taxId']: case for case in cases}
+    added = 0
+    for row in result['cases']:
+        if row['reviewStatus'] != 'passed':
+            continue
+        tax_id = row['taxId']
+        observation = json.loads((folder / 'observations' / (tax_id + '.json')).read_text())
+        case = {'taxId': tax_id, 'rawResponse': observation['rawResponse'],
+                'review': reviews[tax_id]}
+        if tax_id in existing:
+            if case != existing[tax_id]:
+                raise ValueError('existing corpus case differs; explicit re-review required')
+            continue
+        cases.append(case)
+        existing[tax_id] = case
+        added += 1
+    validate_corpus(cases)
+    write(output, cases)
+    return {'cases': len(cases), 'added': added, 'output': str(output)}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='action', required=True)
@@ -241,9 +302,24 @@ def main():
     p.add_argument('--resume', action='store_true')
     p = sub.add_parser('report')
     p.add_argument('run_dir', type=Path)
+    p = sub.add_parser('consolidate')
+    p.add_argument('source', type=Path)
+    p.add_argument('output', type=Path)
+    p = sub.add_parser('corpus')
+    p.add_argument('--run-dir', type=Path, required=True)
+    p.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
     try:
-        result = import_queue(args.source, args.output) if args.action == 'import' else collect(args) if args.action == 'collect' else report(args.run_dir)
+        if args.action == 'import':
+            result = import_queue(args.source, args.output)
+        elif args.action == 'collect':
+            result = collect(args)
+        elif args.action == 'consolidate':
+            result = consolidate_corpus(args.source, args.output)
+        elif args.action == 'corpus':
+            result = merge_reviewed_run(args.run_dir, args.output)
+        else:
+            result = report(args.run_dir)
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get('complete', True) else 2
     except (ValueError, OSError, KeyError, subprocess.CalledProcessError) as error:

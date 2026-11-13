@@ -15,12 +15,13 @@ pub struct VatAddress {
     pub fields: crate::locations::Address,
 }
 
-/// Identifier-matched VAT response. Serialized output contains only the public
+/// Full VIES lookup result: validity plus source-provided company and address details.
+/// Serialized output contains only the public
 /// billing fields; observation timestamps are retained privately for future reports.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
-pub struct VatCheck {
+pub struct VatLookupResult {
     /// Normalized identifier actually checked.
     pub vat_id: VatId,
     /// VIES validity, independent of address parsing success.
@@ -63,3 +64,6 @@ fn serialize_vat_fields<S: serde::Serializer>(
     map.serialize_entry("countryISO2", &a.country_iso2)?;
     map.end()
 }
+
+/// Backward-compatible name for [`VatLookupResult`]. Prefer the lookup result name in new code.
+pub type VatCheck = VatLookupResult;

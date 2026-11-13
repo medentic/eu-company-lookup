@@ -1,5 +1,5 @@
-use super::{VatId, capabilities, identifiers::FORMATS, soap, transport, validate_vat_syntax};
-use crate::{JurisdictionCapabilities, LimitScope, LookupError, Provider, RetryAfter, VatCheck};
+use super::{VatId, identifiers::FORMATS, soap, transport, validate_vat_syntax};
+use crate::{LimitScope, LookupError, Provider, RetryAfter, VatLookupResult};
 use chrono::Utc;
 use std::{
     collections::HashMap,
@@ -90,43 +90,27 @@ struct State {
     countries: HashMap<&'static str, Mutex<Admission>>,
 }
 
-/// Cloneable asynchronous VAT client. Use inside a Tokio runtime with I/O and time
+/// Internal VIES transport client. Use inside a Tokio runtime with I/O and time
 /// enabled. Reuse one client so limits and cooldowns are shared. No automatic
 /// retries, redirects, persistent cache, ambient proxy or cookies are used.
 #[derive(Clone)]
-pub struct Client {
+pub(crate) struct ViesClient {
     http: reqwest::Client,
     config: ClientConfig,
     state: Arc<State>,
     endpoint: String,
-    registry: crate::BgRegistryClient,
 }
 
-impl std::fmt::Debug for Client {
+impl std::fmt::Debug for ViesClient {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Client")
+        f.debug_struct("ViesClient")
             .field("config", &self.config)
             .finish_non_exhaustive()
     }
 }
 
-impl Client {
-    /// Build a client with bounded default settings.
-    pub fn new() -> Result<Self, LookupError> {
-        Self::with_config(ClientConfig::default())
-    }
-
-    /// Build with explicit deadlines and limits. Zero concurrency, response limit,
-    /// timeout or cooldown and excessively large values are rejected.
-    pub fn with_config(config: ClientConfig) -> Result<Self, LookupError> {
-        Self::with_configs(config, crate::BgRegistryConfig::default())
-    }
-
-    /// Configure VIES and Bulgarian registry limits independently.
-    pub fn with_configs(
-        config: ClientConfig,
-        registry_config: crate::BgRegistryConfig,
-    ) -> Result<Self, LookupError> {
+impl ViesClient {
+    pub(crate) fn with_config(config: ClientConfig) -> Result<Self, LookupError> {
         if config.timeout.is_zero()
             || config.timeout > Duration::from_secs(300)
             || config.connect_timeout.is_zero()
@@ -171,59 +155,23 @@ impl Client {
             config,
             state,
             endpoint: ENDPOINT.into(),
-            registry: crate::BgRegistryClient::with_config(registry_config)?,
         })
     }
 
-    /// Return implemented capabilities without network calls. Enabled support is
-    /// distinct from live source availability; VIES has no language parameter.
-    pub fn capabilities(&self) -> Vec<JurisdictionCapabilities> {
-        let mut catalog = capabilities::catalog();
-        let bg = catalog
-            .iter_mut()
-            .find(|c| c.country_code == "BG")
-            .expect("BG VAT jurisdiction");
-        for provider in [Provider::BulgarianCommercialRegister, Provider::Bulstat] {
-            bg.providers.push(crate::ProviderCapabilities {
-                provider,
-                operations: vec![
-                    crate::Operation::ValidateBgBusinessIdSyntax,
-                    crate::Operation::LookupBgCompany,
-                ],
-                identifier_scheme: crate::IdentifierScheme::BgBusinessId,
-                checksum: crate::ChecksumSupport::NotImplemented,
-                languages: crate::LanguageSupport::BulgarianOnly,
-                requires_credentials: false,
-                optional_owner_details: true,
-                address_splitting: true,
-            });
-        }
-        catalog
-    }
-
-    /// Look up an ЕИК/BULSTAT business code. Tries the Commercial Register, then
-    /// BULSTAT only on a definitive miss. Never infers VAT registration.
-    pub async fn lookup_bg_company(
-        &self,
-        tax_id: &str,
-    ) -> Result<crate::CompanyRecord, LookupError> {
-        self.registry.lookup(tax_id).await
-    }
-
-    /// Check one VAT ID. `valid: false` is returned only for a matching negative
+    /// Look up VAT validity and available company identity/address details.
+    /// `valid: false` is returned only for a matching negative
     /// VIES response. Capacity, service failures and deadlines remain errors.
-    pub async fn lookup_vat(&self, vat_id: &str) -> Result<VatCheck, LookupError> {
+    pub async fn lookup_vat(&self, vat_id: &str) -> Result<VatLookupResult, LookupError> {
         let vat = validate_vat_syntax(vat_id)?;
-        self.check(&vat, Instant::now() + self.config.timeout).await
+        self.lookup_with_deadline(&vat, Instant::now() + self.config.timeout)
+            .await
     }
 
-    /// Convenience wrapper around [`Self::lookup_vat`]. Do not call both for one
-    /// interaction: the richer result already contains the validity flag.
-    pub async fn is_vat_valid(&self, vat_id: &str) -> Result<bool, LookupError> {
-        Ok(self.lookup_vat(vat_id).await?.valid)
-    }
-
-    async fn check(&self, vat: &VatId, deadline: Instant) -> Result<VatCheck, LookupError> {
+    async fn lookup_with_deadline(
+        &self,
+        vat: &VatId,
+        deadline: Instant,
+    ) -> Result<VatLookupResult, LookupError> {
         let _permit = self
             .state
             .capacity
@@ -260,7 +208,7 @@ impl Client {
             return Err(LookupError::Busy);
         }
         country.next_start = Instant::now() + self.config.country_start_interval;
-        let result = tokio::time::timeout_at(deadline, self.send(vat))
+        let result = tokio::time::timeout_at(deadline, self.fetch_vat_result(vat))
             .await
             .unwrap_or(Err(LookupError::DeadlineExceeded));
         let scope = match &result {
@@ -297,7 +245,7 @@ impl Client {
         result
     }
 
-    async fn send(&self, vat: &VatId) -> Result<VatCheck, LookupError> {
+    async fn fetch_vat_result(&self, vat: &VatId) -> Result<VatLookupResult, LookupError> {
         let response = transport::exchange(
             &self.http,
             &self.endpoint,
@@ -370,7 +318,7 @@ impl Client {
             });
         }
         let decoded = decoded?;
-        Ok(VatCheck {
+        Ok(VatLookupResult {
             vat_id: vat.clone(),
             valid: decoded.valid,
             request_date: decoded.request_date,
@@ -409,8 +357,8 @@ fn retry_delay(value: &RetryAfter) -> Duration {
 }
 
 #[cfg(test)]
-impl Client {
-    pub(super) fn for_test(endpoint: String, config: ClientConfig) -> Self {
+impl ViesClient {
+    pub(crate) fn for_test(endpoint: String, config: ClientConfig) -> Self {
         let mut client = Self::with_config(config).unwrap();
         client.endpoint = endpoint;
         client

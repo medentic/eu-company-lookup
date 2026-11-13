@@ -111,3 +111,23 @@ class ReportContractTests(unittest.TestCase):
             self.assertEqual(review['expectedSha256'], expected_hash, case['vatId'])
 
 if __name__ == '__main__': unittest.main()
+
+class RomanianBatchTests(unittest.TestCase):
+    def test_romanian_selection_is_explicit_and_length_bounded(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)/'queue.json'
+            p.write_text(json.dumps(['RO001234']))
+            self.assertEqual(batch.selection(p,0,1,'RO'), ['RO001234'])
+            with self.assertRaises(ValueError): batch.selection(p,0,1)
+            p.write_text(json.dumps(['RO12345678901']))
+            with self.assertRaises(ValueError): batch.selection(p,0,1,'RO')
+
+    def test_romanian_report_does_not_consume_bulgarian_expectations(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d)
+            (root/'ids.json').write_text(json.dumps(['RO1234']))
+            row={'vatId':'RO1234','totalMs':1,'attempts':[{'response':{'valid':False,'company':None,'address':{'fullAddressByVies':None}}}]}
+            (root/'observations.jsonl').write_text(json.dumps(row)+'\n')
+            with patch.object(batch,'ROOT',root): result=batch.report(root)
+            self.assertEqual(result['needsReview'],1)
+            self.assertEqual(result['invalidResponses'],1)

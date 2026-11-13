@@ -4,7 +4,7 @@ use crate::{
     Provider, ProviderCapabilities,
 };
 
-pub(super) fn catalog() -> Vec<JurisdictionCapabilities> {
+pub(crate) fn catalog() -> Vec<JurisdictionCapabilities> {
     FORMATS
         .iter()
         .map(|(prefix, _)| JurisdictionCapabilities {
@@ -14,17 +14,23 @@ pub(super) fn catalog() -> Vec<JurisdictionCapabilities> {
                 other => other,
             },
             subdivision_code: (*prefix == "XI").then_some("GB-NIR"),
-            vat_prefix: prefix,
+            vat_prefix: Some(prefix),
             providers: vec![ProviderCapabilities {
                 provider: Provider::Vies,
                 operations: vec![
                     Operation::ValidateVatSyntax,
                     Operation::LookupVat,
                     Operation::IsVatValid,
-                ],
-                identifier_scheme: IdentifierScheme::Vat,
+                ]
+                .into_iter()
+                .map(|op| crate::OperationCapabilities::new(op, IdentifierScheme::Vat))
+                .collect(),
                 checksum: ChecksumSupport::NotImplemented,
-                languages: LanguageSupport::NotSelectable,
+                languages: LanguageSupport {
+                    available: vec![],
+                    default: None,
+                    selectable: false,
+                },
                 requires_credentials: false,
                 optional_owner_details: true,
                 address_splitting: super::address::supports(prefix),

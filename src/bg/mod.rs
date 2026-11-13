@@ -14,3 +14,6 @@ mod tests;
 
 #[cfg(test)]
 mod probe;
+
+#[cfg(test)]
+mod bulstat_probe;

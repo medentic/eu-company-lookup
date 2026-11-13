@@ -1,7 +1,7 @@
 use super::{address, html};
 use crate::{
-    BgBusinessId, CompanyRecord, Provider, RegistryCapital, RegistryDetails, RegistryDocument,
-    RegistryError, RegistryMoney, RegistryPerson,
+    BgBusinessId, BgCompanyLookupResult, Provider, RegistryCapital, RegistryDetails,
+    RegistryDocument, RegistryError, RegistryMoney, RegistryPerson,
 };
 use crate::{CommercialRegisterDetails, CompanyStatus, RegistryDocumentType, RegistryRole};
 use chrono::NaiveDateTime;
@@ -80,6 +80,24 @@ fn date(f: Option<&Field>) -> Option<NaiveDateTime> {
     f.and_then(|f| f.field_entry_date.as_deref())
         .and_then(|s| NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.f").ok())
 }
+// Explicit corporate-holder IDs are metadata, not part of the holder name.
+// Accept only the observed label with a complete business-code syntax.
+fn holder_name(value: &str) -> Option<&str> {
+    if value.contains(['\n', '\r']) || value.contains("ЕГН") || value.contains("ЛНЧ") {
+        return None;
+    }
+    let name = if let Some((name, id)) = value.rsplit_once(", ЕИК/ПИК ") {
+        if !matches!(id.len(), 9 | 13) || !id.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        name
+    } else {
+        value
+    };
+    let name = name.trim();
+    (!name.is_empty() && !name.contains("ЕИК")).then_some(name)
+}
+
 fn people(f: Option<&Field>, role: RegistryRole) -> Option<Vec<RegistryPerson>> {
     let raw = f?.html_data.as_deref()?;
     let doc = Html::parse_fragment(raw);
@@ -97,17 +115,11 @@ fn people(f: Option<&Field>, role: RegistryRole) -> Option<Vec<RegistryPerson>> 
             .map(|source_text| {
                 let parts = source_text.rsplit_once(", Държава:");
                 let (name, country) = match parts {
-                    Some((name, country))
-                        if !name.contains('\n')
-                            && !name.contains("ЕИК")
-                            && !name.contains("ЕГН")
-                            && !name.contains("ЛНЧ")
-                            && !country.trim().is_empty() =>
-                    {
-                        (
-                            Some(name.trim().to_owned()),
-                            Some(country.trim().to_owned()),
-                        )
+                    Some((name, country)) if !country.trim().is_empty() => {
+                        match holder_name(name) {
+                            Some(name) => (Some(name.to_owned()), Some(country.trim().to_owned())),
+                            None => (None, None),
+                        }
                     }
                     None if !source_text.is_empty()
                         && source_text.chars().all(|c| {
@@ -216,7 +228,10 @@ fn documents(f: Option<&Field>) -> Option<Vec<RegistryDocument>> {
     (!documents.is_empty()).then_some(documents)
 }
 
-pub(super) fn decode(body: &[u8], id: &BgBusinessId) -> Result<CompanyRecord, RegistryError> {
+pub(super) fn decode(
+    body: &[u8],
+    id: &BgBusinessId,
+) -> Result<BgCompanyLookupResult, RegistryError> {
     let deed: Deed = serde_json::from_slice(body).map_err(|_| RegistryError::UnexpectedResponse)?;
     if deed.uic != id.as_str() {
         return Err(RegistryError::MismatchedResponse);
@@ -259,7 +274,7 @@ pub(super) fn decode(body: &[u8], id: &BgBusinessId) -> Result<CompanyRecord, Re
     } else if matches!(deed.deed_status, 1 | 2) {
         Some(CompanyStatus::Active)
     } else {
-        None
+        Some(CompanyStatus::Unknown)
     };
     let company_name = if deed.full_name.contains("<span") {
         let decoded = html::text(&deed.full_name).replace('\u{a0}', " ");
@@ -298,7 +313,7 @@ pub(super) fn decode(body: &[u8], id: &BgBusinessId) -> Result<CompanyRecord, Re
         return Err(RegistryError::UnexpectedResponse);
     }
     let docs = documents(constitutive.first().copied());
-    Ok(CompanyRecord {
+    Ok(BgCompanyLookupResult {
         tax_id: id.clone(),
         source: Provider::BulgarianCommercialRegister,
         registry_url: format!(
@@ -310,8 +325,10 @@ pub(super) fn decode(body: &[u8], id: &BgBusinessId) -> Result<CompanyRecord, Re
         legal_form: text(get("00030", "CR_F_3_L")?).map(|s| super::legal_form::abbreviate(&s)),
         address: address::commercial(text(get("00050", "CR_F_5_L")?)),
         status,
+        native_registry_status: Some(deed.deed_status.to_string()),
         registry_details: RegistryDetails::BulgarianCommercialRegister(Box::new(
             CommercialRegisterDetails {
+                status_code: deed.deed_status,
                 registered_name: text(get("00020", "CR_F_2_L")?),
                 identifier_entry_date: identifier_date.map(|d| d.date()),
                 managers: people(get("00070", "CR_F_7_L")?, RegistryRole::Manager),

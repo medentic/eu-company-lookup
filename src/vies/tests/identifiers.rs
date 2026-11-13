@@ -35,23 +35,36 @@ const EXAMPLES: &[&str] = &[
 #[test]
 fn formats_and_capabilities_cover_the_same_jurisdictions() {
     let capabilities = Client::new().unwrap().capabilities();
-    assert_eq!(capabilities.len(), 28);
-    assert_eq!(EXAMPLES.len(), capabilities.len());
+    assert_eq!(capabilities.len(), 31);
+    assert_eq!(
+        EXAMPLES.len(),
+        capabilities
+            .iter()
+            .filter(|c| c.vat_prefix.is_some())
+            .count()
+    );
     for raw in EXAMPLES {
         let vat = validate_vat_syntax(raw).unwrap();
         let capability = capabilities
             .iter()
-            .find(|c| c.vat_prefix == vat.prefix())
+            .find(|c| c.vat_prefix == Some(vat.prefix()))
             .unwrap();
         let vat_providers: Vec<_> = capability
             .providers
             .iter()
-            .filter(|p| p.identifier_scheme == crate::IdentifierScheme::Vat)
+            .filter(|p| p.supports(crate::Operation::LookupVat, crate::IdentifierScheme::Vat))
             .collect();
         assert_eq!(vat_providers.len(), 1);
         let provider = vat_providers[0];
         assert_eq!(provider.operations.len(), 3);
-        assert_eq!(provider.languages, LanguageSupport::NotSelectable);
+        assert_eq!(
+            provider.languages,
+            LanguageSupport {
+                available: vec![],
+                default: None,
+                selectable: false
+            }
+        );
         assert_eq!(provider.checksum, ChecksumSupport::NotImplemented);
         assert!(!provider.requires_credentials);
         assert_eq!(
@@ -59,9 +72,15 @@ fn formats_and_capabilities_cover_the_same_jurisdictions() {
             LookupError::InvalidInput.to_string()
         );
     }
-    let greece = capabilities.iter().find(|c| c.vat_prefix == "EL").unwrap();
+    let greece = capabilities
+        .iter()
+        .find(|c| c.vat_prefix == Some("EL"))
+        .unwrap();
     assert_eq!(greece.country_code, "GR");
-    let ni = capabilities.iter().find(|c| c.vat_prefix == "XI").unwrap();
+    let ni = capabilities
+        .iter()
+        .find(|c| c.vat_prefix == Some("XI"))
+        .unwrap();
     assert_eq!(
         (ni.country_code, ni.subdivision_code),
         ("GB", Some("GB-NIR"))

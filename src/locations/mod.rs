@@ -4,6 +4,7 @@ mod country;
 mod delivery;
 pub(crate) mod normalize;
 mod parser;
+mod romanian;
 mod rules;
 pub use address::Address;
 pub use country::Country;
@@ -14,12 +15,16 @@ pub use country::Country;
 pub fn parse_address(raw: &str, localization: &str) -> Address {
     let code = localization.to_uppercase();
     let code = if code == "GR" { "EL" } else { &code };
-    parser::split_fields(code, raw)
+    if code == "RO" {
+        romanian::parse(raw)
+    } else {
+        parser::split_fields(code, raw)
+    }
 }
 /// Whether extraction rules exist for an ISO country-format hint.
 pub fn supports_address(localization: &str) -> bool {
     let code = localization.to_uppercase();
-    rules::rule(if code == "GR" { "EL" } else { &code }).is_some()
+    code == "RO" || rules::rule(if code == "GR" { "EL" } else { &code }).is_some()
 }
 /// Normalize and split a Bulgarian delivery line; does not interpret locality labels.
 pub fn split_delivery(raw: &str, localization: &str) -> (Option<String>, Option<String>) {

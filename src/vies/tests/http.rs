@@ -153,7 +153,7 @@ async fn local_failures_send_no_request() {
         client.lookup_vat("US123456789").await,
         Err(LookupError::UnsupportedJurisdiction)
     ));
-    assert_eq!(client.capabilities().len(), 28);
+    assert_eq!(client.capabilities().len(), 31);
     assert_eq!(server.calls.load(Ordering::SeqCst), 0);
 }
 

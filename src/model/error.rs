@@ -30,6 +30,17 @@ pub enum LookupError {
     /// Well-formed prefix is not supported by this version's VIES adapter.
     #[error("VAT jurisdiction is not supported; Greece uses EL, not GR")]
     UnsupportedJurisdiction,
+    /// This national country/scheme pair has no supported identifier parser.
+    #[error("unsupported national identifier country/scheme pair")]
+    UnsupportedIdentifierScheme,
+    /// The relevant adapter was disabled when this client was constructed.
+    #[error("operation {operation:?} is disabled for {identifier_scheme:?}")]
+    OperationDisabled {
+        /// Requested operation; this is a local configuration error, not an outage.
+        operation: super::Operation,
+        /// Identifier scheme selecting the disabled adapter.
+        identifier_scheme: super::IdentifierScheme,
+    },
     /// Invalid client configuration.
     #[error("invalid client configuration: {0}")]
     InvalidConfiguration(&'static str),
@@ -107,6 +118,13 @@ pub enum LookupError {
     /// Does not describe a VIES negative result or any service failure.
     #[error("business identifier was not found in either Bulgarian register")]
     NotFound,
+    /// Identifier-matched negative observation from a specific registry.
+    /// Does not prove absence from other sources or VAT invalidity.
+    #[error("business identifier was not found by {provider:?}")]
+    RegistryNotFound {
+        /// Source that explicitly reported the miss.
+        provider: super::Provider,
+    },
     /// Source-specific registry failure; no conclusion about business existence.
     #[error("{provider:?}: {error}")]
     Registry {

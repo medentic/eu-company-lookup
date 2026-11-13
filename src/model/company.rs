@@ -14,11 +14,12 @@ pub struct CompanyAddress {
     pub fields: crate::locations::Address,
 }
 
-/// Identifier-matched business record. Existence does not establish VAT validity.
+/// Full Bulgarian company lookup result, matched to the requested business identifier.
+/// Includes registered identity and provider-specific details; existence does not establish VAT validity.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
-pub struct CompanyRecord {
+pub struct BgCompanyLookupResult {
     /// Complete requested business identifier, including any branch suffix.
     pub tax_id: BgBusinessId,
     /// Register that supplied the record.
@@ -33,8 +34,11 @@ pub struct CompanyRecord {
     pub legal_form: Option<LegalForm>,
     /// Registered office, with unrecognized text retained.
     pub address: CompanyAddress,
-    /// Provider-specific status, not a universal active/inactive or VAT flag.
+    /// Shared normalized lifecycle status; source-specific values remain in registry details.
     pub status: Option<CompanyStatus>,
+    /// Original registry status, regardless of normalization; numeric source codes are stringified.
+    /// Missing source status remains null. No translated or inferred labels are invented.
+    pub native_registry_status: Option<String>,
     /// Provider-specific facts; these do not override the shared identity fields.
     pub registry_details: RegistryDetails,
 }
@@ -66,6 +70,8 @@ pub enum RegistryDetails {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct CommercialRegisterDetails {
+    /// Original numeric deed status from the Commercial Register.
+    pub status_code: i64,
     /// Registered name without the legal-form suffix.
     pub registered_name: Option<String>,
     /// Current UIC field's entry date, not necessarily original incorporation.
@@ -92,7 +98,8 @@ impl CommercialRegisterDetails {
 impl Serialize for CommercialRegisterDetails {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut value = serializer.serialize_struct("CommercialRegisterDetails", 10)?;
+        let mut value = serializer.serialize_struct("CommercialRegisterDetails", 11)?;
+        value.serialize_field("statusCode", &self.status_code)?;
         value.serialize_field("registeredName", &self.registered_name)?;
         value.serialize_field("identifierEntryDate", &self.identifier_entry_date)?;
         value.serialize_field("identifierEntryYear", &self.identifier_entry_year())?;
@@ -112,6 +119,8 @@ impl Serialize for CommercialRegisterDetails {
 pub struct BulstatDetails {
     /// Original decoded subject description.
     pub subject_text: String,
+    /// Original decoded BULSTAT status, including when mapped to a typed status.
+    pub status_text: Option<String>,
 }
 
 /// Person or entity displayed in a registry role. No separate personal-identifier
@@ -184,3 +193,6 @@ impl std::ops::DerefMut for CompanyAddress {
         &mut self.fields
     }
 }
+
+/// Backward-compatible name for [`BgCompanyLookupResult`]. Prefer the lookup result name in new code.
+pub type CompanyRecord = BgCompanyLookupResult;

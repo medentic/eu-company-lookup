@@ -5,7 +5,7 @@ import subprocess
 from check_docs import ROOT, check
 
 CONSUMER_DOCS = {'README.md', 'CHANGELOG.md', 'docs/reference/api-stability.md',
-                 'docs/reference/bulgarian-registry.md', 'docs/reference/vies.md'}
+                 'docs/reference/bulgarian-registry.md', 'docs/reference/romanian-registry.md', 'docs/reference/vies.md'}
 ROOT_FILES = {'Cargo.toml', 'Cargo.toml.orig', 'Cargo.lock', '.cargo_vcs_info.json',
               'LICENSE', 'THIRD-PARTY-LICENSE.txt'}
 SYNTHETIC_FIXTURES = {'src/vies/fixtures/valid.xml',

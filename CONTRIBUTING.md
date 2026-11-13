@@ -1,7 +1,7 @@
 # Contributing
 
 This single Rust crate supports VIES VAT verification and Bulgarian business
-lookup. Start with [README.md](README.md) for supported behavior and
+lookup and Romanian ANAF taxpayer lookup. Start with [README.md](README.md) for supported behavior and
 [API stability](docs/reference/api-stability.md) before changing consumer contracts.
 
 ## Repository map
@@ -9,8 +9,10 @@ lookup. Start with [README.md](README.md) for supported behavior and
 | Location | Purpose |
 | --- | --- |
 | `src/lib.rs` | Explicit public API exports and crate documentation. |
-| `src/model/` | Shared results, capabilities and typed failures. |
-| `src/vies/`, `src/bg/` | Private provider clients, decoders and unit tests. |
+| `src/client.rs` | Provider-independent facade and named adapter configuration. |
+| `src/model/` | Shared identities/results, capability types and typed failures. |
+| `src/capabilities.rs` | Provider-independent jurisdiction catalog. |
+| `src/vies/`, `src/bg/`, `src/ro/` | Private provider clients, decoders and unit tests. |
 | `src/locations/` | Public address utilities; private extraction and normalization rules. |
 | `tests/` | External-consumer API, identifier and configuration contracts. |
 | `examples/` | Runnable consumers; executing them contacts live providers. |
@@ -68,6 +70,27 @@ regressions plus the affected suite; final release checks cover the full package
 Live calls require an explicitly authorized selection and bounded pacing. Keep
 provider observations separate from reviewed expectations. The development guides
 are repository-only; consumers use [reference documentation](docs/README.md#using-the-library).
+
+## Adding a country adapter
+
+Keep identifiers, provider decoding, transport and provider-specific tests in the
+country module. Extend the typed `Provider`/`IdentifierScheme` enums and the
+validated `BusinessId` mapping; do not accept arbitrary country strings as proof
+that an adapter exists. Add named facade configuration and dispatch for the new
+adapter, and map its native result into the shared company result without guessing
+missing fields or conflating fiscal status with legal existence.
+
+Register operation contracts in the capability catalog. Accepted schemes, date
+parameters and local/remote execution must agree with the actual methods. Keep
+source language behavior factual. Test both compiled discovery and filtering for
+disabled adapters; no discovery call should initialize transport or contact sources.
+
+Reuse the shared facade consumer tests for typed failures, disabled adapters and
+capability contracts. Add provider-local synthetic tests for matched identity,
+positive and definitive negative observations, service/access/schema failures,
+source preservation and common-result conversion. Real observations and reviewed
+expectations stay local-only, with ambiguity and provider errors reported separately.
+Do not add a public plugin trait or another crate solely to register a new country.
 
 ## Documentation and evidence
 
