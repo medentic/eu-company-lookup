@@ -1,5 +1,13 @@
 # Changelog
 
+
+## 1.0.1 — 2026-11-13
+
+- Extract Bulgarian settlement-first locality-only addresses when the repeated region names agree, without inventing a street.
+- Omit empty primary-address and housing-complex placeholders, and asterisk-only delivery values even without comma separators. Preserve real numbers, ranges, negative floors and meaningful starred values.
+- Place explicit terminal `/партерен етаж/` annotations in the secondary address line.
+- Preserve original provider address text and existing public Rust/JSON contracts.
+
 ## 1.0.0
 
 Initial release, scoped to VIES and Bulgarian registry lookup:

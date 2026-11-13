@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "normalizationVersion": "address-rules-v7",
+  "normalizationVersion": "address-rules-v10",
   "expectationHash": "SHA-256 of UTF-8 JSON expected object; sorted keys, compact separators, unescaped Unicode",
   "versionRule": "Bump normalizationVersion for deliberate parsing behavior changes. Update only independently re-reviewed expectations, increment their reviewVersion and record reason/date. Structural refactors without behavior changes keep the version.",
   "knownNormalizationVersions": [
@@ -10,7 +10,10 @@
     "address-rules-v4",
     "address-rules-v5",
     "address-rules-v6",
-    "address-rules-v7"
+    "address-rules-v7",
+    "address-rules-v8",
+    "address-rules-v9",
+    "address-rules-v10"
   ],
   "changes": [
     {
@@ -47,6 +50,21 @@
       "version": "address-rules-v7",
       "date": "2026-11-13",
       "reason": "User-approved BG structured-address presentation: strip double quotation glyphs, canonical жк., uppercase single entrance letters, omit explicit delivery post-box components; preserve raw text, apostrophes and four-digit postcodes."
+    },
+    {
+      "version": "address-rules-v8",
+      "date": "2026-11-13",
+      "reason": "Extract settlement-first locality-only Bulgarian records when explicit repeated region names agree; preserve unknown fields for conflicts or unsupported shapes."
+    },
+    {
+      "version": "address-rules-v9",
+      "date": "2026-11-13",
+      "reason": "Omit entirely placeholder-only primary delivery lines and empty complex components while preserving real numbers, ranges and names. Also omit asterisk-only delivery marker values without requiring commas, preserving meaningful starred values."
+    },
+    {
+      "version": "address-rules-v10",
+      "date": "2026-11-13",
+      "reason": "Move an explicit terminal slash-delimited Bulgarian ground-floor annotation into address2, preserving its text and avoiding ordinary street names or nonterminal fragments."
     }
   ]
 }

@@ -67,3 +67,9 @@ country. VIES country metadata follows VAT jurisdiction. Registry country metada
 requires explicit recognized source country text and uses the shared native name.
 Unsupported formats retain unknown components. Provider envelopes preserve source
 text so applications can inspect what could not be structured.
+
+Bulgarian locality-only inputs may also start with the settlement and repeat the
+region; these are extracted only when both region names agree. Entirely empty
+primary-address or complex placeholders are omitted. A terminal slash-delimited
+ground-floor annotation is retained in the secondary delivery line. These rules
+do not infer missing street identities or interpret unlabelled numeric sequences.
