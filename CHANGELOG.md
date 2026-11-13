@@ -2,6 +2,8 @@
 
 ## 0.1.0 — unreleased
 
+- Normalize spaces after Bulgarian block, entrance, floor and apartment markers in structured delivery fields.
+
 - Present uppercase Bulgarian city and region names in title case, preserving mixed-case names, dotted abbreviations, known address acronyms and Roman numerals.
 
 - Normalize a working copy before address extraction; repair Bulgarian marker boundaries and move block/entrance/floor/apartment details to address2 while preserving source text.

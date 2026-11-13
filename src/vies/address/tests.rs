@@ -104,7 +104,7 @@ fn missing_unsupported_and_ambiguous_data_never_invent_components() {
         Some("ул. ПРИМЕР 1 бл.2 вх.3 ет.4 обл.РУСЕ, гр.РУСЕ".into()),
     );
     assert_eq!(p.address.as_deref(), Some("ул. ПРИМЕР 1"));
-    assert_eq!(p.address2.as_deref(), Some("бл.2 вх.3 ет.4"));
+    assert_eq!(p.address2.as_deref(), Some("бл. 2 вх. 3 ет. 4"));
     assert_eq!(p.city.as_deref(), Some("Русе"));
     assert_eq!(p.region.as_deref(), Some("Русе"));
     assert!(p.postcode.is_none() && p.country.is_none());
@@ -172,21 +172,21 @@ fn normalize_then_extract_bulgarian_delivery_details() {
         (
             "КНЯЖЕСКА  №13 бл.ЮТА вх.2 ет.2 обл.РУСЕ, гр.РУСЕ 7000",
             "КНЯЖЕСКА №13",
-            "бл.ЮТА вх.2 ет.2",
+            "бл. ЮТА вх. 2 ет. 2",
             "Русе",
             "7000",
         ),
         (
             " жк Младост 4ул. Околовръстен път  №257 ет.3 обл.СОФИЯ, гр.СОФИЯ 1715",
             "жк Младост 4, ул. Околовръстен път №257",
-            "ет.3",
+            "ет. 3",
             "София",
             "1715",
         ),
         (
             "  ул.  ПРИМЕР  №13бл.ЮТАвх.2ет.2ап.5 обл.РУСЕ, гр.РУСЕ 7000  ",
             "ул. ПРИМЕР №13",
-            "бл.ЮТА вх.2 ет.2 ап.5",
+            "бл. ЮТА вх. 2 ет. 2 ап. 5",
             "Русе",
             "7000",
         ),
@@ -230,10 +230,10 @@ fn marker_cleanup_does_not_split_words_or_duplicate_separators() {
     let raw = "жк Пример 4, ул. Истанбул. №1 ЕТ.3 обл.СОФИЯ, гр.СОФИЯ 1000";
     let p = split("BG", Some(raw.into()));
     assert_eq!(p.address.as_deref(), Some("жк Пример 4, ул. Истанбул. №1"));
-    assert_eq!(p.address2.as_deref(), Some("ЕТ.3"));
+    assert_eq!(p.address2.as_deref(), Some("ЕТ. 3"));
     let p = split("BG", Some("бл.1 вх.А ет.2 обл.РУСЕ, гр.РУСЕ 7000".into()));
     assert!(p.address.is_none());
-    assert_eq!(p.address2.as_deref(), Some("бл.1 вх.А ет.2"));
+    assert_eq!(p.address2.as_deref(), Some("бл. 1 вх. А ет. 2"));
 }
 
 #[test]
@@ -263,4 +263,25 @@ fn bulgarian_place_casing_is_conservative_and_idempotent() {
     }
     assert_eq!(super::normalize::place_name("IT", "GO".into()), "GO");
     assert_eq!(super::normalize::place_name("FR", "PARIS".into()), "PARIS");
+}
+
+#[test]
+fn bulgarian_detail_spacing_is_canonical_without_inventing_a_street_marker() {
+    for details in [
+        "бл.ЮТА вх.2 ет.2 ап.5",
+        "бл.  ЮТА вх.  2 ет.  2 ап.  5",
+        "бл .ЮТА вх .2 ет .2 ап .5",
+        "бл.\tЮТА вх.\u{a0}2 ет.2 ап.5",
+    ] {
+        let raw = format!("  КНЯЖЕСКА  №13 {details} обл.РУСЕ, гр.РУСЕ 7000  ");
+        let result = split("BG", Some(raw.clone()));
+        assert_eq!(result.full_address_by_vies.as_deref(), Some(raw.as_str()));
+        assert_eq!(result.address.as_deref(), Some("КНЯЖЕСКА №13"));
+        assert_eq!(
+            result.address2.as_deref(),
+            Some("бл. ЮТА вх. 2 ет. 2 ап. 5")
+        );
+        let normalized = super::normalize::address("BG", &raw);
+        assert_eq!(super::normalize::address("BG", &normalized), normalized);
+    }
 }

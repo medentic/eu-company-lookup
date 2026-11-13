@@ -59,10 +59,10 @@ pub(super) fn address(prefix: &str, raw: &str) -> String {
             out.push(' ');
         }
         out.push_str(&marker);
-        if is_street {
+        in_details = matches!(lower.as_str(), "бл." | "вх." | "ет." | "ап.");
+        if is_street || in_details {
             out.push(' ');
         }
-        in_details = matches!(lower.as_str(), "бл." | "вх." | "ет." | "ап.");
         end = found.end();
     }
     out.push_str(&value[end..]);
