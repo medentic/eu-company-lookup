@@ -3,7 +3,7 @@ use regex_lite::Regex;
 use std::sync::LazyLock;
 
 static DETAILS: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?:^|[ ,]+)(?:[бБ][лЛ]\.|[вВ][хХ]\.|[еЕ][тТ]\.|[аА][пП]\.)|(?:^|, *)(?:[сС][гГ][рР][аА][дД][аА]|[сС][тТ][аА][яЯ]) +[^ ,]").unwrap()
+    Regex::new(r"(?:^|[ ,]+)(?:[бБ][лЛ]\.|[вВ][хХ]\.|[еЕ][тТ]\.|[аА][пП]\.)|(?:^|, *)(?:[сС][гГ][рР][аА][дД][аА]|[сС][тТ][аА][яЯ]) +[^ ,]|(?:^| +)/[пП][аА][рР][тТ][еЕ][рР][еЕ][нН] +[еЕ][тТ][аА][жЖ]/$").unwrap()
 });
 
 // Only whole, comma-separated components with an asterisk-only value are
@@ -17,23 +17,34 @@ static POST_BOX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"(?i)^(?:п\. *к\.? +[0-9]{1,3}|пощенска +кутия +(?:№ *)?[0-9]+)$").unwrap()
 });
 
+static EMPTY_COMPLEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^ж\.?к\. *[.*-]+$").unwrap());
+
+fn primary_value(value: &str) -> Option<String> {
+    (!value
+        .chars()
+        .all(|c| matches!(c, ' ' | '.' | ',' | '-' | '*' | '№')))
+    .then(|| value.to_owned())
+}
+
 pub(crate) fn bulgarian_delivery(line: &str) -> (Option<String>, Option<String>) {
     let cleaned = line
         .split(',')
         .filter(|part| {
-            !STAR_COMPONENT.is_match(part.trim()) && !POST_BOX.is_match(&part.trim().to_lowercase())
+            !STAR_COMPONENT.is_match(part.trim())
+                && !EMPTY_COMPLEX.is_match(&part.trim().to_lowercase())
+                && !POST_BOX.is_match(&part.trim().to_lowercase())
         })
         .collect::<Vec<_>>()
         .join(",");
     let line = cleaned.trim_matches([' ', ',']);
     let Some(found) = DETAILS.find(line) else {
-        return ((!line.is_empty()).then(|| line.into()), None);
+        return (primary_value(line), None);
     };
     let primary = line[..found.start()].trim_matches([' ', ',']);
     let details = line[found.start()..].trim_start_matches([' ', ',']).trim();
     // A block-only address is still useful delivery information in address2.
     (
-        (!primary.is_empty()).then(|| primary.into()),
+        primary_value(primary),
         (!details.is_empty()).then(|| details.into()),
     )
 }
