@@ -65,9 +65,9 @@ pub(super) fn split(prefix: &str, original: Option<String>) -> VatAddress {
             });
         }
     }
-    result.city = field("city");
+    result.city = field("city").map(|value| normalize::place_name(prefix, value));
     result.postcode = field("postcode");
-    result.region = field("region");
+    result.region = field("region").map(|value| normalize::place_name(prefix, value));
     result.country = field("country");
     result
 }

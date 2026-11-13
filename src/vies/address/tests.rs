@@ -25,7 +25,7 @@ fn country_formats() {
         ("SE", "Example 1\n621 85 Town", "621 85", "Town"),
         ("SI", "Example 1, 3257 Town", "3257", "Town"),
         ("SK", "Example 1\n123 45 Town\nSlovensko", "123 45", "Town"),
-        ("BG", "ул. ПРИМЕР 1 обл.РУСЕ, гр.РУСЕ 7000", "7000", "РУСЕ"),
+        ("BG", "ул. ПРИМЕР 1 обл.РУСЕ, гр.РУСЕ 7000", "7000", "Русе"),
     ];
     for (country, raw, postcode, city) in cases {
         let p = split(country, Some(raw.into()));
@@ -52,7 +52,7 @@ fn country_formats() {
         assert_eq!(
             p.region.as_deref(),
             match country {
-                "BG" => Some("РУСЕ"),
+                "BG" => Some("Русе"),
                 "IT" => Some("GO"),
                 _ => None,
             }
@@ -105,8 +105,8 @@ fn missing_unsupported_and_ambiguous_data_never_invent_components() {
     );
     assert_eq!(p.address.as_deref(), Some("ул. ПРИМЕР 1"));
     assert_eq!(p.address2.as_deref(), Some("бл.2 вх.3 ет.4"));
-    assert_eq!(p.city.as_deref(), Some("РУСЕ"));
-    assert_eq!(p.region.as_deref(), Some("РУСЕ"));
+    assert_eq!(p.city.as_deref(), Some("Русе"));
+    assert_eq!(p.region.as_deref(), Some("Русе"));
     assert!(p.postcode.is_none() && p.country.is_none());
     let p = split("SE", Some("\n621 85 VISBY".into()));
     assert!(p.address.is_none());
@@ -132,13 +132,13 @@ fn bulgarian_settlement_variants_preserve_building_details() {
         let p = split("BG", Some(raw.into()));
         assert_eq!(p.full_address_by_vies.as_deref(), Some(raw));
         assert_eq!(p.address.as_deref(), Some("пл. ПРИМЕР № 1"));
-        assert_eq!(p.city.as_deref(), Some("СЕВЛИЕВО"));
+        assert_eq!(p.city.as_deref(), Some("Севлиево"));
         assert_eq!(p.postcode.as_deref(), Some("5400"));
-        assert_eq!(p.region.as_deref(), Some("ГАБРОВО"));
+        assert_eq!(p.region.as_deref(), Some("Габрово"));
         assert!(p.country.is_none() && p.address2.is_none());
     }
     let p = split("BG", Some("ул. ПРИМЕР 1 обл.СОФИЯ С.ПРИМЕРНО СЕЛО".into()));
-    assert_eq!(p.city.as_deref(), Some("ПРИМЕРНО СЕЛО"));
+    assert_eq!(p.city.as_deref(), Some("Примерно Село"));
     assert!(p.postcode.is_none());
 }
 
@@ -173,21 +173,21 @@ fn normalize_then_extract_bulgarian_delivery_details() {
             "КНЯЖЕСКА  №13 бл.ЮТА вх.2 ет.2 обл.РУСЕ, гр.РУСЕ 7000",
             "КНЯЖЕСКА №13",
             "бл.ЮТА вх.2 ет.2",
-            "РУСЕ",
+            "Русе",
             "7000",
         ),
         (
             " жк Младост 4ул. Околовръстен път  №257 ет.3 обл.СОФИЯ, гр.СОФИЯ 1715",
             "жк Младост 4, ул. Околовръстен път №257",
             "ет.3",
-            "СОФИЯ",
+            "София",
             "1715",
         ),
         (
             "  ул.  ПРИМЕР  №13бл.ЮТАвх.2ет.2ап.5 обл.РУСЕ, гр.РУСЕ 7000  ",
             "ул. ПРИМЕР №13",
             "бл.ЮТА вх.2 ет.2 ап.5",
-            "РУСЕ",
+            "Русе",
             "7000",
         ),
     ];
@@ -234,4 +234,33 @@ fn marker_cleanup_does_not_split_words_or_duplicate_separators() {
     let p = split("BG", Some("бл.1 вх.А ет.2 обл.РУСЕ, гр.РУСЕ 7000".into()));
     assert!(p.address.is_none());
     assert_eq!(p.address2.as_deref(), Some("бл.1 вх.А ет.2"));
+}
+
+#[test]
+fn bulgarian_place_casing_is_conservative_and_idempotent() {
+    for (input, expected) in [
+        ("РУСЕ", "Русе"),
+        ("СОФИЯ", "София"),
+        ("ЛОМ", "Лом"),
+        ("ВЕЛИКО ТЪРНОВО", "Велико Търново"),
+        ("СОФИЯ-ГРАД", "София-Град"),
+        ("Г. ОРЯХОВИЦА", "Г. Оряховица"),
+        ("ЖК ПРИМЕР II", "ЖК Пример II"),
+        ("София-ГРАД", "София-ГРАД"),
+        ("русе", "русе"),
+        ("123", "123"),
+    ] {
+        let raw = format!("ул. ПРИМЕР 1 обл.{input}, гр.{input} 1000");
+        let result = split("BG", Some(raw.clone()));
+        assert_eq!(result.city.as_deref(), Some(expected));
+        assert_eq!(result.region.as_deref(), Some(expected));
+        assert_eq!(result.full_address_by_vies.as_deref(), Some(raw.as_str()));
+        assert_eq!(result.address.as_deref(), Some("ул. ПРИМЕР 1"));
+        assert_eq!(
+            super::normalize::place_name("BG", expected.into()),
+            expected
+        );
+    }
+    assert_eq!(super::normalize::place_name("IT", "GO".into()), "GO");
+    assert_eq!(super::normalize::place_name("FR", "PARIS".into()), "PARIS");
 }

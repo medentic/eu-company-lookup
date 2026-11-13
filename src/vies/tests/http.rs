@@ -594,7 +594,7 @@ async fn compact_response_has_exact_keys_and_structured_address() {
             "vatId": "BG123456789", "valid": true, "source": "Vies",
             "company": " Синтетична & Δοκιμή SRL ",
             "address": { "fullAddressByVies": raw, "address": "ул. ПРИМЕР 1", "address2": null,
-                "city": "РУСЕ", "postcode": "7000", "region": "РУСЕ", "country": null }
+                "city": "Русе", "postcode": "7000", "region": "Русе", "country": null }
         })
     );
 }

@@ -76,9 +76,9 @@ VIES `checkVat` has **no language-selection parameter**. Company names and origi
     "fullAddressByVies": "ул. ПРИМЕР 1 обл.РУСЕ, гр.РУСЕ 7000",
     "address": "ул. ПРИМЕР 1",
     "address2": null,
-    "city": "РУСЕ",
+    "city": "Русе",
     "postcode": "7000",
-    "region": "РУСЕ",
+    "region": "Русе",
     "country": null
   }
 }

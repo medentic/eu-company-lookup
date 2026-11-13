@@ -81,3 +81,45 @@ pub(super) fn bulgarian_delivery(line: &str) -> (Option<String>, Option<String>)
         (!details.is_empty()).then(|| details.into()),
     )
 }
+
+/// Presentation only: BG uppercase place names, never raw source or delivery text.
+/// Mixed-case values are already curated. Preserve dotted abbreviations, known
+/// address acronyms and Roman numerals; do not apply these rules internationally.
+pub(super) fn place_name(prefix: &str, value: String) -> String {
+    if prefix != "BG"
+        || !value.chars().any(char::is_uppercase)
+        || value.chars().any(char::is_lowercase)
+    {
+        return value;
+    }
+    value
+        .split(' ')
+        .map(|word| {
+            word.split('-')
+                .map(|part| {
+                    if part.contains('.')
+                        || matches!(part, "ЖК" | "КК" | "НП" | "ПП")
+                        || (!part.is_empty() && part.chars().all(|c| "IVXLCDM".contains(c)))
+                    {
+                        return part.to_owned();
+                    }
+                    let mut first = true;
+                    part.chars()
+                        .flat_map(|c| {
+                            if first && c.is_alphabetic() {
+                                first = false;
+                                c.to_uppercase().collect::<String>()
+                            } else {
+                                c.to_lowercase().collect::<String>()
+                            }
+                            .chars()
+                            .collect::<Vec<_>>()
+                        })
+                        .collect::<String>()
+                })
+                .collect::<Vec<_>>()
+                .join("-")
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
