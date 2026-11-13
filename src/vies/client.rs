@@ -1,7 +1,5 @@
 use super::{VatId, identifiers::FORMATS, soap, transport, validate_vat_syntax};
-use crate::{
-    JurisdictionCapabilities, LimitScope, LookupError, Provider, RetryAfter, VatLookupResult,
-};
+use crate::{LimitScope, LookupError, Provider, RetryAfter, VatLookupResult};
 use chrono::Utc;
 use std::{
     collections::HashMap,
@@ -92,53 +90,27 @@ struct State {
     countries: HashMap<&'static str, Mutex<Admission>>,
 }
 
-/// Cloneable asynchronous VAT and company lookup client. Use inside a Tokio runtime with I/O and time
+/// Internal VIES transport client. Use inside a Tokio runtime with I/O and time
 /// enabled. Reuse one client so limits and cooldowns are shared. No automatic
 /// retries, redirects, persistent cache, ambient proxy or cookies are used.
 #[derive(Clone)]
-pub struct Client {
+pub(crate) struct ViesClient {
     http: reqwest::Client,
     config: ClientConfig,
     state: Arc<State>,
     endpoint: String,
-    registry: crate::BgRegistryClient,
-    romanian_registry: crate::RoRegistryClient,
 }
 
-impl std::fmt::Debug for Client {
+impl std::fmt::Debug for ViesClient {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Client")
+        f.debug_struct("ViesClient")
             .field("config", &self.config)
             .finish_non_exhaustive()
     }
 }
 
-impl Client {
-    /// Build a client with bounded default settings.
-    pub fn new() -> Result<Self, LookupError> {
-        Self::with_config(ClientConfig::default())
-    }
-
-    /// Build with explicit deadlines and limits. Zero concurrency, response limit,
-    /// timeout or cooldown and excessively large values are rejected.
-    pub fn with_config(config: ClientConfig) -> Result<Self, LookupError> {
-        Self::with_configs(config, crate::BgRegistryConfig::default())
-    }
-
-    /// Configure VIES and Bulgarian registry limits independently.
-    pub fn with_configs(
-        config: ClientConfig,
-        registry_config: crate::BgRegistryConfig,
-    ) -> Result<Self, LookupError> {
-        Self::with_registry_configs(config, registry_config, crate::RoRegistryConfig::default())
-    }
-
-    /// Configure VIES, Bulgarian and Romanian registry clients independently.
-    pub fn with_registry_configs(
-        config: ClientConfig,
-        registry_config: crate::BgRegistryConfig,
-        romanian_config: crate::RoRegistryConfig,
-    ) -> Result<Self, LookupError> {
+impl ViesClient {
+    pub(crate) fn with_config(config: ClientConfig) -> Result<Self, LookupError> {
         if config.timeout.is_zero()
             || config.timeout > Duration::from_secs(300)
             || config.connect_timeout.is_zero()
@@ -183,61 +155,7 @@ impl Client {
             config,
             state,
             endpoint: ENDPOINT.into(),
-            registry: crate::BgRegistryClient::with_config(registry_config)?,
-            romanian_registry: crate::RoRegistryClient::with_config(romanian_config)?,
         })
-    }
-
-    /// Return implemented capabilities without network calls. Enabled support is
-    /// distinct from live source availability; VIES has no language parameter.
-    pub fn capabilities(&self) -> Vec<JurisdictionCapabilities> {
-        crate::capabilities::catalog()
-    }
-
-    /// Look up a supported national business identifier without inferring VAT validity.
-    pub async fn lookup_company(
-        &self,
-        identifier: &crate::BusinessId,
-    ) -> Result<crate::CompanyLookupResult, LookupError> {
-        match identifier.scheme() {
-            crate::IdentifierScheme::BgBusinessId => self
-                .registry
-                .lookup(identifier.as_str())
-                .await
-                .map(Into::into),
-            crate::IdentifierScheme::RoBusinessId => self
-                .romanian_registry
-                .lookup(identifier.as_str())
-                .await
-                .map(Into::into),
-            _ => Err(LookupError::InvalidInput),
-        }
-    }
-
-    /// Look up a Romanian CUI through ANAF for today's date in Europe/Bucharest.
-    pub async fn lookup_ro_company(
-        &self,
-        tax_id: &str,
-    ) -> Result<crate::RoCompanyLookupResult, LookupError> {
-        self.romanian_registry.lookup(tax_id).await
-    }
-
-    /// Look up Romanian fiscal status for an explicit date.
-    pub async fn lookup_ro_company_at(
-        &self,
-        tax_id: &str,
-        date: chrono::NaiveDate,
-    ) -> Result<crate::RoCompanyLookupResult, LookupError> {
-        self.romanian_registry.lookup_at(tax_id, date).await
-    }
-
-    /// Look up an ЕИК/BULSTAT business code. Tries the Commercial Register, then
-    /// BULSTAT only on a definitive miss. Never infers VAT registration.
-    pub async fn lookup_bg_company(
-        &self,
-        tax_id: &str,
-    ) -> Result<crate::BgCompanyLookupResult, LookupError> {
-        self.registry.lookup(tax_id).await
     }
 
     /// Look up VAT validity and available company identity/address details.
@@ -247,12 +165,6 @@ impl Client {
         let vat = validate_vat_syntax(vat_id)?;
         self.lookup_with_deadline(&vat, Instant::now() + self.config.timeout)
             .await
-    }
-
-    /// Convenience wrapper around [`Self::lookup_vat`]. Do not call both for one
-    /// interaction: the richer result already contains the validity flag.
-    pub async fn is_vat_valid(&self, vat_id: &str) -> Result<bool, LookupError> {
-        Ok(self.lookup_vat(vat_id).await?.valid)
     }
 
     async fn lookup_with_deadline(
@@ -445,17 +357,8 @@ fn retry_delay(value: &RetryAfter) -> Duration {
 }
 
 #[cfg(test)]
-impl Client {
-    pub(crate) fn with_test_registries(
-        bg: crate::BgRegistryClient,
-        ro: crate::RoRegistryClient,
-    ) -> Self {
-        let mut client = Self::new().unwrap();
-        client.registry = bg;
-        client.romanian_registry = ro;
-        client
-    }
-    pub(super) fn for_test(endpoint: String, config: ClientConfig) -> Self {
+impl ViesClient {
+    pub(crate) fn for_test(endpoint: String, config: ClientConfig) -> Self {
         let mut client = Self::with_config(config).unwrap();
         client.endpoint = endpoint;
         client

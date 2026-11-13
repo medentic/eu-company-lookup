@@ -26,7 +26,7 @@ impl BusinessId {
         match (country.to_ascii_uppercase().as_str(), scheme) {
             ("BG", IdentifierScheme::BgBusinessId) => Ok(BgBusinessId::parse(value)?.into()),
             ("RO", IdentifierScheme::RoBusinessId) => Ok(RoBusinessId::parse(value)?.into()),
-            _ => Err(LookupError::InvalidInput),
+            _ => Err(LookupError::UnsupportedIdentifierScheme),
         }
     }
     /// ISO country owning this identifier scheme, not the physical address country.

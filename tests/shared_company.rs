@@ -60,12 +60,11 @@ fn non_vies_eea_countries_are_discoverable_without_claiming_lookup_support() {
     }
     for code in ["BG", "RO"] {
         let entry = catalog.iter().find(|c| c.country_code == code).unwrap();
-        assert!(
-            entry
-                .providers
+        assert!(entry.providers.iter().any(|p| {
+            p.operations
                 .iter()
-                .any(|p| p.operations.contains(&Operation::LookupCompany))
-        );
+                .any(|op| op.operation == Operation::LookupCompany)
+        }));
         assert!(entry.providers.iter().all(|p| !p.languages.selectable));
     }
 }

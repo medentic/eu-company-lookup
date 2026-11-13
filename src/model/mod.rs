@@ -6,8 +6,8 @@ mod registry_error;
 mod vat;
 
 pub use capabilities::{
-    ChecksumSupport, IdentifierScheme, JurisdictionCapabilities, LanguageSupport, Operation,
-    Provider, ProviderCapabilities,
+    ChecksumSupport, DateInput, Execution, IdentifierScheme, JurisdictionCapabilities,
+    LanguageSupport, Operation, OperationCapabilities, Provider, ProviderCapabilities,
 };
 pub use company::{
     BgCompanyLookupResult, BulstatDetails, CommercialRegisterDetails, CompanyAddress,

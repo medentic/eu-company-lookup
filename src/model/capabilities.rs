@@ -34,6 +34,63 @@ pub enum Operation {
     ValidateRoBusinessIdSyntax,
     /// Romanian taxpayer lookup through ANAF.
     LookupRoCompany,
+    /// Romanian fiscal lookup with an explicit requested date.
+    LookupRoCompanyAt,
+}
+
+/// Whether an operation makes provider requests.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub enum Execution {
+    /// Local syntax validation; no registration claim.
+    Local,
+    /// Remote provider lookup; operational failures remain errors.
+    Remote,
+}
+
+/// Date accepted by a specific operation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
+pub enum DateInput {
+    /// No caller-supplied date parameter.
+    None,
+    /// Requested fiscal date, not a historical company extract.
+    FiscalDate,
+}
+
+/// Typed input contract for one implemented operation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[non_exhaustive]
+pub struct OperationCapabilities {
+    /// Callable operation.
+    pub operation: Operation,
+    /// Accepted schemes; national schemes remain country-specific.
+    pub identifier_schemes: Vec<IdentifierScheme>,
+    /// Whether provider requests are made.
+    pub execution: Execution,
+    /// Supported date parameter, if any.
+    pub date_input: DateInput,
+}
+impl OperationCapabilities {
+    pub(crate) fn new(operation: Operation, scheme: IdentifierScheme) -> Self {
+        let execution = match operation {
+            Operation::ValidateVatSyntax
+            | Operation::ValidateBgBusinessIdSyntax
+            | Operation::ValidateRoBusinessIdSyntax => Execution::Local,
+            _ => Execution::Remote,
+        };
+        Self {
+            operation,
+            identifier_schemes: vec![scheme],
+            execution,
+            date_input: if operation == Operation::LookupRoCompanyAt {
+                DateInput::FiscalDate
+            } else {
+                DateInput::None
+            },
+        }
+    }
 }
 
 /// Identifier scheme accepted by an operation.
@@ -76,9 +133,7 @@ pub struct ProviderCapabilities {
     /// Provider implementing these operations.
     pub provider: Provider,
     /// Implemented operations for this jurisdiction.
-    pub operations: Vec<Operation>,
-    /// Accepted identifier scheme.
-    pub identifier_scheme: IdentifierScheme,
+    pub operations: Vec<OperationCapabilities>,
     /// Whether local checksum validation is implemented.
     pub checksum: ChecksumSupport,
     /// Language behavior shared by these operations.
@@ -104,4 +159,13 @@ pub struct JurisdictionCapabilities {
     pub vat_prefix: Option<&'static str>,
     /// Enabled providers only. This is not a live health check.
     pub providers: Vec<ProviderCapabilities>,
+}
+
+impl ProviderCapabilities {
+    /// Whether this provider advertises the operation for the supplied scheme.
+    pub fn supports(&self, operation: Operation, scheme: IdentifierScheme) -> bool {
+        self.operations
+            .iter()
+            .any(|c| c.operation == operation && c.identifier_schemes.contains(&scheme))
+    }
 }

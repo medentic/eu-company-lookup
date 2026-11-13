@@ -7,7 +7,10 @@ mod reporting;
 mod soap;
 mod transport;
 
-pub use client::{Client, ClientConfig};
+#[cfg(test)]
+pub(crate) use crate::Client;
+pub use client::ClientConfig;
+pub(crate) use client::ViesClient;
 pub use identifiers::{VatId, validate_vat_syntax};
 
 #[cfg(test)]

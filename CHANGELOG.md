@@ -12,9 +12,19 @@
   with explicit available/default/selectable metadata. Metadata-only EEA entries
   have no enabled providers and do not imply lookup support.
 
+- Replace flat provider operation lists and the provider-level identifier scheme
+  with typed per-operation input, execution and date contracts. Use
+  `ProviderCapabilities::supports` to check operation/scheme pairings.
+
 See [migration guidance](docs/reference/api-stability.md#migrating-from-1x).
 
 ### Added
+
+- Provider-independent `Client` facade and named `ClientBuilder` configuration
+  with explicit adapter enablement, retaining the convenience constructors.
+- Free `capabilities()` discovery without transport construction; client discovery
+  reports only enabled adapters. Typed errors distinguish disabled operations and
+  unsupported country/scheme pairs from malformed input and provider failures.
 
 - Shared `BusinessId` validates country, identifier scheme and value together.
   `Client::lookup_company` returns `CompanyLookupResult` for BG/RO, with separate

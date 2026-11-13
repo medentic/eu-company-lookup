@@ -21,8 +21,10 @@ pub(crate) fn catalog() -> Vec<JurisdictionCapabilities> {
                     Operation::ValidateVatSyntax,
                     Operation::LookupVat,
                     Operation::IsVatValid,
-                ],
-                identifier_scheme: IdentifierScheme::Vat,
+                ]
+                .into_iter()
+                .map(|op| crate::OperationCapabilities::new(op, IdentifierScheme::Vat))
+                .collect(),
                 checksum: ChecksumSupport::NotImplemented,
                 languages: LanguageSupport {
                     available: vec![],

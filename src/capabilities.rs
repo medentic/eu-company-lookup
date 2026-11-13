@@ -3,7 +3,9 @@ use crate::{
     Provider, ProviderCapabilities,
 };
 
-pub(crate) fn catalog() -> Vec<JurisdictionCapabilities> {
+/// Discover compiled provider support without constructing clients or making requests.
+/// This catalog is independent of a particular client's enabled adapters and live health.
+pub fn capabilities() -> Vec<JurisdictionCapabilities> {
     let vies = crate::vies::capabilities::catalog();
     crate::locations::Country::ALL
         .iter()
@@ -65,8 +67,11 @@ fn registry(
 ) -> ProviderCapabilities {
     ProviderCapabilities {
         provider,
-        identifier_scheme,
-        operations: vec![validation, lookup, Operation::LookupCompany],
+        operations: [validation, lookup, Operation::LookupCompany]
+            .into_iter()
+            .chain((provider == Provider::RomanianAnaf).then_some(Operation::LookupRoCompanyAt))
+            .map(|op| crate::OperationCapabilities::new(op, identifier_scheme))
+            .collect(),
         checksum: ChecksumSupport::NotImplemented,
         languages,
         requires_credentials: false,

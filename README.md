@@ -22,7 +22,7 @@ keeping VAT verification and provider-specific results separate. See the
 | `client.lookup_bg_company(value)` | Exact Commercial Register match, with BULSTAT fallback only after a definitive miss. |
 | `validate_ro_business_id_syntax(value)` / `RoBusinessId::parse(value)` | Offline Romanian CUI syntax validation. |
 | `client.lookup_ro_company(value)` | ANAF taxpayer details and dated domestic tax status. |
-| `client.capabilities()` | Local catalog of implemented providers, operations, identifier schemes and language behavior. |
+| `capabilities()` / `client.capabilities()` | Compiled support or enabled providers, with typed operation inputs and language behavior. |
 | `locations::parse_address(text, country_hint)` | Offline, conservative address extraction. |
 
 Syntax acceptance does **not** prove checksum validity or registration. A company
@@ -46,6 +46,41 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 For source builds, use the Git repository and pin a reviewed commit with `rev`.
 Release availability is listed on [crates.io](https://crates.io/crates/eu-company-lookup).
+
+## Configure only the adapters you need
+
+```no_run
+use eu_company_lookup::{capabilities, ClientBuilder, ClientConfig, LookupError};
+
+fn setup() -> Result<(), LookupError> {
+    let supported = capabilities(); // No HTTP clients or network requests.
+    let client = ClientBuilder::empty()
+        .vies(ClientConfig::default())
+        .romanian_registry(Default::default())
+        .build()?;
+    let enabled = client.capabilities();
+    assert!(enabled.len() == supported.len()); // Same country metadata; enabled providers differ.
+    Ok(())
+}
+```
+
+`Client::builder()` enables the current adapters by default; named `.vies(...)`,
+`.bulgarian_registry(...)` and `.romanian_registry(...)` methods configure them.
+`ClientBuilder::empty()` opts into only the adapters you select. The existing
+constructors remain available. BG configuration includes both Commercial Register
+and its definitive-miss-only BULSTAT fallback.
+
+The free `capabilities()` reports compiled support. `client.capabilities()` reports
+adapters enabled on that instance. Each provider's `operations` contains typed
+contracts with `operation`, `identifierSchemes`, `execution` and `dateInput`.
+Use `provider.supports(operation, scheme)` to check a particular pairing. An
+explicit ANAF fiscal date is available through `LookupRoCompanyAt`; this does not
+claim historical company-record support.
+
+A disabled adapter returns `OperationDisabled` locally, before parsing the lookup
+input or sending requests. Unsupported national country/scheme pairs return
+`UnsupportedIdentifierScheme`; malformed values under supported schemes return
+`InvalidInput`. Neither error is a negative registration observation.
 
 ## Look up VAT details
 

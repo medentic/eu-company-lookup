@@ -30,6 +30,17 @@ pub enum LookupError {
     /// Well-formed prefix is not supported by this version's VIES adapter.
     #[error("VAT jurisdiction is not supported; Greece uses EL, not GR")]
     UnsupportedJurisdiction,
+    /// This national country/scheme pair has no supported identifier parser.
+    #[error("unsupported national identifier country/scheme pair")]
+    UnsupportedIdentifierScheme,
+    /// The relevant adapter was disabled when this client was constructed.
+    #[error("operation {operation:?} is disabled for {identifier_scheme:?}")]
+    OperationDisabled {
+        /// Requested operation; this is a local configuration error, not an outage.
+        operation: super::Operation,
+        /// Identifier scheme selecting the disabled adapter.
+        identifier_scheme: super::IdentifierScheme,
+    },
     /// Invalid client configuration.
     #[error("invalid client configuration: {0}")]
     InvalidConfiguration(&'static str),

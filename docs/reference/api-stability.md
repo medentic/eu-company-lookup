@@ -54,12 +54,34 @@ The following changes require consumer review before upgrading to 2.0:
 | Unknown Commercial Register status | JSON null. | JSON `unknown`; `nativeRegistryStatus` and `registryDetails.statusCode` retain the code. |
 | BULSTAT active status | Literal `развиващ дейност`. | JSON `active`; native text remains in `nativeRegistryStatus` and `registryDetails.statusText`. |
 | `JurisdictionCapabilities.vat_prefix` | Always a string. | `Option<&str>`; JSON `vat_prefix` may be null. Inspect enabled providers before offering a lookup. |
+| `ProviderCapabilities.operations` and `identifier_scheme` | Flat operation enum list and one provider scheme. | Typed operation contracts with `identifierSchemes`, `execution` and `dateInput`; use `provider.supports(operation, scheme)`. |
 | `LanguageSupport` | Enum. | Struct with `available`, `default`, `selectable`; migrate enum matches and capability JSON consumers. |
 
 Capabilities include EEA metadata entries with empty provider lists. An entry does
 not establish an implemented registry, current availability, or address coverage.
 VAT jurisdiction mappings remain EL → GR and XI → GB / GB-NIR. No general GB
 VAT coverage is added. New optional result fields must be tolerated by consumers.
+
+## Facade and operation contracts in 2.0
+
+`Client` is independent of the VIES adapter. Existing constructors retain their
+behavior; `Client::builder()` adds named configuration with all current adapters
+enabled by default, while `ClientBuilder::empty()` starts without HTTP clients.
+Only configured adapters are constructed. Clones share adapter admission state.
+
+The free `capabilities()` returns compiled support without client construction.
+`client.capabilities()` filters providers to those enabled on that instance.
+Provider `operations` changes from enum values to `OperationCapabilities` objects:
+`operation`, `identifierSchemes`, `execution` (`Local`/`Remote`) and `dateInput`
+(`None`/`FiscalDate`). The provider-level `identifier_scheme` field is replaced by
+per-operation scheme lists. Migrate checks to `provider.supports(operation, scheme)`.
+Existing source labels and address output are unchanged by this refactor.
+
+A disabled adapter reports `OperationDisabled { operation, identifier_scheme }`
+before validating input or contacting a source. This differs from a provider outage
+or a definitive miss. `BusinessId` reports `UnsupportedIdentifierScheme` for an
+unsupported country/scheme pair; supported pairs with malformed values retain
+`InvalidInput`. Both errors remain distinct from registration results.
 
 ## Company status and source values
 

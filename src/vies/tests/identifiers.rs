@@ -52,7 +52,7 @@ fn formats_and_capabilities_cover_the_same_jurisdictions() {
         let vat_providers: Vec<_> = capability
             .providers
             .iter()
-            .filter(|p| p.identifier_scheme == crate::IdentifierScheme::Vat)
+            .filter(|p| p.supports(crate::Operation::LookupVat, crate::IdentifierScheme::Vat))
             .collect();
         assert_eq!(vat_providers.len(), 1);
         let provider = vat_providers[0];

@@ -11,10 +11,10 @@ fn consumer_can_normalize_identifiers_and_discover_supported_sources() {
     assert_eq!(bg.providers[0].provider, Provider::Vies);
     assert_eq!(bg.providers.len(), 3);
     for provider in &bg.providers[1..] {
-        assert_eq!(
-            provider.identifier_scheme,
+        assert!(provider.supports(
+            eu_company_lookup::Operation::LookupCompany,
             eu_company_lookup::IdentifierScheme::BgBusinessId
-        );
+        ));
         assert_eq!(provider.languages.available, ["bg"]);
         assert_eq!(provider.languages.default, Some("bg"));
         assert!(!provider.languages.selectable);
