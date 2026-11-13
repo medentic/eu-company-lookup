@@ -19,7 +19,6 @@ keeping VAT verification and provider-specific results separate. See the
 | `client.is_vat_valid(value)` | The same VIES lookup, returning only its validity flag. |
 | `validate_bg_business_id_syntax(value)` / `BgBusinessId::parse(value)` | Offline nine- or thirteen-digit Bulgarian business-code validation. |
 | `client.lookup_company(&identifier)` | Common BG/RO company view from a validated `BusinessId`; preserves typed source details. |
-| `client.lookup_company(&identifier)` | Shared company result for an explicit `BusinessId` country/scheme pair. |
 | `client.lookup_bg_company(value)` | Exact Commercial Register match, with BULSTAT fallback only after a definitive miss. |
 | `validate_ro_business_id_syntax(value)` / `RoBusinessId::parse(value)` | Offline Romanian CUI syntax validation. |
 | `client.lookup_ro_company(value)` | ANAF taxpayer details and dated domestic tax status. |
