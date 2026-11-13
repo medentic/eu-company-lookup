@@ -9,9 +9,9 @@ use serde::Serialize;
 pub struct VatAddress {
     /// Unchanged source text, including placeholders; None only when absent or nil.
     pub full_address_by_vies: Option<String>,
-    /// First delivery line, including building number when present.
+    /// Normalized primary delivery line, including the street number.
     pub address: Option<String>,
-    /// Remaining delivery lines and locality, joined with newlines.
+    /// Additional delivery lines/locality and Bulgarian block, entrance, floor or apartment details.
     pub address2: Option<String>,
     /// City or settlement explicitly identified by the source format.
     pub city: Option<String>,

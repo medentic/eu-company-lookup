@@ -20,8 +20,8 @@ pub(crate) fn rule(country: &str) -> Option<String> {
     }
     Some(match country {
         "BG" => r"^(?P<street>[^\n]+?)(?:[ ]+[оО][бБ][лЛ]\.[ ]*(?P<region>[^,\n]+?))?(?:,[ ]*|[ ]+)(?:[гГ][рР]\.|[сС]\.)[ ]*(?P<city>[^,\n]+?)(?:[ ]+(?P<postcode>[0-9]{4}))?$",
-        "EE" => r"^(?P<street>[^\n]+?)[ ]{3,}(?P<postcode>[0-9]{5})[ ]+(?P<city>[^\n]+)$",
-        "EL" => r"^(?P<street>[^\n]+?)[ ]{3,}(?P<postcode>[0-9]{3}[ ]?[0-9]{2})[ ]+-[ ]+(?P<city>[^\n]+)$",
+        "EE" => r"^(?P<street>[^\n]+?)\n(?P<postcode>[0-9]{5})[ ]+(?P<city>[^\n]+)$",
+        "EL" => r"^(?P<street>[^\n]+?)\n(?P<postcode>[0-9]{3}[ ]?[0-9]{2})[ ]+-[ ]+(?P<city>[^\n]+)$",
         "IT" => r"^(?P<street>[\s\S]+?)\n(?P<postcode>[0-9]{5})[ ]+(?P<city>[^\n]+?)[ ]+(?P<region>[A-Z]{2})$",
         "LT" => r"^(?P<street>[^,\n]+),[ ]*(?P<city>[^,\n]+),[ ]*(?P<postcode>LT-?[0-9]{5})$",
         // LV often has parish/municipality in this position, not city: leave unsupported.

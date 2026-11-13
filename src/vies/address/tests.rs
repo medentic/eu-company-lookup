@@ -103,7 +103,8 @@ fn missing_unsupported_and_ambiguous_data_never_invent_components() {
         "BG",
         Some("ул. ПРИМЕР 1 бл.2 вх.3 ет.4 обл.РУСЕ, гр.РУСЕ".into()),
     );
-    assert_eq!(p.address.as_deref(), Some("ул. ПРИМЕР 1 бл.2 вх.3 ет.4"));
+    assert_eq!(p.address.as_deref(), Some("ул. ПРИМЕР 1"));
+    assert_eq!(p.address2.as_deref(), Some("бл.2 вх.3 ет.4"));
     assert_eq!(p.city.as_deref(), Some("РУСЕ"));
     assert_eq!(p.region.as_deref(), Some("РУСЕ"));
     assert!(p.postcode.is_none() && p.country.is_none());
@@ -163,4 +164,74 @@ fn capabilities_do_not_claim_address_rules_for_unsupported_countries() {
                 .address_splitting
         );
     }
+}
+
+#[test]
+fn normalize_then_extract_bulgarian_delivery_details() {
+    let cases = [
+        (
+            "КНЯЖЕСКА  №13 бл.ЮТА вх.2 ет.2 обл.РУСЕ, гр.РУСЕ 7000",
+            "КНЯЖЕСКА №13",
+            "бл.ЮТА вх.2 ет.2",
+            "РУСЕ",
+            "7000",
+        ),
+        (
+            " жк Младост 4ул. Околовръстен път  №257 ет.3 обл.СОФИЯ, гр.СОФИЯ 1715",
+            "жк Младост 4, ул. Околовръстен път №257",
+            "ет.3",
+            "СОФИЯ",
+            "1715",
+        ),
+        (
+            "  ул.  ПРИМЕР  №13бл.ЮТАвх.2ет.2ап.5 обл.РУСЕ, гр.РУСЕ 7000  ",
+            "ул. ПРИМЕР №13",
+            "бл.ЮТА вх.2 ет.2 ап.5",
+            "РУСЕ",
+            "7000",
+        ),
+    ];
+    for (raw, address, address2, city, postcode) in cases {
+        let p = split("BG", Some(raw.into()));
+        assert_eq!(p.full_address_by_vies.as_deref(), Some(raw));
+        assert_eq!(p.address.as_deref(), Some(address));
+        assert_eq!(p.address2.as_deref(), Some(address2));
+        assert_eq!(p.city.as_deref(), Some(city));
+        assert_eq!(p.postcode.as_deref(), Some(postcode));
+        assert_eq!(p.region.as_deref(), Some(city));
+        assert!(p.country.is_none());
+        let once = super::normalize::address("BG", raw);
+        assert_eq!(super::normalize::address("BG", &once), once);
+    }
+}
+
+#[test]
+fn normalization_preserves_structural_lines_and_cleans_extracted_fields() {
+    let raw = "  Building   A\r\n  Street\t  1\r\n75001   PARIS   CENTRE  \r\n";
+    let p = split("FR", Some(raw.into()));
+    assert_eq!(p.full_address_by_vies.as_deref(), Some(raw));
+    assert_eq!(p.address.as_deref(), Some("Building A"));
+    assert_eq!(p.address2.as_deref(), Some("Street 1"));
+    assert_eq!(p.city.as_deref(), Some("PARIS CENTRE"));
+    for prefix in ["EE", "EL"] {
+        let raw = if prefix == "EE" {
+            "Street  1   12345 City"
+        } else {
+            "Street  1   12345 - City"
+        };
+        let p = split(prefix, Some(raw.into()));
+        assert_eq!(p.address.as_deref(), Some("Street 1"));
+        assert_eq!(p.postcode.as_deref(), Some("12345"));
+    }
+}
+
+#[test]
+fn marker_cleanup_does_not_split_words_or_duplicate_separators() {
+    let raw = "жк Пример 4, ул. Истанбул. №1 ЕТ.3 обл.СОФИЯ, гр.СОФИЯ 1000";
+    let p = split("BG", Some(raw.into()));
+    assert_eq!(p.address.as_deref(), Some("жк Пример 4, ул. Истанбул. №1"));
+    assert_eq!(p.address2.as_deref(), Some("ЕТ.3"));
+    let p = split("BG", Some("бл.1 вх.А ет.2 обл.РУСЕ, гр.РУСЕ 7000".into()));
+    assert!(p.address.is_none());
+    assert_eq!(p.address2.as_deref(), Some("бл.1 вх.А ет.2"));
 }

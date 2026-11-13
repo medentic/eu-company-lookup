@@ -2,6 +2,8 @@
 
 ## 0.1.0 — unreleased
 
+- Normalize a working copy before address extraction; repair Bulgarian marker boundaries and move block/entrance/floor/apartment details to address2 while preserving source text.
+
 - Return the compact company/address response with lossless VIES text and conservative address splitting reused from Medentic; include BSD attribution.
 
 - Add typed VAT syntax validation for the 27 EU VIES prefixes and Northern Ireland's XI prefix.

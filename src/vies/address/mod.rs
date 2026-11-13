@@ -1,4 +1,5 @@
 // Adapted from Medentic's VIES address parser; rule attribution is retained.
+mod normalize;
 mod rules;
 use crate::VatAddress;
 
@@ -17,13 +18,7 @@ pub(super) fn split(prefix: &str, original: Option<String>) -> VatAddress {
     if raw.len() > 65_536 {
         return result;
     }
-    let normalized = raw.replace("\r\n", "\n");
-    let normalized = normalized
-        .trim_end()
-        .split('\n')
-        .map(str::trim)
-        .collect::<Vec<_>>()
-        .join("\n");
+    let normalized = normalize::address(prefix, raw);
     if normalized.trim().is_empty() || matches!(normalized.trim(), "---" | "N/A") {
         return result;
     }
@@ -57,6 +52,18 @@ pub(super) fn split(prefix: &str, original: Option<String>) -> VatAddress {
     }
     if !lines.is_empty() {
         result.address2 = Some(lines.join("\n"));
+    }
+    if prefix == "BG"
+        && let Some(line) = result.address.take()
+    {
+        let (primary, details) = normalize::bulgarian_delivery(&line);
+        result.address = primary;
+        if let Some(details) = details {
+            result.address2 = Some(match result.address2.take() {
+                Some(rest) => format!("{details}\n{rest}"),
+                None => details,
+            });
+        }
     }
     result.city = field("city");
     result.postcode = field("postcode");
