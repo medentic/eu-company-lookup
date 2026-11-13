@@ -1,0 +1,4 @@
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+<s:Body><checkVatResponse xmlns="urn:ec.europa.eu:taxud:vies:services:checkVat:types"><countryCode>BG</countryCode><vatNumber>123456789</vatNumber><requestDate>2026-11-13+02:00</requestDate><valid>true</valid><name> Синтетична &amp; Δοκιμή SRL </name><address>Примерна улица 1
+София 1000</address></checkVatResponse></s:Body>
+</s:Envelope>
