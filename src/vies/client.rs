@@ -307,7 +307,8 @@ impl Client {
             valid: decoded.valid,
             request_date: decoded.request_date,
             checked_at: Utc::now(),
-            owner: decoded.owner,
+            company: decoded.company,
+            address: super::address::split(vat.prefix(), decoded.address),
             source: Provider::Vies,
         })
     }

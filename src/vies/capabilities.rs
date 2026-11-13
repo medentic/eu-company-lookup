@@ -27,6 +27,7 @@ pub(super) fn catalog() -> Vec<JurisdictionCapabilities> {
                 languages: LanguageSupport::NotSelectable,
                 requires_credentials: false,
                 optional_owner_details: true,
+                address_splitting: super::address::supports(prefix),
             }],
         })
         .collect()

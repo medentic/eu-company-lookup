@@ -16,10 +16,9 @@ fn identity_is_preserved_without_translation_or_address_inference() {
     let result = decode(VALID).unwrap();
     assert!(result.valid);
     assert_eq!(result.request_date, "2026-11-13+02:00");
-    let owner = result.owner.unwrap();
-    assert_eq!(owner.name.as_deref(), Some(" Синтетична & Δοκιμή SRL "));
+    assert_eq!(result.company.as_deref(), Some(" Синтетична & Δοκιμή SRL "));
     assert_eq!(
-        owner.address.as_deref(),
+        result.address.as_deref(),
         Some("Примерна улица 1\nСофия 1000")
     );
 }
@@ -38,7 +37,7 @@ fn booleans_and_owner_absence_have_explicit_semantics() {
             decode(&VALID.replace("<valid>true</valid>", &format!("<valid>{value}</valid>")))
                 .unwrap();
         assert!(!result.valid);
-        assert!(result.owner.is_none());
+        assert!(result.company.is_some()); // Preserve what the source actually returned.
     }
     let start = VALID.find("<name>").unwrap();
     let end = VALID.find("</address>").unwrap() + "</address>".len();
@@ -50,7 +49,7 @@ fn booleans_and_owner_absence_have_explicit_semantics() {
     ] {
         let mut xml = VALID.to_string();
         xml.replace_range(start..end, fields);
-        assert!(decode(&xml).unwrap().owner.is_none());
+        assert!(decode(&xml).unwrap().company.is_none());
     }
 }
 

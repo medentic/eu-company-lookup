@@ -1,6 +1,6 @@
 # eu-company-lookup
 
-Rust library for EU VAT syntax validation and live verification through the European Commission's VIES service. Returns typed results, optional source-provided owner details, source dates and explicit errors.
+Rust library for EU VAT syntax validation and live verification through the European Commission's VIES service. Returns typed results, optional source-provided owner details, structured addresses and explicit errors.
 
 **0.1.0 release candidate.** VAT lookup is implemented; crates.io publication is pending. National company registries, BULSTAT, D-U-N-S and verification reports are future work. There is no full-registry download or database requirement.
 
@@ -31,10 +31,7 @@ async fn main() -> Result<(), LookupError> {
     let check = client.lookup_vat(vat.as_str()).await?;
 
     println!("{}: valid={}", check.vat_id, check.valid);
-    println!("Source date: {}; checked at: {}", check.request_date, check.checked_at);
-    if let Some(owner) = check.owner {
-        println!("Name: {:?}; original address: {:?}", owner.name, owner.address);
-    }
+    println!("Company: {:?}; address: {:?}", check.company, check.address);
     Ok(())
 }
 ```
@@ -44,7 +41,7 @@ Reuse and clone one client across application requests. `is_vat_valid(vat_id)` r
 | Operation | Behavior |
 | --- | --- |
 | `validate_vat_syntax(value)` / `VatId::parse(value)` | Offline normalization and conservative national-format check; no checksum verification. |
-| `client.lookup_vat(value)` | VIES result, checked identifier, source date, UTC observation time and optional owner. |
+| `client.lookup_vat(value)` | VIES result, checked identifier, company name and original/structured address. |
 | `client.is_vat_valid(value)` | Same lookup, returning only its validity flag. |
 | `client.capabilities()` | Local catalog grouped by jurisdiction and provider, with operations, scheme, checksum coverage and language behavior. No health probe. |
 
@@ -67,9 +64,31 @@ assert_eq!(greece.providers[0].languages, LanguageSupport::NotSelectable);
 # Ok::<(), eu_company_lookup::LookupError>(())
 ```
 
-VIES `checkVat` has **no language-selection parameter**. Names and addresses remain in the source's original language; they are not translated, split into postal fields or used to infer a company's country. A valid VAT number may have no published owner details. Blank/withheld placeholders become `None`; meaningful original text and line breaks are preserved. Negative checks always have `owner: None`.
+VIES `checkVat` has **no language-selection parameter**. Company names and original addresses remain in the source language. Every serialized result has exactly this shape:
 
-`VatCheck` and the capability catalog implement Serde serialization. `request_date` preserves a validated XML Schema date, including a timezone suffix if supplied. `checked_at` is a UTC timestamp from the caller's machine, not an independent timestamp authority. The regular check does not supply a consultation identifier or establish historical validity.
+```json
+{
+  "vatId": "BG123456789",
+  "valid": true,
+  "source": "Vies",
+  "company": "Synthetic Company",
+  "address": {
+    "fullAddressByVies": "ул. ПРИМЕР 1 обл.РУСЕ, гр.РУСЕ 7000",
+    "address": "ул. ПРИМЕР 1",
+    "address2": null,
+    "city": "РУСЕ",
+    "postcode": "7000",
+    "region": "РУСЕ",
+    "country": null
+  }
+}
+```
+
+`fullAddressByVies` preserves the decoded source text and line breaks, even when empty, withheld or unparseable; absent/nil elements are null. `address` is the first delivery line, including building details. `address2` contains remaining delivery lines and any parsed locality, joined with newlines. Uncertain components are null. `country` is populated only from explicit country text, never the VAT prefix. Parsing is heuristic, not address verification, and never changes VAT validity. Company and address values reflect what the matching source response supplied, even on a negative check; they are not proof of registration.
+
+Conservative splitting rules, reused from Medentic, cover AT, BE, BG, CY, CZ, DK, EE, EL, FI, FR, IT, LT, LU, NL, PL, PT, SE, SI and SK. Unsupported countries/formats still return the original address, with null structured fields. A format match is not a promise that every real address can be split.
+
+Source/observation timestamps remain private and are excluded from serialization. Parsing diagnostics are not part of the response. `VatCheck` implements Serde serialization.
 
 National-format acceptance does not prove checksum validity, registration, company existence or entitlement to a particular tax treatment. VIES reports registration for intra-EU transactions. See the [official VIES explanation](https://europa.eu/youreurope/business/finance-and-tax/vat/check-vat-number-vies/index_en.htm), [SOAP contract](https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl) and [VAT format guidance](https://www.gov.uk/guidance/vat-on-movements-of-goods-between-northern-ireland-and-the-eu#vat-registration-numbers-format).
 
@@ -105,8 +124,10 @@ One explicitly requested live check:
 VIES_LIVE_VAT='<your-authorized-VAT-ID>' cargo test --locked live_vies -- --ignored --nocapture
 ```
 
+The ignored `live_address_split` test additionally accepts `VIES_EXPECTED_ADDRESS_JSON`: an object of independently reviewed address fields to assert against a live, valid result. It prints the observation for manual review; run it only in an appropriate environment.
+
 A live outage fails this test; it is not counted as a successful verification. Live tests are excluded from CI. `cargo run --example check_vat -- '<VAT-ID>'` prints the full returned observation, including owner data when available; use an appropriate terminal/environment.
 
 ## License and scope
 
-MIT, copyright Medentic. The library license does not change the source service's terms. Use VIES for its intended VAT-verification purpose and observe its [service conditions](https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl). The package contains synthetic fixtures, not collected company datasets.
+MIT, copyright Medentic. Address rules include BSD-3-Clause material; see THIRD-PARTY-LICENSE.txt. The library license does not change the source service's terms. Use VIES for its intended VAT-verification purpose and observe its [service conditions](https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl). The package contains synthetic fixtures, not collected company datasets.

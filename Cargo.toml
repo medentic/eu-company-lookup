@@ -4,13 +4,13 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.98.1"
 description = "Typed EU VAT validation through VIES, with explicit failures and capability discovery"
-license = "MIT"
+license = "MIT AND BSD-3-Clause"
 repository = "https://github.com/medentic/eu-company-lookup"
 documentation = "https://docs.rs/eu-company-lookup"
 readme = "README.md"
 keywords = ["vat", "vies", "eu", "company", "validation"]
 categories = ["api-bindings"]
-include = ["src/**", "tests/**", "examples/**", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE", "CHANGELOG.md"]
+include = ["src/**", "tests/**", "examples/**", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE", "THIRD-PARTY-LICENSE.txt", "CHANGELOG.md"]
 
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }

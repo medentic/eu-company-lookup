@@ -1,4 +1,4 @@
-use crate::{LimitScope, LookupError, VatId, VatOwner};
+use crate::{LimitScope, LookupError, VatId};
 use chrono::NaiveDate;
 use roxmltree::Node;
 
@@ -9,7 +9,8 @@ const XSI: &str = "http://www.w3.org/2001/XMLSchema-instance";
 pub(super) struct Response {
     pub valid: bool,
     pub request_date: String,
-    pub owner: Option<VatOwner>,
+    pub company: Option<String>,
+    pub address: Option<String>,
 }
 
 pub(super) fn request(vat: &VatId) -> String {
@@ -139,13 +140,12 @@ pub(super) fn decode(xml: &str, vat: &VatId) -> Result<Response, LookupError> {
         return Err(LookupError::MalformedResponse);
     }
     let name = owner_text(field(payload, Some(NS), "name", true)?);
-    let address = owner_text(field(payload, Some(NS), "address", true)?);
-    let owner =
-        (valid && (name.is_some() || address.is_some())).then_some(VatOwner { name, address });
+    let address = field(payload, Some(NS), "address", true)?;
     Ok(Response {
         valid,
         request_date,
-        owner,
+        company: name,
+        address,
     })
 }
 

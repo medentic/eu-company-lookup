@@ -1,3 +1,4 @@
+mod address;
 mod capabilities;
 mod client;
 mod identifiers;

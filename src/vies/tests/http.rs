@@ -581,3 +581,39 @@ fn invalid_configuration_fails_before_any_lookup() {
         ));
     }
 }
+
+#[tokio::test]
+async fn compact_response_has_exact_keys_and_structured_address() {
+    let raw = "ул. ПРИМЕР 1 обл.РУСЕ, гр.РУСЕ 7000";
+    let xml = VALID.replace("Примерна улица 1\nСофия 1000", raw);
+    let server = Server::new(http(200, &xml, ""), Duration::ZERO).await;
+    let result = server.client().lookup_vat("BG123456789").await.unwrap();
+    assert_eq!(
+        serde_json::to_value(result).unwrap(),
+        serde_json::json!({
+            "vatId": "BG123456789", "valid": true, "source": "Vies",
+            "company": " Синтетична & Δοκιμή SRL ",
+            "address": { "fullAddressByVies": raw, "address": "ул. ПРИМЕР 1", "address2": null,
+                "city": "РУСЕ", "postcode": "7000", "region": "РУСЕ", "country": null }
+        })
+    );
+}
+
+#[tokio::test]
+async fn missing_placeholder_and_negative_addresses_preserve_source_data() {
+    for (element, expected) in [
+        ("", None),
+        ("<address/>", Some("")),
+        ("<address> --- </address>", Some(" --- ")),
+    ] {
+        let xml = VALID
+            .replace("<address>Примерна улица 1\nСофия 1000</address>", element)
+            .replace("<valid>true", "<valid>false");
+        let server = Server::new(http(200, &xml, ""), Duration::ZERO).await;
+        let result = server.client().lookup_vat("BG123456789").await.unwrap();
+        assert!(!result.valid);
+        assert_eq!(result.address.full_address_by_vies.as_deref(), expected);
+        assert!(result.address.address.is_none() && result.address.city.is_none());
+        assert!(result.company.is_some());
+    }
+}

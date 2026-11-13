@@ -61,6 +61,8 @@ pub struct ProviderCapabilities {
     pub requires_credentials: bool,
     /// The provider may supply a name and original address, but can withhold both.
     pub optional_owner_details: bool,
+    /// Conservative address rules exist for this jurisdiction; individual formats may remain unparsed.
+    pub address_splitting: bool,
 }
 
 /// Capability grouping with an explicit VAT-prefix-to-jurisdiction mapping.
