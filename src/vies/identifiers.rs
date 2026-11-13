@@ -118,3 +118,15 @@ impl From<VatId> for String {
         value.0
     }
 }
+
+impl AsRef<str> for VatId {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+impl TryFrom<&str> for VatId {
+    type Error = LookupError;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::parse(value)
+    }
+}

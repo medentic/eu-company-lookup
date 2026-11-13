@@ -159,7 +159,7 @@ async fn local_failures_send_no_request() {
 
 #[tokio::test]
 async fn http_errors_and_redirects_cannot_turn_into_valid_results() {
-    for status in [301, 302, 400, 401, 403, 404, 500, 503] {
+    for status in [301, 302, 400, 401, 403, 404] {
         let server = Server::new(
             http(
                 status,
@@ -172,6 +172,59 @@ async fn http_errors_and_redirects_cannot_turn_into_valid_results() {
         assert!(matches!(server.client().lookup_vat("BG123456789").await,
             Err(LookupError::Http { status: s, retry_after: Some(RetryAfter::Seconds(120)) }) if s == status));
         assert_eq!(server.calls.load(Ordering::SeqCst), 1);
+    }
+}
+
+#[tokio::test]
+async fn http_server_and_gateway_failures_report_verification_unavailable() {
+    for status in [408, 500, 502, 503, 504] {
+        for body in ["", "<html>maintenance</html>", VALID] {
+            let server =
+                Server::new(http(status, body, "Retry-After: 120\r\n"), Duration::ZERO).await;
+            let client = server.client();
+            let error = client.is_vat_valid("BG123456789").await.unwrap_err();
+            assert!(error.is_service_unavailable());
+            if matches!(status, 408 | 504) {
+                assert!(matches!(
+                    error,
+                    LookupError::ProviderTimeout {
+                        retry_after: Some(RetryAfter::Seconds(120))
+                    }
+                ));
+            } else {
+                assert!(matches!(
+                    error,
+                    LookupError::ServiceUnavailable {
+                        retry_after: Some(RetryAfter::Seconds(120))
+                    }
+                ));
+            }
+            assert!(matches!(
+                client.lookup_vat("BG123456789").await,
+                Err(LookupError::CoolingDown { .. })
+            ));
+            assert_eq!(server.calls.load(Ordering::SeqCst), 1);
+        }
+    }
+}
+
+#[tokio::test]
+async fn error_body_bounds_cannot_hide_http_service_unavailability() {
+    for status in [500, 502, 503, 504] {
+        for response in [
+            format!("HTTP/1.1 {status} Test\r\nContent-Length: 999999999\r\n\r\n").into_bytes(),
+            format!("HTTP/1.1 {status} Test\r\nContent-Length: 100\r\n\r\nx").into_bytes(),
+        ] {
+            let server = Server::new(response, Duration::ZERO).await;
+            assert!(
+                server
+                    .client()
+                    .lookup_vat("BG123456789")
+                    .await
+                    .unwrap_err()
+                    .is_service_unavailable()
+            );
+        }
     }
 }
 
@@ -325,7 +378,7 @@ async fn deadline_includes_network_wait() {
 }
 
 #[tokio::test]
-async fn deadline_includes_country_and_global_start_spacing() {
+async fn unavailable_local_start_slot_returns_busy_without_claiming_an_outage() {
     for country_spacing in [false, true] {
         let server = Server::new(http(200, VALID, ""), Duration::ZERO).await;
         let client = Client::for_test(
@@ -355,7 +408,7 @@ async fn deadline_includes_country_and_global_start_spacing() {
         let start = Instant::now();
         assert!(matches!(
             client.clone().lookup_vat(next).await,
-            Err(LookupError::DeadlineExceeded)
+            Err(LookupError::Busy)
         ));
         assert!(start.elapsed() < Duration::from_secs(2));
         assert_eq!(server.calls.load(Ordering::SeqCst), 1);
@@ -594,7 +647,7 @@ async fn compact_response_has_exact_keys_and_structured_address() {
             "vatId": "BG123456789", "valid": true, "source": "Vies",
             "company": " Синтетична & Δοκιμή SRL ",
             "address": { "fullAddressByVies": raw, "address": "ул. ПРИМЕР 1", "address2": null,
-                "city": "Русе", "postcode": "7000", "region": "Русе", "country": null }
+                "city": "Русе", "postcode": "7000", "region": "Русе", "country": "България", "countryISO2": "BG" }
         })
     );
 }
@@ -616,4 +669,18 @@ async fn missing_placeholder_and_negative_addresses_preserve_source_data() {
         assert!(result.address.address.is_none() && result.address.city.is_none());
         assert!(result.company.is_some());
     }
+}
+
+#[tokio::test]
+async fn invalid_utf8_error_page_preserves_http_failure_classification() {
+    let mut reply = b"HTTP/1.1 400 Bad Request\r\nContent-Length: 1\r\nRetry-After: 120\r\nConnection: close\r\n\r\n".to_vec();
+    reply.push(255);
+    let server = Server::new(reply, Duration::ZERO).await;
+    assert!(matches!(
+        server.client().lookup_vat("BG123456789").await,
+        Err(LookupError::Http {
+            status: 400,
+            retry_after: Some(RetryAfter::Seconds(120))
+        })
+    ));
 }

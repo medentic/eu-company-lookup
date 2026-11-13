@@ -1,5 +1,6 @@
 mod http;
 mod identifiers;
+mod probe;
 mod soap;
 
 #[tokio::test]

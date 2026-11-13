@@ -1,17 +1,22 @@
 # Changelog
 
-## 0.1.0 — unreleased
+## 1.0.0
 
-- Normalize spaces after Bulgarian block, entrance, floor and apartment markers in structured delivery fields.
+Initial release, scoped to VIES and Bulgarian registry lookup:
 
-- Present uppercase Bulgarian city and region names in title case, preserving mixed-case names, dotted abbreviations, known address acronyms and Roman numerals.
+- Asynchronous VAT verification for the EU VIES prefixes and Northern Ireland's XI,
+  with typed syntax validation and explicit EL/GR and XI/GB-NIR mappings.
+- Bulgarian business lookup through the Commercial Register, followed by BULSTAT
+  only after a definitive miss, with exact nine- or thirteen-digit identity checks.
+- Typed company details, official record links, source-specific status, legal forms,
+  role holders, exact capital strings and constitutive-document references.
+- Source-preserving address envelopes and shared conservative address utilities.
+- Explicit errors separating invalid input, negative observations, rate limits,
+  availability failures and unexpected provider responses.
+- Bounded deadlines and response bodies, shared admission limits and cooldowns;
+  no automatic retries, redirects or caching.
+- Local capability discovery, extensible public models and validated identifier
+  conversions. Serde serialization preserves the documented JSON contracts.
 
-- Normalize a working copy before address extraction; repair Bulgarian marker boundaries and move block/entrance/floor/apartment details to address2 while preserving source text.
-
-- Return the compact company/address response with lossless VIES text and conservative address splitting reused from Medentic; include BSD attribution.
-
-- Add typed VAT syntax validation for the 27 EU VIES prefixes and Northern Ireland's XI prefix.
-- Add asynchronous VIES lookup and boolean convenience method, with source dates and optional original owner details.
-- Add local capability discovery and explicit EL/GR and XI/GB-NIR mappings.
-- Add bounded deadlines/bodies, shared admission limits, cooldowns, explicit source errors and synthetic provider tests.
-- Keep national registries, reports and D-U-N-S outside this first release.
+Other national registries, checksums, D-U-N-S and verification reports are outside
+this release. See [README.md](README.md) for usage and limitations.

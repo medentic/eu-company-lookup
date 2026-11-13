@@ -62,7 +62,7 @@ fn country_formats() {
             if country == "SK" {
                 Some("Slovensko")
             } else {
-                None
+                super::country(country).map(|(_, name)| name)
             }
         );
     }
@@ -95,10 +95,10 @@ fn missing_unsupported_and_ambiguous_data_never_invent_components() {
                 && p.city.is_none()
                 && p.postcode.is_none()
                 && p.region.is_none()
-                && p.country.is_none()
+                && p.country.is_some()
         );
     }
-    assert_eq!(split("BG", None), crate::VatAddress::default());
+    assert_eq!(split("BG", None).country_iso2.as_deref(), Some("BG"));
     let p = split(
         "BG",
         Some("ул. ПРИМЕР 1 бл.2 вх.3 ет.4 обл.РУСЕ, гр.РУСЕ".into()),
@@ -107,7 +107,7 @@ fn missing_unsupported_and_ambiguous_data_never_invent_components() {
     assert_eq!(p.address2.as_deref(), Some("бл. 2 вх. 3 ет. 4"));
     assert_eq!(p.city.as_deref(), Some("Русе"));
     assert_eq!(p.region.as_deref(), Some("Русе"));
-    assert!(p.postcode.is_none() && p.country.is_none());
+    assert!(p.postcode.is_none() && p.country.is_some());
     let p = split("SE", Some("\n621 85 VISBY".into()));
     assert!(p.address.is_none());
     assert_eq!(p.city.as_deref(), Some("VISBY"));
@@ -119,7 +119,7 @@ fn oversized_input_and_foreign_addresses_are_not_guessed() {
     assert_eq!(p.full_address_by_vies, Some(raw));
     assert!(p.address.is_none());
     let p = split("BG", Some("Street 1\nDE-12345 Berlin".into()));
-    assert!(p.country.is_none() && p.city.is_none());
+    assert!(p.country.is_some() && p.city.is_none());
 }
 
 #[test]
@@ -135,7 +135,7 @@ fn bulgarian_settlement_variants_preserve_building_details() {
         assert_eq!(p.city.as_deref(), Some("Севлиево"));
         assert_eq!(p.postcode.as_deref(), Some("5400"));
         assert_eq!(p.region.as_deref(), Some("Габрово"));
-        assert!(p.country.is_none() && p.address2.is_none());
+        assert!(p.country.is_some() && p.address2.is_none());
     }
     let p = split("BG", Some("ул. ПРИМЕР 1 обл.СОФИЯ С.ПРИМЕРНО СЕЛО".into()));
     assert_eq!(p.city.as_deref(), Some("Примерно Село"));
@@ -154,7 +154,7 @@ fn capabilities_do_not_claim_address_rules_for_unsupported_countries() {
     );
     for prefix in ["DE", "ES", "IE", "RO", "MT", "LV", "HR", "HU", "XI"] {
         let p = split(prefix, Some("Example 1\n12345 City".into()));
-        assert!(p.address.is_none() && p.city.is_none() && p.country.is_none());
+        assert!(p.address.is_none() && p.city.is_none() && p.country.is_some());
         assert!(
             !catalog
                 .iter()
@@ -178,7 +178,7 @@ fn normalize_then_extract_bulgarian_delivery_details() {
         ),
         (
             " жк Младост 4ул. Околовръстен път  №257 ет.3 обл.СОФИЯ, гр.СОФИЯ 1715",
-            "жк Младост 4, ул. Околовръстен път №257",
+            "жк. Младост 4, ул. Околовръстен път №257",
             "ет. 3",
             "София",
             "1715",
@@ -199,7 +199,7 @@ fn normalize_then_extract_bulgarian_delivery_details() {
         assert_eq!(p.city.as_deref(), Some(city));
         assert_eq!(p.postcode.as_deref(), Some(postcode));
         assert_eq!(p.region.as_deref(), Some(city));
-        assert!(p.country.is_none());
+        assert!(p.country.is_some());
         let once = super::normalize::address("BG", raw);
         assert_eq!(super::normalize::address("BG", &once), once);
     }
@@ -229,7 +229,7 @@ fn normalization_preserves_structural_lines_and_cleans_extracted_fields() {
 fn marker_cleanup_does_not_split_words_or_duplicate_separators() {
     let raw = "жк Пример 4, ул. Истанбул. №1 ЕТ.3 обл.СОФИЯ, гр.СОФИЯ 1000";
     let p = split("BG", Some(raw.into()));
-    assert_eq!(p.address.as_deref(), Some("жк Пример 4, ул. Истанбул. №1"));
+    assert_eq!(p.address.as_deref(), Some("жк. Пример 4, ул. Истанбул. №1"));
     assert_eq!(p.address2.as_deref(), Some("ЕТ. 3"));
     let p = split("BG", Some("бл.1 вх.А ет.2 обл.РУСЕ, гр.РУСЕ 7000".into()));
     assert!(p.address.is_none());
@@ -284,4 +284,195 @@ fn bulgarian_detail_spacing_is_canonical_without_inventing_a_street_marker() {
         let normalized = super::normalize::address("BG", &raw);
         assert_eq!(super::normalize::address("BG", &normalized), normalized);
     }
+}
+
+#[test]
+fn residential_complex_marker_has_one_period() {
+    for marker in ["жк", "жк.", "жк .", "ЖК", "ЖК."] {
+        let raw = format!("{marker} Младост 4ул. Пример №1 обл.СОФИЯ, гр.СОФИЯ 1000");
+        let result = split("BG", Some(raw.clone()));
+        let expected = "жк.";
+        assert_eq!(
+            result.address,
+            Some(format!("{expected} Младост 4, ул. Пример №1"))
+        );
+        assert_eq!(result.full_address_by_vies.as_deref(), Some(raw.as_str()));
+        let normalized = super::normalize::address("BG", &raw);
+        assert_eq!(super::normalize::address("BG", &normalized), normalized);
+    }
+    assert_eq!(super::normalize::address("BG", "Дружка 1"), "Дружка 1");
+}
+
+#[test]
+fn bulgarian_placeholder_details_and_repeated_periods() {
+    for (input, expected) in [
+        ("бл..11 вх.. ет...2 ап.-", Some("бл. 11 ет. 2")),
+        ("бл.- вх.- ет.- ап.-", None),
+        ("вх..А-Б ет..1-3", Some("вх. А-Б ет. 1-3")),
+        ("вх. -, ет. 2, ап. -", Some("ет. 2")),
+    ] {
+        let raw = format!("ул.. Пример №7 {input} обл.ПЛЕВЕН, с.ОБНОВА -");
+        let result = split("BG", Some(raw.clone()));
+        assert_eq!(result.address.as_deref(), Some("ул. Пример №7"));
+        assert_eq!(result.address2.as_deref(), expected);
+        assert_eq!(result.city.as_deref(), Some("Обнова"));
+        assert_eq!(result.full_address_by_vies.as_deref(), Some(raw.as_str()));
+        let normalized = super::normalize::address("BG", &raw);
+        assert_eq!(super::normalize::address("BG", &normalized), normalized);
+    }
+    assert_eq!(
+        super::normalize::place_name("BG", "Обнова -".into()),
+        "Обнова"
+    );
+    assert_eq!(
+        super::normalize::place_name("BG", "София-Град".into()),
+        "София-Град"
+    );
+    assert_eq!(
+        super::normalize::place_name("FR", "Paris -".into()),
+        "Paris -"
+    );
+}
+
+#[test]
+fn bulgarian_region_or_settlement_without_delivery_line() {
+    for (raw, city, region, postcode) in [
+        (
+            "     обл.ГАБРОВО, с.РАХОВЦИ",
+            "Раховци",
+            Some("Габрово"),
+            None,
+        ),
+        (
+            "обл.СОФИЯ, гр.СОФИЯ 1000",
+            "София",
+            Some("София"),
+            Some("1000"),
+        ),
+    ] {
+        let p = split("BG", Some(raw.into()));
+        assert_eq!(p.address, None);
+        assert_eq!(p.address2, None);
+        assert_eq!(p.city.as_deref(), Some(city));
+        assert_eq!(p.region.as_deref(), region);
+        assert_eq!(p.postcode.as_deref(), postcode);
+        assert_eq!(p.full_address_by_vies.as_deref(), Some(raw));
+    }
+}
+
+#[test]
+fn bulgarian_comma_spacing_and_standalone_place_placeholders() {
+    let raw = "с. Априлово , София обл.СОФИЯ, с.АПРИЛОВО 2128";
+    let p = split("BG", Some(raw.into()));
+    assert_eq!(p.address.as_deref(), Some("с. Априлово, София"));
+    assert_eq!(p.full_address_by_vies.as_deref(), Some(raw));
+    for tail in [" .", " ...", " -", " . -", " --"] {
+        let raw = format!("жк УПИ V-125 обл.ВАРНА, с.КАЛИМАНЦИ{tail}");
+        let p = split("BG", Some(raw.clone()));
+        assert_eq!(p.city.as_deref(), Some("Калиманци"));
+        assert_eq!(p.postcode, None);
+        assert_eq!(p.full_address_by_vies, Some(raw));
+    }
+    for value in ["Г. О.", "София-Град", "с. Къща", "Калиманци."] {
+        assert_eq!(super::normalize::place_name("BG", value.into()), value);
+    }
+    assert_eq!(
+        super::normalize::place_name("FR", "Paris .".into()),
+        "Paris ."
+    );
+    assert_eq!(
+        super::normalize::address("BG", "ул. Пример 1,5 , офис 2"),
+        "ул. Пример 1,5, офис 2"
+    );
+}
+
+#[test]
+fn bulgarian_quarter_marker_has_spacing_without_splitting_words() {
+    let raw = "кв.\"Тева\"  №44 ет.3 ап.11 обл.ПЕРНИК, гр.ПЕРНИК 2300";
+    let p = split("BG", Some(raw.into()));
+    assert_eq!(p.address.as_deref(), Some("кв. Тева №44"));
+    assert_eq!(p.address2.as_deref(), Some("ет. 3 ап. 11"));
+    assert_eq!(p.full_address_by_vies.as_deref(), Some(raw));
+    assert_eq!(
+        super::normalize::address("BG", "букв. текст"),
+        "букв. текст"
+    );
+}
+
+#[test]
+fn bulgarian_explicit_building_and_room_details_require_component_boundary() {
+    let raw = "пл. \"СВОБОДА\", сграда на НТС, стая 407 обл.ЛОВЕЧ, гр.ЛОВЕЧ 5500";
+    let parsed = split("BG", Some(raw.into()));
+    assert_eq!(parsed.address.as_deref(), Some("пл. СВОБОДА"));
+    assert_eq!(parsed.address2.as_deref(), Some("сграда на НТС, стая 407"));
+    assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+    assert_eq!(
+        crate::locations::split_delivery("ул. Сграда 1", "bg"),
+        (Some("ул. Сграда 1".into()), None)
+    );
+    assert_eq!(
+        crate::locations::split_delivery("ул. Нова №2, стая 4", "bg"),
+        (Some("ул. Нова №2".into()), Some("стая 4".into()))
+    );
+    assert_eq!(
+        crate::locations::split_delivery("сграда 3", "bg"),
+        (None, Some("сграда 3".into()))
+    );
+    assert_eq!(
+        crate::locations::split_delivery("ул. Нова №2, сграда", "bg"),
+        (Some("ул. Нова №2, сграда".into()), None)
+    );
+}
+
+#[test]
+fn bulgarian_complex_glued_to_lowercase_street_and_room() {
+    let raw = " жк ЛЕВСКИул.ПОДВИС  №29, СТАЯ №203 обл.ВАРНА, гр.ВАРНА 9010";
+    let parsed = split("BG", Some(raw.into()));
+    assert_eq!(
+        parsed.address.as_deref(),
+        Some("жк. ЛЕВСКИ, ул. ПОДВИС №29")
+    );
+    assert_eq!(parsed.address2.as_deref(), Some("СТАЯ №203"));
+    assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+    assert_eq!(
+        super::normalize::address("BG", "жк. букваул. текст"),
+        "жк. букваул. текст"
+    );
+    assert_eq!(
+        super::normalize::address("BG", "ул. ДЖУЛ. 1"),
+        "ул. ДЖУЛ. 1"
+    );
+}
+
+#[test]
+fn bulgarian_reviewed_presentation_policy_preserves_original() {
+    let raw = " ЖК „Сторгозия\" бл.90 вх.а ет.2 ап.5 обл.ПЛЕВЕН, гр.ПЛЕВЕН 5800";
+    let p = split("BG", Some(raw.into()));
+    assert_eq!(p.full_address_by_vies.as_deref(), Some(raw));
+    assert_eq!(p.address.as_deref(), Some("жк. Сторгозия"));
+    assert_eq!(p.address2.as_deref(), Some("бл. 90 вх. А ет. 2 ап. 5"));
+    for text in ["ЖК ДЪБНИКА", "ЖК. ДЪБНИКА", "ж.к. ДЪБНИКА"] {
+        assert_eq!(super::normalize::address("BG", text), "жк. ДЪБНИКА");
+    }
+    let value = "ул. «О'Конър», вх. b, ет. 2";
+    let expected = "ул. О'Конър, вх. B, ет. 2";
+    assert_eq!(super::normalize::address("BG", value), expected);
+    assert_eq!(super::normalize::address("BG", expected), expected);
+    assert_eq!(
+        super::normalize::address("BG", "вх. северен"),
+        "вх. северен"
+    );
+    assert_eq!(super::normalize::address("BG", "вх. 2"), "вх. 2");
+    assert_eq!(
+        super::normalize::address("FR", "Rue \"Exemple\""),
+        "Rue \"Exemple\""
+    );
+}
+
+#[test]
+fn canonical_complex_preserves_compound_registry_street_marker() {
+    assert_eq!(
+        super::normalize::address("BG", "ж.к. КК СЛЪНЧЕВ БРЯГ-ЗАПАД, бул./ул. ВИВА КЛИНИК"),
+        "жк. КК СЛЪНЧЕВ БРЯГ-ЗАПАД, бул./ул. ВИВА КЛИНИК"
+    );
 }

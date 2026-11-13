@@ -1,22 +1,45 @@
 # eu-company-lookup
 
-Rust library for EU VAT syntax validation and live verification through the European Commission's VIES service. Returns typed results, optional source-provided owner details, structured addresses and explicit errors.
+An asynchronous Rust library for **EU VAT verification through VIES** and
+**Bulgarian business lookup through the Commercial Register and BULSTAT**.
+It returns typed results, source-provided company details, structured addresses
+and explicit errors. No database, service account or full-registry download is required.
 
-**0.1.0 release candidate.** VAT lookup is implemented; crates.io publication is pending. National company registries, BULSTAT, D-U-N-S and verification reports are future work. There is no full-registry download or database requirement.
+Version 1.0 targets VIES and the two Bulgarian registers described below.
+
+## What it does
+
+| Operation | Result |
+| --- | --- |
+| `validate_vat_syntax(value)` / `VatId::parse(value)` | Offline VAT format validation and normalization. |
+| `client.lookup_vat(value)` | VIES validity, checked identifier, company name and address when supplied. |
+| `client.is_vat_valid(value)` | The same VIES lookup, returning only its validity flag. |
+| `validate_bg_business_id_syntax(value)` / `BgBusinessId::parse(value)` | Offline nine- or thirteen-digit Bulgarian business-code validation. |
+| `client.lookup_bg_company(value)` | Exact Commercial Register match, with BULSTAT fallback only after a definitive miss. |
+| `client.capabilities()` | Local catalog of implemented providers, operations, identifier schemes and language behavior. |
+| `locations::parse_address(text, country_hint)` | Offline, conservative address extraction. |
+
+Syntax acceptance does **not** prove checksum validity or registration. A company
+record does not establish VAT registration. Address extraction is heuristic;
+original provider address text is retained and uncertain components remain null.
+
+The library does not implement other national registries, D-U-N-S, checksum
+validation, verification reports, bulk-download APIs, automatic retries or caching.
+Bulgarian adapters use observed public portal interfaces, which can change.
 
 ## Install
 
-Requires **Rust 1.98.1+** and a **Tokio runtime with I/O and time enabled**.
-
-Before publication, use the Git repository (pin a reviewed commit with `rev` for reproducible application builds):
+Requires **Rust 1.98.1+** and **Tokio with I/O and time enabled**.
+For a published 1.x release, use:
 
 ```toml
 [dependencies]
-eu-company-lookup = { git = "https://github.com/medentic/eu-company-lookup", branch = "main" }
+eu-company-lookup = "1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
-After 0.1.0 is published, the dependency becomes `eu-company-lookup = "0.1"`.
+For source builds, use the Git repository and pin a reviewed commit with `rev`.
+Release availability is listed on [crates.io](https://crates.io/crates/eu-company-lookup).
 
 ## Check a VAT ID
 
@@ -25,109 +48,152 @@ use eu_company_lookup::{Client, LookupError, validate_vat_syntax};
 
 #[tokio::main]
 async fn main() -> Result<(), LookupError> {
-    // Synthetic example: syntax acceptance does not establish registration.
+    // Synthetic example: format acceptance is not a registration claim.
     let vat = validate_vat_syntax("bg 123456789")?;
     let client = Client::new()?;
     let check = client.lookup_vat(vat.as_str()).await?;
-
     println!("{}: valid={}", check.vat_id, check.valid);
     println!("Company: {:?}; address: {:?}", check.company, check.address);
     Ok(())
 }
 ```
 
-Reuse and clone one client across application requests. `is_vat_valid(vat_id)` returns `Result<bool, LookupError>` when only validity is needed. Do not call it and `lookup_vat` for the same check: both make a VIES request.
-
-| Operation | Behavior |
-| --- | --- |
-| `validate_vat_syntax(value)` / `VatId::parse(value)` | Offline normalization and conservative national-format check; no checksum verification. |
-| `client.lookup_vat(value)` | VIES result, checked identifier, company name and original/structured address. |
-| `client.is_vat_valid(value)` | Same lookup, returning only its validity flag. |
-| `client.capabilities()` | Local catalog grouped by jurisdiction and provider, with operations, scheme, checksum coverage and language behavior. No health probe. |
-
-Inputs require a prefix. ASCII whitespace is removed and letters become uppercase; leading zeroes are preserved. Other punctuation is not stripped (the Irish `*` and `+` formats are supported). Non-ASCII input and inputs over 64 bytes are rejected. Deserializing `VatId` also validates it.
-
-## Coverage and capabilities
+Reuse and clone one client across application requests. Calling both `lookup_vat`
+and `is_vat_valid` performs two requests; use the returned `valid` field when you
+already have the full result.
 
 VIES prefixes: **AT BE BG CY CZ DE DK EE EL ES FI FR HR HU IE IT LT LU LV MT NL PL PT RO SE SI SK XI**.
+Greece uses **EL**, mapped to ISO country **GR**. **XI** maps to **GB / GB-NIR** for
+Northern Ireland; general GB coverage is not included. OSS/IOSS prefixes **EU** and
+**IM** are unsupported. VIES has no language-selection parameter.
 
-Greece uses VAT prefix **EL**, mapped to country **GR**. **XI** maps to **GB / GB-NIR** (Northern Ireland); it does not imply general UK or EU membership coverage. GB, GR and CH are not accepted VAT prefixes by this adapter.
+See the [VIES guide](https://github.com/medentic/eu-company-lookup/blob/main/docs/reference/vies.md) for input rules, JSON output and address semantics.
+
+## Look up a Bulgarian business
+
+```no_run
+use eu_company_lookup::{Client, LookupError};
+
+# async fn example() -> Result<(), LookupError> {
+let client = Client::new()?;
+// Synthetic business code, without a BG VAT prefix.
+match client.lookup_bg_company("123456789").await {
+    Ok(record) => println!("{}: {} ({:?})", record.tax_id, record.company_name, record.source),
+    Err(LookupError::NotFound) => println!("No matching record in either register"),
+    Err(error) if error.is_service_unavailable() => {
+        println!("Verification unavailable; the identifier may still be correct");
+    }
+    Err(error) => return Err(error),
+}
+# Ok(())
+# }
+```
+
+ЕИК and BULSTAT formats overlap; callers do not select a register by pattern.
+The complete nine- or thirteen-digit code and leading zeroes are preserved.
+Prefixed VAT IDs and ten-digit personal identifiers are rejected before any request.
+
+The result includes company names, source, official record URL, legal form,
+source-specific status, address and registry details. Commercial Register details
+can include managers, sole capital owners, capital and constitutive-document links.
+Unavailable details remain null. The registered foreign-script name is not a
+translation, and the UIC field entry date is not necessarily incorporation date.
+
+`BgRegistryClient::lookup` is available when only Bulgarian lookup is needed.
+See the [Bulgarian registry guide](https://github.com/medentic/eu-company-lookup/blob/main/docs/reference/bulgarian-registry.md) for fallback rules,
+field meanings and coverage limitations.
+
+## Handle failures and configure limits
+
+`valid: false` means an identifier-matched negative VIES response.
+`LookupError::NotFound` means definitive misses from both Bulgarian registers.
+Timeouts, throttling, access errors, changed schemas and identity mismatches remain
+errors; they never establish that an identifier is invalid.
+
+`error.is_service_unavailable()` identifies availability failures. `Busy`, rate
+limits, cooldowns and unexpected responses remain separate error categories.
+Error messages omit submitted identifiers, owner details and arbitrary response bodies.
+
+| Default | VIES | Bulgarian lookup |
+| --- | --- | --- |
+| Total deadline, including admission waiting | 8 seconds | 30 seconds across both registers |
+| Connect timeout | 3 seconds | 3 seconds |
+| Concurrent lookups across clones | 2 globally, 1 per VAT jurisdiction | 1 |
+| Request start spacing | 2 seconds globally, 5 per jurisdiction | 10 seconds per register |
+| Failure cooldown | 60 seconds, extended by Retry-After | 60 seconds, extended by Retry-After |
+| Response body limit | 64 KiB | 1 MiB |
+
+These are client policies, not established provider quotas. There are no automatic
+retries, redirects, cookies, ambient proxy configuration or persistent cache.
+Clones share limits; separate clients and processes require application-level
+coordination. Cancellation releases local capacity but cannot cancel work already
+received by a provider.
 
 ```rust
-use eu_company_lookup::{Client, LanguageSupport};
+use eu_company_lookup::{Client, ClientConfig, BgRegistryConfig};
+use std::time::Duration;
 
-let client = Client::new()?;
-let catalog = client.capabilities();
-let greece = catalog.iter().find(|c| c.country_code == "GR").unwrap();
-assert_eq!(greece.vat_prefix, "EL");
-assert_eq!(greece.providers[0].languages, LanguageSupport::NotSelectable);
+let mut vies = ClientConfig::default();
+vies.timeout = Duration::from_secs(20);
+let mut registry = BgRegistryConfig::default();
+registry.timeout = Duration::from_secs(45);
+let client = Client::with_configs(vies, registry)?;
 # Ok::<(), eu_company_lookup::LookupError>(())
 ```
 
-VIES `checkVat` has **no language-selection parameter**. Company names and original addresses remain in the source language. Every serialized result has exactly this shape:
+## Address utilities and API stability
 
-```json
-{
-  "vatId": "BG123456789",
-  "valid": true,
-  "source": "Vies",
-  "company": "Synthetic Company",
-  "address": {
-    "fullAddressByVies": "ул. ПРИМЕР 1 обл.РУСЕ, гр.РУСЕ 7000",
-    "address": "ул. ПРИМЕР 1",
-    "address2": null,
-    "city": "Русе",
-    "postcode": "7000",
-    "region": "Русе",
-    "country": null
-  }
-}
+```rust
+use eu_company_lookup::locations::{parse_address, Country};
+
+let address = parse_address("ул. Примерна 1, гр. СОФИЯ 1000", "bg");
+assert_eq!(address.city.as_deref(), Some("София"));
+assert_eq!(Country::BG.native_name(), "България");
 ```
 
-`fullAddressByVies` preserves the decoded source text and line breaks, even when empty, withheld or unparseable; absent/nil elements are null. `address` is the first delivery line, including building details. `address2` contains remaining delivery lines and any parsed locality, joined with newlines. Uncertain components are null. `country` is populated only from explicit country text, never the VAT prefix. Parsing is heuristic, not address verification, and never changes VAT validity. Company and address values reflect what the matching source response supplied, even on a negative check; they are not proof of registration.
+A country hint selects parsing rules; it does not establish the physical country.
+Country metadata coverage is broader than registry and address-parser coverage.
 
-Conservative splitting rules, reused from Medentic, cover AT, BE, BG, CY, CZ, DK, EE, EL, FI, FR, IT, LT, LU, NL, PL, PT, SE, SI and SK. Unsupported countries/formats still return the original address, with null structured fields. A format match is not a promise that every real address can be split.
+Result and configuration structs and extensible enums are non-exhaustive. Construct
+configurations through `Default`, read public result fields and use fallback match
+arms. See the [API compatibility contract](https://github.com/medentic/eu-company-lookup/blob/main/docs/reference/api-stability.md) for JSON guarantees,
+address corrections and Rust-version policy.
 
-Source/observation timestamps remain private and are excluded from serialization. Parsing diagnostics are not part of the response. `VatCheck` implements Serde serialization.
+## Development
 
-National-format acceptance does not prove checksum validity, registration, company existence or entitlement to a particular tax treatment. VIES reports registration for intra-EU transactions. See the [official VIES explanation](https://europa.eu/youreurope/business/finance-and-tax/vat/check-vat-number-vies/index_en.htm), [SOAP contract](https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl) and [VAT format guidance](https://www.gov.uk/guidance/vat-on-movements-of-goods-between-northern-ireland-and-the-eu#vat-registration-numbers-format).
+The [documentation index](https://github.com/medentic/eu-company-lookup/blob/main/docs/README.md)
+groups consumer references, development workflows and release maintenance.
 
-## Failures and traffic limits
+Normal tests are offline and use synthetic fixtures. Run `cargo test --locked --all-targets` and
+`cargo test --locked --doc`; CI is Linux-only. The
+[contributor guide](https://github.com/medentic/eu-company-lookup/blob/main/CONTRIBUTING.md)
+covers the complete check suite, module layout and opt-in provider testing.
 
-`false` means an actual negative, identifier-matched response. Input errors, unavailable countries/services, SOAP faults, HTTP errors, rate limits, malformed/mismatched responses and deadlines are separate errors. Error text does not include the submitted VAT number, owner details or arbitrary provider body. Unknown SOAP faults remain errors with sanitized text.
+The runnable `check_vat` and `lookup_bg_company` examples contact live providers
+and print returned company data. Development queues, collected responses, local
+reports are local-only and excluded from public Git history and the published
+crate. Agent/release instructions are repository-only.
 
-Default settings:
+## Next country registry priorities
 
-- Eight-second total deadline, including admission spacing, HTTP and response reading; three-second connection timeout.
-- Two admitted requests globally and one per VAT jurisdiction. Excess concurrent calls return `Busy` immediately.
-- Two seconds between global starts and five seconds between starts for one jurisdiction. Waiting uses the total deadline.
-- Sixty-second cooldown after provider capacity or unavailability errors, extended by a longer valid Retry-After value. Limits and cooldowns are shared across clones; coordinate separate processes in the application.
-- 64 KiB response limit, including streamed bodies. No automatic retries, redirects, caching, cookies or ambient proxy configuration.
+These priorities guide work after the initial VIES and Bulgarian registry release.
+BULSTAT work extends the existing fallback adapter; other countries represent new
+national registry integrations. The numbers below are planning priorities, not
+implemented coverage or release dates.
 
-These are conservative client defaults, not a promised VIES quota. Configure them with `Client::with_config(ClientConfig { ... })`. HTTP Retry-After supports seconds and dates. Extreme values are preserved in errors; internal cooldown arithmetic is capped at ten years. Caller cancellation releases active slots; a request already sent can still be processing upstream.
+| Country / registry | Priority |
+| --- | --- |
+| Bulgaria — BULSTAT | Not yet assigned |
+| Romania | 3 |
+| Greece | 2 |
+| Austria | 1 |
+| Belgium | 1 |
+| Czechia | 1 |
+| Spain | 1 |
 
-## Development and testing
+## License
 
-Source-owned tests and synthetic fixtures live under `src/vies/`; `tests/public_api.rs` exercises the consumer interface. Normal tests use a local fake HTTP server and never query VIES.
-
-```sh
-cargo fmt --all --check
-cargo test --locked --all-targets
-cargo test --locked --doc
-cargo clippy --locked --all-targets -- -D warnings
-cargo package --locked
-```
-
-One explicitly requested live check:
-
-```sh
-VIES_LIVE_VAT='<your-authorized-VAT-ID>' cargo test --locked live_vies -- --ignored --nocapture
-```
-
-The ignored `live_address_split` test additionally accepts `VIES_EXPECTED_ADDRESS_JSON`: an object of independently reviewed address fields to assert against a live, valid result. It prints the observation for manual review; run it only in an appropriate environment.
-
-A live outage fails this test; it is not counted as a successful verification. Live tests are excluded from CI. `cargo run --example check_vat -- '<VAT-ID>'` prints the full returned observation, including owner data when available; use an appropriate terminal/environment.
-
-## License and scope
-
-MIT, copyright Medentic. Address rules include BSD-3-Clause material; see THIRD-PARTY-LICENSE.txt. The library license does not change the source service's terms. Use VIES for its intended VAT-verification purpose and observe its [service conditions](https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl). The package contains synthetic fixtures, not collected company datasets.
+MIT with BSD-3-Clause address-rule material; the package license expression is
+`MIT AND BSD-3-Clause`. See [LICENSE](https://github.com/medentic/eu-company-lookup/blob/main/LICENSE) and
+[THIRD-PARTY-LICENSE.txt](https://github.com/medentic/eu-company-lookup/blob/main/THIRD-PARTY-LICENSE.txt). These licenses cover the code;
+provider services and data remain subject to their own terms.

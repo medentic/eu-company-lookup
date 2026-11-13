@@ -1,76 +1,38 @@
-// Adapted from Medentic's VIES address parser; rule attribution is retained.
-mod normalize;
-mod rules;
-use crate::VatAddress;
-
+// VIES source envelope and VAT-prefix country policy only.
+#[cfg(test)]
+use crate::locations::normalize;
+use crate::{
+    VatAddress,
+    locations::{self, Country},
+};
 pub(super) fn supports(prefix: &str) -> bool {
-    rules::rule(prefix).is_some()
+    locations::supports_address(prefix)
 }
-
+fn country(prefix: &str) -> Option<(&'static str, &'static str)> {
+    let country = Country::from_iso2(match prefix {
+        "EL" => "GR",
+        "XI" => "GB",
+        other => other,
+    })?;
+    Some((country.iso2(), country.native_name()))
+}
 pub(super) fn split(prefix: &str, original: Option<String>) -> VatAddress {
-    let mut result = VatAddress {
-        full_address_by_vies: original,
-        ..Default::default()
-    };
-    let Some(raw) = result.full_address_by_vies.as_deref() else {
-        return result;
-    };
-    if raw.len() > 65_536 {
-        return result;
-    }
-    let normalized = normalize::address(prefix, raw);
-    if normalized.trim().is_empty() || matches!(normalized.trim(), "---" | "N/A") {
-        return result;
-    }
-    let Some(pattern) = rules::rule(prefix) else {
-        return result;
-    };
-    let regex = regex_lite::Regex::new(&pattern).expect("static country address rule");
-    let Some(captures) = regex.captures(&normalized) else {
-        return result;
-    };
-    let field = |name| {
-        captures
-            .name(name)
-            .map(|m| m.as_str().trim().to_owned())
-            .filter(|s| !s.is_empty())
-    };
-    let delivery = field("street");
-    let mut lines: Vec<String> = delivery
+    let mut fields = original
         .as_deref()
-        .unwrap_or("")
-        .lines()
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(str::to_owned)
-        .collect();
-    if !lines.is_empty() {
-        result.address = Some(lines.remove(0));
-    }
-    if let Some(locality) = field("locality") {
-        lines.push(locality);
-    }
-    if !lines.is_empty() {
-        result.address2 = Some(lines.join("\n"));
-    }
-    if prefix == "BG"
-        && let Some(line) = result.address.take()
-    {
-        let (primary, details) = normalize::bulgarian_delivery(&line);
-        result.address = primary;
-        if let Some(details) = details {
-            result.address2 = Some(match result.address2.take() {
-                Some(rest) => format!("{details}\n{rest}"),
-                None => details,
-            });
+        .map(|raw| locations::parse_address(raw, prefix))
+        .unwrap_or_default();
+    if let Some((iso, name)) = country(prefix) {
+        fields.country_iso2 = Some(iso.into());
+        if fields.country.is_none() {
+            fields.country = Some(name.into());
         }
     }
-    result.city = field("city").map(|value| normalize::place_name(prefix, value));
-    result.postcode = field("postcode");
-    result.region = field("region").map(|value| normalize::place_name(prefix, value));
-    result.country = field("country");
-    result
+    VatAddress {
+        full_address_by_vies: original,
+        fields,
+    }
 }
-
+#[cfg(test)]
+mod corpus;
 #[cfg(test)]
 mod tests;

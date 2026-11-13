@@ -1,34 +1,54 @@
 [package]
 name = "eu-company-lookup"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 rust-version = "1.98.1"
-description = "Typed EU VAT validation through VIES, with explicit failures and capability discovery"
+description = "Typed EU VAT verification and Bulgarian business lookup, with explicit failures and capabilities"
 license = "MIT AND BSD-3-Clause"
 repository = "https://github.com/medentic/eu-company-lookup"
 documentation = "https://docs.rs/eu-company-lookup"
 readme = "README.md"
 keywords = ["vat", "vies", "eu", "company", "validation"]
 categories = ["api-bindings"]
-include = ["src/**", "tests/**", "examples/**", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE", "THIRD-PARTY-LICENSE.txt", "CHANGELOG.md"]
+include = [
+    "src/**/*.rs",
+    "src/vies/fixtures/valid.xml",
+    "src/vies/fixtures/report-contract.json",
+    "src/vies/fixtures/review-policy.json",
+    "tests/**/*.rs",
+    "examples/**/*.rs",
+    "docs/reference/api-stability.md",
+    "docs/reference/bulgarian-registry.md",
+    "docs/reference/vies.md",
+    "/Cargo.toml",
+    "/Cargo.lock",
+    "/README.md",
+    "/LICENSE",
+    "/THIRD-PARTY-LICENSE.txt",
+    "/CHANGELOG.md",
+]
 
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+chrono-tz = "0.10"
 httpdate = "1"
 regex-lite = "0.1"
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls"] }
 roxmltree = "0.21"
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+scraper = { version = "0.29", default-features = false }
 thiserror = "2"
 tokio = { version = "1", features = ["sync", "time"] }
 
 [dev-dependencies]
-serde_json = "1"
+sha2 = "0.10"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "io-util", "test-util"] }
 
 [lints.rust]
 unsafe_code = "forbid"
 missing_docs = "warn"
+missing_debug_implementations = "warn"
 
 [profile.dev]
 debug = 1
