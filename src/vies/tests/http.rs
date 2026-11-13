@@ -496,14 +496,15 @@ async fn stalled_body_is_bounded_by_the_total_deadline() {
 }
 
 #[tokio::test]
-async fn refused_connection_is_a_sanitized_transport_error() {
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let url = format!("http://{}/vies", listener.local_addr().unwrap());
-    drop(listener);
-    let client = Client::for_test(url, config());
+async fn closed_connection_is_a_sanitized_transport_error() {
+    // Accept and read the request, then close without any response. A closed
+    // port can instead hit the connection deadline on some operating systems.
+    let server = Server::new(Vec::new(), Duration::ZERO).await;
+    let client = server.client();
     let error = client.lookup_vat("BG123456789").await.unwrap_err();
     assert!(matches!(error, LookupError::Transport));
     assert!(!format!("{error:?} {error}").contains("123456789"));
+    assert_eq!(server.calls.load(Ordering::SeqCst), 1);
 }
 
 #[test]
