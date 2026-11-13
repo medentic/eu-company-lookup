@@ -19,7 +19,7 @@ pub(crate) fn rule(country: &str) -> Option<String> {
         ));
     }
     Some(match country {
-        "BG" => r"^(?P<street>[^\n]+?)(?:[ ]+[оО][бБ][лЛ]\.[ ]*(?P<region>[^,\n]+?))?(?:,[ ]*|[ ]+)(?:[гГ][рР]\.|[сС]\.)[ ]*(?P<city>[^,\n]+?)(?:[ ]+(?P<postcode>[0-9]{4}))?$",
+        "BG" => r"^(?P<street>[^\n]*?)(?:(?:^|[ ]+)[оО][бБ][лЛ]\.[ ]*(?P<region>[^,\n]+?))?(?:,[ ]*|[ ]+)(?:[гГ][рР]\.|[сС]\.)[ ]*(?P<city>[^,\n]+?)(?:[ ]+(?P<postcode>[0-9]{4}))?$",
         "EE" => r"^(?P<street>[^\n]+?)\n(?P<postcode>[0-9]{5})[ ]+(?P<city>[^\n]+)$",
         "EL" => r"^(?P<street>[^\n]+?)\n(?P<postcode>[0-9]{3}[ ]?[0-9]{2})[ ]+-[ ]+(?P<city>[^\n]+)$",
         "IT" => r"^(?P<street>[\s\S]+?)\n(?P<postcode>[0-9]{5})[ ]+(?P<city>[^\n]+?)[ ]+(?P<region>[A-Z]{2})$",

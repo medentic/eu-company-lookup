@@ -6,6 +6,10 @@ use serde::Serialize;
 pub enum Provider {
     /// European Commission VAT Information Exchange System.
     Vies,
+    /// Bulgarian Commercial Register and Register of Non-Profit Legal Entities.
+    BulgarianCommercialRegister,
+    /// Bulgarian BULSTAT register.
+    Bulstat,
 }
 
 /// An implemented operation, not a roadmap promise.
@@ -18,6 +22,10 @@ pub enum Operation {
     LookupVat,
     /// Boolean convenience wrapper around the same check.
     IsVatValid,
+    /// Offline Bulgarian business-identifier syntax check.
+    ValidateBgBusinessIdSyntax,
+    /// Bulgarian business lookup, with Commercial Register then BULSTAT fallback.
+    LookupBgCompany,
 }
 
 /// Identifier scheme accepted by an operation.
@@ -26,6 +34,8 @@ pub enum Operation {
 pub enum IdentifierScheme {
     /// Country-prefixed VAT identifier; not a national company identifier.
     Vat,
+    /// Nine- or thirteen-digit Bulgarian ЕИК/BULSTAT business code, without BG.
+    BgBusinessId,
 }
 
 /// Checksum coverage, independent of syntax and registration.
@@ -42,10 +52,13 @@ pub enum ChecksumSupport {
 pub enum LanguageSupport {
     /// The source operation accepts no language selection parameter.
     NotSelectable,
+    /// Adapter requests Bulgarian source data; no caller-selectable language yet.
+    BulgarianOnly,
 }
 
 /// Operations and language behavior of an enabled provider.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct ProviderCapabilities {
     /// Provider implementing these operations.
     pub provider: Provider,
@@ -67,6 +80,7 @@ pub struct ProviderCapabilities {
 
 /// Capability grouping with an explicit VAT-prefix-to-jurisdiction mapping.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct JurisdictionCapabilities {
     /// ISO 3166-1 country code, e.g. GR for Greece or GB for Northern Ireland.
     pub country_code: &'static str,

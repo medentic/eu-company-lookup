@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "normalizationVersion": "address-rules-v7",
+  "expectationHash": "SHA-256 of UTF-8 JSON expected object; sorted keys, compact separators, unescaped Unicode",
+  "versionRule": "Bump normalizationVersion for deliberate parsing behavior changes. Update only independently re-reviewed expectations, increment their reviewVersion and record reason/date. Structural refactors without behavior changes keep the version.",
+  "knownNormalizationVersions": [
+    "address-rules-v1",
+    "address-rules-v2",
+    "address-rules-v3",
+    "address-rules-v4",
+    "address-rules-v5",
+    "address-rules-v6",
+    "address-rules-v7"
+  ],
+  "changes": [
+    {
+      "version": "address-rules-v1",
+      "date": "2026-11-13",
+      "reason": "Baseline after region-only and empty-detail fixes."
+    },
+    {
+      "version": "address-rules-v2",
+      "date": "2026-11-13",
+      "reason": "Remove whitespace before Bulgarian commas and standalone trailing dot/hyphen place placeholders; retain decimal commas and attached abbreviation periods."
+    },
+    {
+      "version": "address-rules-v3",
+      "date": "2026-11-13",
+      "reason": "Space recognized Bulgarian quarter marker кв. before its value while preserving embedded ordinary words and original provider text."
+    },
+    {
+      "version": "address-rules-v4",
+      "date": "2026-11-13",
+      "reason": "Omit whole comma-separated Bulgarian complex/block/entrance/floor/apartment components with asterisk-only values from structured delivery lines; preserve genuine starred values, unknown markers and original source text."
+    },
+    {
+      "version": "address-rules-v5",
+      "date": "2026-11-13",
+      "reason": "Move explicitly labelled сграда/стая components with values at start or comma boundary into address2; protect street names and empty labels."
+    },
+    {
+      "version": "address-rules-v6",
+      "date": "2026-11-13",
+      "reason": "Repair lowercase ул./бул. glued to uppercase complex name under explicit жк. prefix; preserve ordinary embedded markers."
+    },
+    {
+      "version": "address-rules-v7",
+      "date": "2026-11-13",
+      "reason": "User-approved BG structured-address presentation: strip double quotation glyphs, canonical жк., uppercase single entrance letters, omit explicit delivery post-box components; preserve raw text, apostrophes and four-digit postcodes."
+    }
+  ]
+}

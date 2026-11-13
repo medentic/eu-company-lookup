@@ -1,0 +1,78 @@
+[
+  {
+    "facts": {},
+    "status": "pending"
+  },
+  {
+    "facts": {
+      "response": true,
+      "expectation": true
+    },
+    "status": "pending"
+  },
+  {
+    "facts": {
+      "observed": true,
+      "expectation": true,
+      "ambiguous": true
+    },
+    "status": "providerError"
+  },
+  {
+    "facts": {
+      "observed": true,
+      "response": true
+    },
+    "status": "needsReview"
+  },
+  {
+    "facts": {
+      "observed": true,
+      "response": true,
+      "expectation": true
+    },
+    "status": "passed"
+  },
+  {
+    "facts": {
+      "observed": true,
+      "response": true,
+      "expectation": true,
+      "ambiguous": true
+    },
+    "status": "ambiguous"
+  },
+  {
+    "facts": {
+      "observed": true,
+      "response": true,
+      "expectation": true,
+      "parserMismatch": true,
+      "ambiguous": true
+    },
+    "status": "parserMismatch"
+  },
+  {
+    "facts": {
+      "observed": true,
+      "response": true,
+      "expectation": true,
+      "sourceChanged": true,
+      "parserMismatch": true,
+      "ambiguous": true
+    },
+    "status": "sourceChanged"
+  },
+  {
+    "facts": {
+      "observed": true,
+      "response": true,
+      "expectation": true,
+      "validityChanged": true,
+      "sourceChanged": true,
+      "parserMismatch": true,
+      "ambiguous": true
+    },
+    "status": "validityChanged"
+  }
+]

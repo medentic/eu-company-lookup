@@ -43,8 +43,13 @@ fn formats_and_capabilities_cover_the_same_jurisdictions() {
             .iter()
             .find(|c| c.vat_prefix == vat.prefix())
             .unwrap();
-        assert_eq!(capability.providers.len(), 1);
-        let provider = &capability.providers[0];
+        let vat_providers: Vec<_> = capability
+            .providers
+            .iter()
+            .filter(|p| p.identifier_scheme == crate::IdentifierScheme::Vat)
+            .collect();
+        assert_eq!(vat_providers.len(), 1);
+        let provider = vat_providers[0];
         assert_eq!(provider.operations.len(), 3);
         assert_eq!(provider.languages, LanguageSupport::NotSelectable);
         assert_eq!(provider.checksum, ChecksumSupport::NotImplemented);

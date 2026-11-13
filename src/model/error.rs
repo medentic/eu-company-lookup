@@ -3,6 +3,7 @@ use serde::Serialize;
 
 /// Scope of a provider admission limit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub enum LimitScope {
     /// All jurisdictions on this shared client.
     Global,
@@ -24,7 +25,7 @@ pub enum RetryAfter {
 #[non_exhaustive]
 pub enum LookupError {
     /// Malformed input or unsupported national syntax.
-    #[error("VAT identifier has invalid syntax")]
+    #[error("identifier has invalid syntax")]
     InvalidInput,
     /// Well-formed prefix is not supported by this version's VIES adapter.
     #[error("VAT jurisdiction is not supported; Greece uses EL, not GR")]
@@ -38,7 +39,8 @@ pub enum LookupError {
     /// Shared global capacity or the country's active slot is occupied.
     #[error("client capacity is occupied; try later")]
     Busy,
-    /// Total timeout, including admission spacing and response reading.
+    /// Network/response deadline expired. Local spacing that cannot fit the
+    /// configured lookup deadline returns Busy before a request is sent.
     #[error("lookup deadline exceeded")]
     DeadlineExceeded,
     /// HTTP/network/TLS failure, with no provider payload in the error.
@@ -101,4 +103,42 @@ pub enum LookupError {
     /// Country or number differs from the exact requested identifier.
     #[error("VIES response does not match the requested identifier")]
     MismatchedResponse,
+    /// Both Bulgarian registers definitively returned no matching business record.
+    /// Does not describe a VIES negative result or any service failure.
+    #[error("business identifier was not found in either Bulgarian register")]
+    NotFound,
+    /// Source-specific registry failure; no conclusion about business existence.
+    #[error("{provider:?}: {error}")]
+    Registry {
+        /// Register that failed; fallback is not attempted after this failure.
+        provider: super::Provider,
+        /// Sanitized operational or response error.
+        #[source]
+        error: super::RegistryError,
+    },
+}
+
+impl LookupError {
+    /// Whether service/network availability prevented verification. Such failures
+    /// must never be presented as an invalid VAT/business ID. A transport failure
+    /// may be local connectivity rather than a confirmed outage at the provider.
+    /// Local admission limits and rate limits remain separately typed errors.
+    pub fn is_service_unavailable(&self) -> bool {
+        matches!(
+            self,
+            Self::ServiceUnavailable { .. }
+                | Self::MemberStateUnavailable { .. }
+                | Self::ProviderTimeout { .. }
+                | Self::DeadlineExceeded
+                | Self::Transport
+                | Self::Registry {
+                    error: super::RegistryError::ServiceUnavailable { .. },
+                    ..
+                }
+                | Self::Http {
+                    status: 500..=599 | 408,
+                    ..
+                }
+        )
+    }
 }

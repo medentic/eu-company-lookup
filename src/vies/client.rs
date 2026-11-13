@@ -1,4 +1,4 @@
-use super::{VatId, capabilities, identifiers::FORMATS, soap, validate_vat_syntax};
+use super::{VatId, capabilities, identifiers::FORMATS, soap, transport, validate_vat_syntax};
 use crate::{JurisdictionCapabilities, LimitScope, LookupError, Provider, RetryAfter, VatCheck};
 use chrono::Utc;
 use std::{
@@ -11,11 +11,20 @@ use tokio::{
     time::Instant,
 };
 
-const ENDPOINT: &str = "https://ec.europa.eu/taxation_customs/vies/services/checkVatService";
+use super::transport::ENDPOINT;
 
 /// Transport and admission settings. Limits are shared across client clones,
 /// not across separately constructed clients or application processes.
+///
+/// Start from `Default` and assign public fields. Struct literals are intentionally
+/// unavailable to downstream crates so new options can be added compatibly.
+///
+/// ```compile_fail
+/// use eu_company_lookup::ClientConfig;
+/// let config = ClientConfig { ..Default::default() };
+/// ```
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct ClientConfig {
     /// Total deadline including spacing, HTTP and body reading. Default: 8 seconds.
     pub timeout: Duration,
@@ -90,6 +99,15 @@ pub struct Client {
     config: ClientConfig,
     state: Arc<State>,
     endpoint: String,
+    registry: crate::BgRegistryClient,
+}
+
+impl std::fmt::Debug for Client {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Client")
+            .field("config", &self.config)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Client {
@@ -101,6 +119,14 @@ impl Client {
     /// Build with explicit deadlines and limits. Zero concurrency, response limit,
     /// timeout or cooldown and excessively large values are rejected.
     pub fn with_config(config: ClientConfig) -> Result<Self, LookupError> {
+        Self::with_configs(config, crate::BgRegistryConfig::default())
+    }
+
+    /// Configure VIES and Bulgarian registry limits independently.
+    pub fn with_configs(
+        config: ClientConfig,
+        registry_config: crate::BgRegistryConfig,
+    ) -> Result<Self, LookupError> {
         if config.timeout.is_zero()
             || config.timeout > Duration::from_secs(300)
             || config.connect_timeout.is_zero()
@@ -130,14 +156,7 @@ impl Client {
                 "intervals must be <= 24 hours and cooldown must be positive",
             ));
         }
-        let http = reqwest::Client::builder()
-            .no_proxy()
-            .redirect(reqwest::redirect::Policy::none())
-            .retry(reqwest::retry::never())
-            .connect_timeout(config.connect_timeout)
-            .timeout(config.timeout)
-            .user_agent(concat!("eu-company-lookup/", env!("CARGO_PKG_VERSION")))
-            .build()
+        let http = transport::client(config.connect_timeout, Some(config.timeout))
             .map_err(|_| LookupError::ClientInitialization)?;
         let state = Arc::new(State {
             capacity: Semaphore::new(config.max_concurrent_requests),
@@ -152,22 +171,50 @@ impl Client {
             config,
             state,
             endpoint: ENDPOINT.into(),
+            registry: crate::BgRegistryClient::with_config(registry_config)?,
         })
     }
 
     /// Return implemented capabilities without network calls. Enabled support is
     /// distinct from live source availability; VIES has no language parameter.
     pub fn capabilities(&self) -> Vec<JurisdictionCapabilities> {
-        capabilities::catalog()
+        let mut catalog = capabilities::catalog();
+        let bg = catalog
+            .iter_mut()
+            .find(|c| c.country_code == "BG")
+            .expect("BG VAT jurisdiction");
+        for provider in [Provider::BulgarianCommercialRegister, Provider::Bulstat] {
+            bg.providers.push(crate::ProviderCapabilities {
+                provider,
+                operations: vec![
+                    crate::Operation::ValidateBgBusinessIdSyntax,
+                    crate::Operation::LookupBgCompany,
+                ],
+                identifier_scheme: crate::IdentifierScheme::BgBusinessId,
+                checksum: crate::ChecksumSupport::NotImplemented,
+                languages: crate::LanguageSupport::BulgarianOnly,
+                requires_credentials: false,
+                optional_owner_details: true,
+                address_splitting: true,
+            });
+        }
+        catalog
+    }
+
+    /// Look up an ЕИК/BULSTAT business code. Tries the Commercial Register, then
+    /// BULSTAT only on a definitive miss. Never infers VAT registration.
+    pub async fn lookup_bg_company(
+        &self,
+        tax_id: &str,
+    ) -> Result<crate::CompanyRecord, LookupError> {
+        self.registry.lookup(tax_id).await
     }
 
     /// Check one VAT ID. `valid: false` is returned only for a matching negative
     /// VIES response. Capacity, service failures and deadlines remain errors.
     pub async fn lookup_vat(&self, vat_id: &str) -> Result<VatCheck, LookupError> {
         let vat = validate_vat_syntax(vat_id)?;
-        tokio::time::timeout(self.config.timeout, self.check(&vat))
-            .await
-            .map_err(|_| LookupError::DeadlineExceeded)?
+        self.check(&vat, Instant::now() + self.config.timeout).await
     }
 
     /// Convenience wrapper around [`Self::lookup_vat`]. Do not call both for one
@@ -176,7 +223,7 @@ impl Client {
         Ok(self.lookup_vat(vat_id).await?.valid)
     }
 
-    async fn check(&self, vat: &VatId) -> Result<VatCheck, LookupError> {
+    async fn check(&self, vat: &VatId, deadline: Instant) -> Result<VatCheck, LookupError> {
         let _permit = self
             .state
             .capacity
@@ -188,6 +235,9 @@ impl Client {
         country.check(LimitScope::MemberState)?;
         // Check the global cooldown before waiting, and again immediately before sending.
         self.state.global.lock().await.check(LimitScope::Global)?;
+        if country.next_start >= deadline {
+            return Err(LookupError::Busy);
+        }
         tokio::time::sleep_until(country.next_start).await;
         loop {
             let mut global = self.state.global.lock().await;
@@ -199,12 +249,20 @@ impl Client {
             }
             let start = global.next_start;
             drop(global);
+            if start >= deadline {
+                return Err(LookupError::Busy);
+            }
             // An in-flight response can establish a cooldown while we sleep.
             // Recheck both spacing and cooldown after waking.
             tokio::time::sleep_until(start).await;
         }
+        if Instant::now() >= deadline {
+            return Err(LookupError::Busy);
+        }
         country.next_start = Instant::now() + self.config.country_start_interval;
-        let result = self.send(vat).await;
+        let result = tokio::time::timeout_at(deadline, self.send(vat))
+            .await
+            .unwrap_or(Err(LookupError::DeadlineExceeded));
         let scope = match &result {
             Err(LookupError::RateLimited { scope, .. }) => Some(*scope),
             Err(
@@ -213,6 +271,7 @@ impl Client {
             Err(LookupError::ServiceUnavailable { .. } | LookupError::Http { status: 503, .. }) => {
                 Some(LimitScope::Global)
             }
+            Err(LookupError::Transport | LookupError::DeadlineExceeded) => Some(LimitScope::Global),
             _ => None,
         };
         if let Some(scope) = scope {
@@ -239,21 +298,16 @@ impl Client {
     }
 
     async fn send(&self, vat: &VatId) -> Result<VatCheck, LookupError> {
-        let mut response = self
-            .http
-            .post(&self.endpoint)
-            .header("Content-Type", "text/xml; charset=utf-8")
-            .header("SOAPAction", "\"\"")
-            .body(soap::request(vat))
-            .send()
-            .await
-            .map_err(transport_error)?;
-        let status = response.status();
-        let retry_after = response
-            .headers()
-            .get("retry-after")
-            .and_then(|v| v.to_str().ok())
-            .and_then(parse_retry_after);
+        let response = transport::exchange(
+            &self.http,
+            &self.endpoint,
+            vat,
+            self.config.max_response_bytes,
+        )
+        .await
+        .map_err(transport_error)?;
+        let status = response.status;
+        let retry_after = response.retry_after.as_deref().and_then(parse_retry_after);
         // A 429 is already authoritative; do not spend time downloading its body.
         if status.as_u16() == 429 {
             return Err(LookupError::RateLimited {
@@ -261,22 +315,33 @@ impl Client {
                 retry_after,
             });
         }
-        if response
-            .content_length()
-            .is_some_and(|n| n > self.config.max_response_bytes as u64)
-        {
-            return Err(LookupError::ResponseTooLarge);
+        // Gateway failures are already availability failures, even with an HTML,
+        // empty, oversized or stalled body. No negative VAT result is possible.
+        if matches!(status.as_u16(), 408 | 504) {
+            return Err(LookupError::ProviderTimeout { retry_after });
         }
-        let mut bytes = Vec::new();
-        while let Some(chunk) = response.chunk().await.map_err(transport_error)? {
-            if chunk.len() > self.config.max_response_bytes.saturating_sub(bytes.len()) {
-                return Err(LookupError::ResponseTooLarge);
+        if status.as_u16() == 502 {
+            return Err(LookupError::ServiceUnavailable { retry_after });
+        }
+        // 500/503 may contain precise SOAP faults. If their body is incomplete
+        // or oversized, the HTTP failure still establishes unavailability.
+        let body_error = |error| {
+            if status.is_server_error() {
+                LookupError::ServiceUnavailable {
+                    retry_after: retry_after.clone(),
+                }
+            } else {
+                error
             }
-            bytes.extend_from_slice(&chunk);
-        }
-        let decoded = std::str::from_utf8(&bytes)
-            .map_err(|_| LookupError::MalformedResponse)
-            .and_then(|xml| soap::decode(xml, vat));
+        };
+        let decoded = match response.body {
+            transport::Body::Text(xml) => soap::decode(&xml, vat),
+            transport::Body::Failed(transport::Failure::InvalidUtf8) => {
+                Err(LookupError::MalformedResponse)
+            }
+            transport::Body::Failed(error) => return Err(body_error(transport_error(error))),
+            transport::Body::Skipped => unreachable!("authoritative statuses handled above"),
+        };
         let decoded = match decoded {
             Err(LookupError::RateLimited { scope, .. }) => {
                 return Err(LookupError::RateLimited { scope, retry_after });
@@ -296,6 +361,9 @@ impl Client {
             other => other,
         };
         if !status.is_success() {
+            if status.is_server_error() {
+                return Err(LookupError::ServiceUnavailable { retry_after });
+            }
             return Err(LookupError::Http {
                 status: status.as_u16(),
                 retry_after,
@@ -314,11 +382,12 @@ impl Client {
     }
 }
 
-fn transport_error(error: reqwest::Error) -> LookupError {
-    if error.is_timeout() {
-        LookupError::DeadlineExceeded
-    } else {
-        LookupError::Transport
+fn transport_error(error: transport::Failure) -> LookupError {
+    match error {
+        transport::Failure::Timeout => LookupError::DeadlineExceeded,
+        transport::Failure::Network => LookupError::Transport,
+        transport::Failure::TooLarge => LookupError::ResponseTooLarge,
+        transport::Failure::InvalidUtf8 => LookupError::MalformedResponse,
     }
 }
 pub(super) fn parse_retry_after(value: &str) -> Option<RetryAfter> {

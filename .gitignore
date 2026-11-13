@@ -22,3 +22,13 @@ rustc-ice-*.txt
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# Python collector tooling
+__pycache__/
+*.py[cod]
+
+# Local observations and review provenance; never publish these through Git.
+/src/vies/fixtures/countries/
+/src/vies/fixtures/ids/
+/src/bg/fixtures/commercial/
+/src/bg/fixtures/ids/
