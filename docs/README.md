@@ -24,6 +24,17 @@ Repository-only development guides cover:
 - [Live collectors](development/collectors.md): queue import, bounded collection,
   resume, replay and the test-only VIES retry experiment.
 
+## Agent maintenance and domain maps
+
+- [Agent handoff](maintainers/agent-handoff.md): onboarding, diagnosis, verification and extension workflow.
+- [Source architecture](../src/README.md): facade, capabilities, models and provider ownership.
+- [BG mappings](../src/bg/README.md), [ANAF mappings](../src/ro/README.md),
+  [VIES protocol](../src/vies/README.md), [shared results](../src/model/README.md)
+  and [addresses](../src/locations/README.md): implementation guides beside their owners.
+- [Repository tools](../tools/README.md): checks, collectors and evidence boundaries.
+
+These implementation and agent guides are repository-only.
+
 ## Maintaining releases
 
 The [release procedure](maintainers/releasing.md) covers candidate review,

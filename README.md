@@ -266,6 +266,10 @@ address corrections and Rust-version policy.
 
 ## Development
 
+New maintainers and AI agents can start with the
+[agent handoff guide](https://github.com/medentic/eu-company-lookup/blob/main/docs/maintainers/agent-handoff.md),
+which links domain ownership, registry field mappings and verification workflows.
+
 The [documentation index](https://github.com/medentic/eu-company-lookup/blob/main/docs/README.md)
 groups consumer references, development workflows and release maintenance.
 
@@ -279,22 +283,111 @@ and print returned company data. Development queues, collected responses, local
 reports are local-only and excluded from public Git history and the published
 crate. Agent/release instructions are repository-only.
 
-## Next country registry priorities
+## Country coverage and verification
 
-These priorities guide additional registry work. BULSTAT work extends the existing
-fallback adapter; Romanian work extends coverage beyond ANAF. The remaining
-countries represent new national registry integrations. The numbers below are planning priorities, not
-implemented coverage or release dates.
+The target scope is all 30 European Economic Area (EEA) countries. Northern
+Ireland is listed separately for the existing XI VIES scope; it is not an EEA
+country. Target scope does not imply implemented national lookup support.
 
-| Country / registry | Priority |
-| --- | --- |
-| Bulgaria — BULSTAT | Not yet assigned |
-| Romania — further registry coverage | 3 |
-| Greece | 2 |
-| Austria | 1 |
-| Belgium | 1 |
-| Czechia | 1 |
-| Spain | 1 |
+Counts below are distinct identifiers in the retained, reviewed live-response
+corpora, not HTTP requests, retries or synthetic tests. They describe the evidence
+reviewed for 2.0.0, not an exhaustive record of every live attempt. A zero means no
+reviewed corpus is retained for that operation. Provider failures are not negative
+registration results and are not counted as reviewed outcomes.
+
+### National registers and taxpayer sources
+
+VIES is listed separately below. ANAF is a taxpayer source, not an ONRC company
+register extract. Priority numbers preserve the existing planning order; a dash
+means no priority has been assigned. Planned integrations have no release date.
+
+| EEA country | Implemented register / source | Distinct company / tax IDs tested | Delivery status | Next priority |
+| --- | --- | ---: | --- | --- |
+| Austria | Not implemented | 0 | Planned | 1 |
+| Belgium | Not implemented | 0 | Planned | 1 |
+| Bulgaria | Commercial Register | 278 | Released in 2.0.0 | — |
+| Bulgaria | BULSTAT | 10 | Released; broader verification pending | — |
+| Croatia | Not implemented | 0 | Planned | — |
+| Cyprus | Not implemented | 0 | Planned | — |
+| Czechia | Not implemented | 0 | Planned | 1 |
+| Denmark | Not implemented | 0 | Planned | — |
+| Estonia | Not implemented | 0 | Planned | — |
+| Finland | Not implemented | 0 | Planned | — |
+| France | Not implemented | 0 | Planned | — |
+| Germany | Not implemented | 0 | Planned | — |
+| Greece | Not implemented | 0 | Planned | 2 |
+| Hungary | Not implemented | 0 | Planned | — |
+| Iceland | Not implemented | 0 | Planned | — |
+| Ireland | Not implemented | 0 | Planned | — |
+| Italy | Not implemented | 0 | Planned | — |
+| Latvia | Not implemented | 0 | Planned | — |
+| Liechtenstein | Not implemented | 0 | Planned | — |
+| Lithuania | Not implemented | 0 | Planned | — |
+| Luxembourg | Not implemented | 0 | Planned | — |
+| Malta | Not implemented | 0 | Planned | — |
+| Netherlands | Not implemented | 0 | Planned | — |
+| Norway | Not implemented | 0 | Planned | — |
+| Poland | Not implemented | 0 | Planned | — |
+| Portugal | Not implemented | 0 | Planned | — |
+| Romania | ANAF | 200 | Released in 2.0.0; further registry coverage planned | 3 |
+| Slovakia | Not implemented | 0 | Planned | — |
+| Slovenia | Not implemented | 0 | Planned | — |
+| Spain | Not implemented | 0 | Planned | 1 |
+| Sweden | Not implemented | 0 | Planned | — |
+
+BULSTAT evidence covers ten nine-digit institutional identifiers; natural persons
+and thirteen-digit branches remain outside that verified sample. The Bulgarian
+register counts are per source and should not be added as a country-wide unique
+identifier total. Reviewed corpora have passing offline replay; this does not
+establish exhaustive field or entity-type coverage.
+
+### VIES VAT verification
+
+The VIES adapter is released for the prefixes below. Implementation and live
+verification are separate: countries with zero reviewed VAT IDs still use the
+adapter, but have no retained country-specific live corpus. Iceland, Liechtenstein
+and Norway have no VIES mapping in this library.
+
+| Country | VIES prefix | Distinct VAT IDs tested | Valid / invalid observations | Verification status |
+| --- | --- | ---: | --- | --- |
+| Austria | AT | 0 | — | Live verification pending |
+| Belgium | BE | 0 | — | Live verification pending |
+| Bulgaria | BG | 961 | 960 / 1 | Offline replay matched; 82 address ambiguities |
+| Croatia | HR | 0 | — | Live verification pending |
+| Cyprus | CY | 0 | — | Live verification pending |
+| Czechia | CZ | 0 | — | Live verification pending |
+| Denmark | DK | 0 | — | Live verification pending |
+| Estonia | EE | 0 | — | Live verification pending |
+| Finland | FI | 0 | — | Live verification pending |
+| France | FR | 0 | — | Live verification pending |
+| Germany | DE | 0 | — | Live verification pending |
+| Greece | EL | 0 | — | Live verification pending |
+| Hungary | HU | 0 | — | Live verification pending |
+| Iceland | — | — | — | Not supported by VIES |
+| Ireland | IE | 0 | — | Live verification pending |
+| Italy | IT | 0 | — | Live verification pending |
+| Latvia | LV | 0 | — | Live verification pending |
+| Liechtenstein | — | — | — | Not supported by VIES |
+| Lithuania | LT | 0 | — | Live verification pending |
+| Luxembourg | LU | 0 | — | Live verification pending |
+| Malta | MT | 0 | — | Live verification pending |
+| Netherlands | NL | 0 | — | Live verification pending |
+| Norway | — | — | — | Not supported by VIES |
+| Poland | PL | 0 | — | Live verification pending |
+| Portugal | PT | 0 | — | Live verification pending |
+| Romania | RO | 200 | 191 / 9 | Reviewed; offline replay passed |
+| Slovakia | SK | 0 | — | Live verification pending |
+| Slovenia | SI | 0 | — | Live verification pending |
+| Spain | ES | 0 | — | Live verification pending |
+| Sweden | SE | 0 | — | Live verification pending |
+| Northern Ireland (outside EEA) | XI | 0 | — | Live verification pending |
+
+A matched invalid VIES observation counts as a tested identifier. An address
+ambiguity does not change VAT validity and is not a fully passed address review.
+Country completion requires at least 200 distinct VAT IDs and 200 distinct
+company/tax IDs, source-bound expectation review and passing offline replay;
+counts alone do not establish completion. Provider failures and unresolved
+ambiguities remain separate in the local evidence.
 
 ## License
 

@@ -4,6 +4,11 @@ Read [README.md](README.md) and [CONTRIBUTING.md](CONTRIBUTING.md) first.
 [API stability](docs/reference/api-stability.md) defines the consumer contract;
 [release preparation](docs/maintainers/releasing.md) defines the publication gate.
 
+For maintenance without prior chat context, use the
+[agent handoff guide](docs/maintainers/agent-handoff.md) and
+[source domain map](src/README.md). Scoped instructions live in
+[src/AGENTS.md](src/AGENTS.md) and [tools/AGENTS.md](tools/AGENTS.md).
+
 ## Scope and invariants
 
 - Version 2.0 covers VIES, Bulgarian Commercial Register/BULSTAT lookup and

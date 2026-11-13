@@ -4,6 +4,10 @@ This single Rust crate supports VIES VAT verification and Bulgarian business
 lookup and Romanian ANAF taxpayer lookup. Start with [README.md](README.md) for supported behavior and
 [API stability](docs/reference/api-stability.md) before changing consumer contracts.
 
+For a new developer or AI agent, the [handoff guide](docs/maintainers/agent-handoff.md)
+provides a maintenance workflow and check matrix. The [source domain map](src/README.md)
+links module ownership and provider field mappings.
+
 ## Repository map
 
 | Location | Purpose |

@@ -1,3 +1,5 @@
+//! Public result contracts and lossless source-to-common mappings.
+//! Keep native evidence separate from normalized lifecycle and address presentation.
 mod capabilities;
 mod company;
 mod company_types;

@@ -1,3 +1,5 @@
+//! ANAF taxpayer observations, kept separate from VIES validity and ONRC company extracts.
+//! The adjacent README.md records source fields, date matching and null semantics.
 mod client;
 mod decode;
 mod identifiers;
