@@ -107,6 +107,13 @@ pub enum LookupError {
     /// Does not describe a VIES negative result or any service failure.
     #[error("business identifier was not found in either Bulgarian register")]
     NotFound,
+    /// Identifier-matched negative observation from a specific registry.
+    /// Does not prove absence from other sources or VAT invalidity.
+    #[error("business identifier was not found by {provider:?}")]
+    RegistryNotFound {
+        /// Source that explicitly reported the miss.
+        provider: super::Provider,
+    },
     /// Source-specific registry failure; no conclusion about business existence.
     #[error("{provider:?}: {error}")]
     Registry {

@@ -204,7 +204,7 @@ async fn definitive_commercial_miss_falls_back_to_exact_bulstat_record() {
     assert_eq!(record.company_name, "Пример");
     assert_eq!(record.address.city.as_deref(), Some("София"));
     assert_eq!(record.address.country.as_deref(), Some("България"));
-    assert_eq!(record.status.as_deref(), Some("развиващ дейност"));
+    assert_eq!(record.status, Some(crate::CompanyStatus::Active));
     let requests = server.requests.lock().unwrap();
     assert_eq!(requests.len(), 3);
     assert!(requests[1].contains("rpt1.rptdesign"));
@@ -745,6 +745,7 @@ fn registry_json_contract_is_stable_and_entry_year_is_derived() {
             "legalForm",
             "address",
             "status",
+            "nativeRegistryStatus",
             "registryDetails",
         ],
     );
@@ -765,6 +766,7 @@ fn registry_json_contract_is_stable_and_entry_year_is_derived() {
     keys(
         &v["registryDetails"],
         &[
+            "statusCode",
             "registeredName",
             "identifierEntryDate",
             "identifierEntryYear",
@@ -789,7 +791,7 @@ fn registry_json_contract_is_stable_and_entry_year_is_derived() {
     let v =
         serde_json::to_value(bulstat::detail(detail().as_bytes(), &id, "Пример".into()).unwrap())
             .unwrap();
-    keys(&v["registryDetails"], &["subjectText"]);
+    keys(&v["registryDetails"], &["subjectText", "statusText"]);
 }
 
 #[tokio::test]
@@ -860,16 +862,29 @@ fn manager_without_country_and_separate_document_sections_are_supported() {
 #[test]
 #[ignore = "offline regression against local-only reviewed Commercial Register observations"]
 fn reviewed_commercial_corpus() {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/bg/fixtures/commercial");
+    let path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/bg/fixtures/commercial/bg.json");
     assert!(
-        root.is_dir(),
+        path.is_file(),
         "local-only Commercial Register corpus is not installed"
     );
-    let mut checked = 0;
-    for file in std::fs::read_dir(root).unwrap() {
-        let fixture: Value =
-            serde_json::from_slice(&std::fs::read(file.unwrap().path()).unwrap()).unwrap();
+    let cases: Vec<Value> =
+        serde_json::from_reader(std::io::BufReader::new(std::fs::File::open(path).unwrap()))
+            .expect("invalid Commercial Register corpus array");
+    assert!(!cases.is_empty(), "empty Commercial Register corpus");
+    let mut seen = std::collections::HashSet::new();
+    for fixture in cases {
+        assert!(
+            seen.insert(fixture["taxId"].as_str().unwrap().to_owned()),
+            "duplicate corpus ID"
+        );
         assert_eq!(fixture["review"]["schemaVersion"], 1);
+        assert_eq!(fixture["review"]["status"], "passed");
+        let expected = fixture["review"]["expected"].as_object().unwrap();
+        assert!(
+            !expected.is_empty(),
+            "review must have explicit expectations"
+        );
         let id = BgBusinessId::parse(fixture["taxId"].as_str().unwrap()).unwrap();
         let raw = fixture["rawResponse"].as_str().unwrap();
         assert_eq!(
@@ -879,7 +894,7 @@ fn reviewed_commercial_corpus() {
         );
         let actual =
             serde_json::to_value(commercial::decode(raw.as_bytes(), &id).unwrap()).unwrap();
-        for (path, expected) in fixture["review"]["expected"].as_object().unwrap() {
+        for (path, expected) in expected {
             let mut field = &actual;
             for segment in path.split('.') {
                 field = field
@@ -889,9 +904,7 @@ fn reviewed_commercial_corpus() {
             assert_eq!(field, expected, "{id}: {path}");
         }
         assert!(actual["address"].get("district").is_none());
-        checked += 1;
     }
-    assert!(checked >= 9);
 }
 
 #[tokio::test]
@@ -925,6 +938,7 @@ async fn probe_metrics_separate_wait_from_http_and_capture_rate_metadata() {
 fn closed_joint_stock_records_and_full_branch_identifiers_keep_contract() {
     for (id, legal, abbreviation) in [
         ("123456789", "Акционерно дружество", "АД"),
+        ("123456789", "Събирателно дружество", "СД"),
         ("1234567890123", "Еднолично акционерно дружество", "ЕАД"),
     ] {
         let mut d = deed();
@@ -983,7 +997,11 @@ fn deleted_company_overrides_open_subdeed_and_removes_portal_status_markup() {
         &BgBusinessId::parse("123456789").unwrap(),
     )
     .unwrap();
-    assert!(record.status.is_none());
+    assert_eq!(record.status, Some(crate::CompanyStatus::Unknown));
+    assert_eq!(
+        serde_json::to_value(&record).unwrap()["registryDetails"]["statusCode"],
+        999
+    );
 }
 
 #[test]
@@ -992,7 +1010,18 @@ fn commercial_duplicate_street_label_accepts_missing_marker_space() {
         ("бул./ул. ул.ЕЛЕДЖИК № 3А", "ул. ЕЛЕДЖИК № 3А"),
         ("бул./ул. бул.ПРИМЕР № 2", "бул. ПРИМЕР № 2"),
         ("бул./ул. ПРИМЕР № 2", "бул./ул. ПРИМЕР № 2"),
+        ("бул./ул. УЛ.МИДЖУР № 3", "УЛ. МИДЖУР № 3"),
+        ("БУЛ./УЛ. Бул.ПРИМЕР № 2", "Бул. ПРИМЕР № 2"),
+        (
+            "ж.к. Пример, бул./ул. УЛ.ПРИМЕР № 2",
+            "жк. Пример, УЛ. ПРИМЕР № 2",
+        ),
         ("бул./ул. жк ЕЛЕНОВО III", "жк. ЕЛЕНОВО III"),
+        ("бул./ул. пл. ПРИМЕР № 2", "пл. ПРИМЕР № 2"),
+        (
+            "бул./ул. кв. ПРИМЕР ул. ПЪРВА 12",
+            "кв. ПРИМЕР ул. ПЪРВА 12",
+        ),
         ("бул./ул. ж.к. ЕЛЕНОВО III", "жк. ЕЛЕНОВО III"),
         (
             "ж.к. ВИТОША, бул./ул. ул. МОГИЛАТА № 17",
@@ -1003,5 +1032,187 @@ fn commercial_duplicate_street_label_accepts_missing_marker_space() {
         let parsed = super::address::commercial(Some(raw.clone()));
         assert_eq!(parsed.address.as_deref(), Some(expected));
         assert_eq!(parsed.full_address_by_registry, Some(raw));
+    }
+}
+
+#[test]
+fn corporate_owner_name_separates_only_explicit_business_identifier_metadata() {
+    for (holder, expected) in [
+        ("Пример АД, ЕИК/ПИК 000123456", Some("Пример АД")),
+        ("Пример АД, ЕИК/ПИК 0001234560001", Some("Пример АД")),
+        ("Пример АД, ЕИК/ПИК 1234567890", None),
+        ("Пример АД, ЕИК/ПИК 123456789 extra", None),
+        ("Пример АД, ЕИК 123456789", None),
+        ("Пример, ЕГН 1234567890", None),
+        ("Пример<br>допълнение, ЕИК/ПИК 123456789", None),
+    ] {
+        let mut d = deed();
+        d["sections"][0]["subDeeds"][0]["groups"][0]["fields"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({
+                "fieldIdent":"00230", "nameCode":"CR_F_23_L", "fieldOperation":3,
+                "htmlData":format!("<p class='field-text'>{holder}, Държава: БЪЛГАРИЯ</p>")
+            }));
+        let id = BgBusinessId::parse("123456789").unwrap();
+        let value = serde_json::to_value(
+            commercial::decode(&serde_json::to_vec(&d).unwrap(), &id).unwrap(),
+        )
+        .unwrap();
+        let owner = &value["registryDetails"]["owners"][0];
+        assert_eq!(owner["name"], json!(expected));
+        assert_eq!(
+            owner["countryISO2"],
+            if expected.is_some() {
+                json!("BG")
+            } else {
+                Value::Null
+            }
+        );
+        assert_eq!(owner["role"], "soleCapitalOwner");
+        assert!(
+            owner["sourceText"]
+                .as_str()
+                .unwrap()
+                .contains("Държава: БЪЛГАРИЯ")
+        );
+    }
+}
+
+#[tokio::test]
+async fn default_bulstat_lookup_has_no_artificial_wait_between_search_and_detail() {
+    let server = Server::new(
+        vec![
+            http(200, "", "application/json"),
+            http(200, &search(), "text/html"),
+            http(200, &detail(), "text/html"),
+        ],
+        Duration::ZERO,
+    )
+    .await;
+    let client = BgRegistryClient::for_test(
+        format!("{}deeds/", server.base),
+        format!("{}preview", server.base),
+        BgRegistryConfig::default(),
+    );
+    let record = tokio::time::timeout(Duration::from_secs(1), client.lookup("123456789"))
+        .await
+        .expect("default lookup must not impose request spacing")
+        .unwrap();
+    assert_eq!(record.status, Some(crate::CompanyStatus::Active));
+    assert_eq!(server.calls.load(Ordering::SeqCst), 3);
+}
+
+#[test]
+fn bulstat_status_is_typed_without_discarding_unknown_or_original_text() {
+    let id = BgBusinessId::parse("123456789").unwrap();
+    for (text, expected) in [
+        ("развиващ дейност", Some(crate::CompanyStatus::Active)),
+        ("непознато състояние", Some(crate::CompanyStatus::Unknown)),
+        ("", None),
+    ] {
+        let body = detail().replace("развиващ дейност", text);
+        let record = bulstat::detail(body.as_bytes(), &id, "Пример".into()).unwrap();
+        assert_eq!(record.status, expected);
+        assert_eq!(
+            record.native_registry_status.as_deref(),
+            if text.is_empty() { None } else { Some(text) }
+        );
+        let value = serde_json::to_value(record).unwrap();
+        assert_eq!(value["status"], serde_json::to_value(expected).unwrap());
+        assert_eq!(
+            value["registryDetails"]["statusText"],
+            if text.is_empty() {
+                Value::Null
+            } else {
+                json!(text)
+            }
+        );
+    }
+}
+
+#[test]
+fn commercial_native_registry_status_preserves_known_and_unknown_source_codes() {
+    let id = BgBusinessId::parse("123456789").unwrap();
+    for (code, expected) in [
+        (1, crate::CompanyStatus::Active),
+        (4, crate::CompanyStatus::Closed),
+        (999, crate::CompanyStatus::Unknown),
+    ] {
+        let mut source = deed();
+        source["deedStatus"] = json!(code);
+        let record = commercial::decode(&serde_json::to_vec(&source).unwrap(), &id).unwrap();
+        assert_eq!(record.status, Some(expected));
+        assert_eq!(record.native_registry_status, Some(code.to_string()));
+        assert_eq!(
+            serde_json::to_value(record).unwrap()["nativeRegistryStatus"],
+            code.to_string()
+        );
+    }
+}
+
+#[test]
+fn shared_company_retains_registry_identity_and_details() {
+    let native = commercial::decode(
+        &serde_json::to_vec(&deed()).unwrap(),
+        &BgBusinessId::parse("123456789").unwrap(),
+    )
+    .unwrap();
+    let shared: crate::CompanyLookupResult = native.clone().into();
+    assert_eq!(shared.identifier.country(), "BG");
+    assert_eq!(shared.identifier.as_str(), native.tax_id.as_str());
+    assert_eq!(shared.source, native.source);
+    assert_eq!(shared.registered_office.as_ref(), Some(&native.address));
+    assert!(shared.fiscal_address.is_none());
+    assert_eq!(shared.native_registry_status, native.native_registry_status);
+    let crate::CompanyDetails::BulgarianRegistry {
+        registry_url,
+        foreign_name,
+        registry_details,
+    } = shared.details
+    else {
+        panic!("wrong details")
+    };
+    assert_eq!(registry_url, native.registry_url);
+    assert_eq!(foreign_name, native.company_english_name);
+    assert_eq!(registry_details, native.registry_details);
+}
+
+#[tokio::test]
+async fn shared_dispatch_uses_bg_and_preserves_provider_failures() {
+    for failure in [false, true] {
+        let server = Server::new(
+            vec![if failure {
+                http(503, "", "")
+            } else {
+                http(200, &deed().to_string(), "application/json")
+            }],
+            Duration::ZERO,
+        )
+        .await;
+        let unused_ro = crate::RoRegistryClient::for_test(
+            "http://127.0.0.1:1/unused".into(),
+            Default::default(),
+        );
+        let client = crate::Client::with_test_registries(server.client(), unused_ro);
+        let id = crate::BusinessId::from(BgBusinessId::parse("123456789").unwrap());
+        let result = client.lookup_company(&id).await;
+        if failure {
+            assert!(matches!(
+                result,
+                Err(LookupError::Registry {
+                    provider: Provider::BulgarianCommercialRegister,
+                    ..
+                })
+            ));
+        } else {
+            let result = result.unwrap();
+            assert_eq!(result.identifier, id);
+            assert_eq!(
+                result.registered_office.unwrap().city.as_deref(),
+                Some("Русе")
+            );
+        }
+        assert_eq!(server.calls.load(Ordering::SeqCst), 1);
     }
 }

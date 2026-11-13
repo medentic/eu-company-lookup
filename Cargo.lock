@@ -293,7 +293,7 @@ checksum = "7bd50d24b1b75aa817bb0339cb9f2e0e664bdfab1e160a69a0fda9145b77fab2"
 
 [[package]]
 name = "eu-company-lookup"
-version = "1.0.0"
+version = "2.0.0"
 dependencies = [
  "chrono",
  "chrono-tz",

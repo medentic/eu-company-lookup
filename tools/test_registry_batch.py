@@ -89,3 +89,50 @@ class RegistryBatchTests(unittest.TestCase):
             write(path, row)
             with self.assertRaisesRegex(ValueError, 'hash mismatch'):
                 report(root)
+
+    def test_consolidation_is_lossless_and_rejects_duplicate_or_changed_sources(self):
+        from registry_batch import consolidate_corpus
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            case = {'taxId': '000123456', 'rawResponse': '{}', 'review': {
+                'schemaVersion': 1, 'status': 'passed', 'expected': {'x': None},
+                'sourceSha256': hashlib.sha256(b'{}').hexdigest(),
+                'revision': 2, 'history': [{'revision': 1, 'expected': {'x': 'old'}}]}}
+            write(root / 'a.json', case)
+            output = root / 'bg.json'
+            self.assertEqual(consolidate_corpus(root, output)['cases'], 1)
+            self.assertEqual(json.loads(output.read_text()), [case])
+            self.assertEqual(json.loads((root / 'a.json').read_text()), case)
+            write(root / 'b.json', case)
+            with self.assertRaisesRegex(ValueError, 'duplicate'):
+                consolidate_corpus(root, output)
+            (root / 'b.json').unlink()
+            case['rawResponse'] = '{"changed":true}'
+            write(root / 'a.json', case)
+            with self.assertRaisesRegex(ValueError, 'source hash'):
+                consolidate_corpus(root, output)
+            self.assertEqual(json.loads(output.read_text())[0]['rawResponse'], '{}')
+
+    def test_corpus_merge_accepts_only_reviewed_cases_and_never_overwrites(self):
+        from registry_batch import merge_reviewed_run
+        with tempfile.TemporaryDirectory() as root:
+            root = Path(root)
+            write(root / 'manifest.json', {'ids': ['123456789', '987654321']})
+            for tax_id in ['123456789', '987654321']:
+                write(root / 'observations' / (tax_id + '.json'), {
+                    'schemaVersion': 2, 'taxId': tax_id, 'outcome': 'found',
+                    'record': {'companyName': 'Example'}, 'rawResponse': '{}', 'elapsedMs': 1})
+            review = {'schemaVersion': 1, 'status': 'passed',
+                      'expected': {'companyName': 'Example'},
+                      'sourceSha256': hashlib.sha256(b'{}').hexdigest()}
+            write(root / 'review.json', {'123456789': review})
+            output = root / 'corpus.json'
+            self.assertEqual(merge_reviewed_run(root, output)['added'], 1)
+            self.assertEqual(merge_reviewed_run(root, output)['added'], 0)
+            self.assertEqual([x['taxId'] for x in json.loads(output.read_text())], ['123456789'])
+            original = output.read_bytes()
+            review['revision'] = 2
+            write(root / 'review.json', {'123456789': review})
+            with self.assertRaisesRegex(ValueError, 'explicit re-review'):
+                merge_reviewed_run(root, output)
+            self.assertEqual(output.read_bytes(), original)

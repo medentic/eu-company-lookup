@@ -1,6 +1,6 @@
 //! Explicit bounded Commercial Register observations, never part of default tests.
 use super::{BgBusinessId, BgRegistryClient, commercial};
-use crate::{CompanyRecord, LookupError, RegistryError};
+use crate::{BgCompanyLookupResult, LookupError, RegistryError};
 use serde::Serialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -27,7 +27,7 @@ struct Observation {
     unavailability_reason: Option<&'static str>,
     outcome: Outcome,
     raw_response: Option<String>,
-    record: Option<CompanyRecord>,
+    record: Option<BgCompanyLookupResult>,
     error: Option<String>,
     service_unavailable: bool,
     resume_not_before: Option<chrono::DateTime<chrono::Utc>>,
@@ -231,7 +231,7 @@ fn parser_fingerprint() -> String {
         .as_bytes(),
     )
 }
-fn write_json(path: &std::path::Path, value: &Value) {
+pub(super) fn write_json(path: &std::path::Path, value: &Value) {
     use std::io::Write;
     let temp = path.with_extension("tmp");
     let mut file = fs::File::create(&temp).unwrap();
@@ -240,7 +240,7 @@ fn write_json(path: &std::path::Path, value: &Value) {
     file.sync_all().unwrap();
     fs::rename(temp, path).unwrap();
 }
-fn error_kind(error: &LookupError) -> &'static str {
+pub(super) fn error_kind(error: &LookupError) -> &'static str {
     match error {
         LookupError::Registry { error, .. } => match error {
             RegistryError::RateLimited { .. } => "rateLimited",

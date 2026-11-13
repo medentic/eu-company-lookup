@@ -10,10 +10,14 @@ pub use capabilities::{
     Provider, ProviderCapabilities,
 };
 pub use company::{
-    BulstatDetails, CommercialRegisterDetails, CompanyAddress, CompanyRecord, RegistryCapital,
-    RegistryDetails, RegistryDocument, RegistryMoney, RegistryPerson,
+    BgCompanyLookupResult, BulstatDetails, CommercialRegisterDetails, CompanyAddress,
+    CompanyRecord, RegistryCapital, RegistryDetails, RegistryDocument, RegistryMoney,
+    RegistryPerson,
 };
 pub use company_types::{CompanyStatus, LegalForm, RegistryDocumentType, RegistryRole};
 pub use error::{LimitScope, LookupError, RetryAfter};
 pub use registry_error::{RegistryError, UnavailabilityReason};
-pub use vat::{VatAddress, VatCheck};
+pub use vat::{VatAddress, VatCheck, VatLookupResult};
+
+mod business;
+pub use business::{AnafDetails, BusinessId, CompanyDetails, CompanyLookupResult};

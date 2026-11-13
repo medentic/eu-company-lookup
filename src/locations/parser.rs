@@ -14,7 +14,11 @@ pub(super) fn split_fields(prefix: &str, raw: &str) -> Address {
     };
     let regex = regex_lite::Regex::new(&pattern).expect("static country address rule");
     let Some(captures) = regex.captures(&normalized) else {
-        return result;
+        return if prefix == "BG" {
+            bulgarian_locality_only(&normalized).unwrap_or(result)
+        } else {
+            result
+        };
     };
     let field = |name| {
         captures
@@ -57,4 +61,25 @@ pub(super) fn split_fields(prefix: &str, raw: &str) -> Address {
     result.region = field("region").map(|value| normalize::place_name(prefix, value));
     result.country = field("country");
     result
+}
+
+// Some locality-only records put the settlement first and repeat the region.
+// Require both region names to agree; conflicting or extra text stays unknown.
+fn bulgarian_locality_only(value: &str) -> Option<Address> {
+    static PATTERN: std::sync::LazyLock<regex_lite::Regex> = std::sync::LazyLock::new(|| {
+        regex_lite::Regex::new(r"^(?:[сС]\.|[гГ][рР]\.) *(?P<city>[^,0-9]+), *(?P<repeated_region>[^,0-9]+?) +[оО][бБ][лЛ]\. *(?P<region>[^,0-9]+?)(?: +(?P<postcode>[0-9]{4}))?$").unwrap()
+    });
+    let captures = PATTERN.captures(value)?;
+    let city = captures.name("city")?.as_str().trim();
+    let region = captures.name("region")?.as_str().trim();
+    let repeated = captures.name("repeated_region")?.as_str().trim();
+    if city.is_empty() || region.is_empty() || region.to_lowercase() != repeated.to_lowercase() {
+        return None;
+    }
+    Some(Address {
+        city: Some(normalize::place_name("BG", city.to_owned())),
+        region: Some(normalize::place_name("BG", region.to_owned())),
+        postcode: captures.name("postcode").map(|m| m.as_str().to_owned()),
+        ..Address::default()
+    })
 }

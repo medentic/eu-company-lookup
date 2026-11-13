@@ -15,10 +15,9 @@ fn consumer_can_normalize_identifiers_and_discover_supported_sources() {
             provider.identifier_scheme,
             eu_company_lookup::IdentifierScheme::BgBusinessId
         );
-        assert_eq!(
-            provider.languages,
-            eu_company_lookup::LanguageSupport::BulgarianOnly
-        );
+        assert_eq!(provider.languages.available, ["bg"]);
+        assert_eq!(provider.languages.default, Some("bg"));
+        assert!(!provider.languages.selectable);
     }
     assert!(serde_json::to_value(catalog).unwrap().is_array());
     fn send_sync<T: Send + Sync>() {}
@@ -78,10 +77,7 @@ fn typed_registry_values_preserve_wire_strings_and_unknown_source_values() {
     for (value, expected) in [
         (CompanyStatus::Active, "active"),
         (CompanyStatus::Closed, "closed"),
-        (
-            CompanyStatus::Other("развиващ дейност".into()),
-            "развиващ дейност",
-        ),
+        (CompanyStatus::Unknown, "unknown"),
     ] {
         assert_eq!(serde_json::to_value(value).unwrap(), expected);
     }
@@ -102,4 +98,17 @@ fn typed_registry_values_preserve_wire_strings_and_unknown_source_values() {
         serde_json::to_value(RegistryDocumentType::ConstitutiveDocument).unwrap(),
         "constitutiveDocument"
     );
+}
+
+#[test]
+fn every_company_registry_result_uses_the_same_status_type() {
+    use eu_company_lookup::{BgCompanyLookupResult, CompanyStatus, RoCompanyLookupResult};
+    fn bg(value: &BgCompanyLookupResult) -> Option<CompanyStatus> {
+        value.status
+    }
+    fn ro(value: &RoCompanyLookupResult) -> Option<CompanyStatus> {
+        value.status
+    }
+    let _: fn(&BgCompanyLookupResult) -> Option<CompanyStatus> = bg;
+    let _: fn(&RoCompanyLookupResult) -> Option<CompanyStatus> = ro;
 }

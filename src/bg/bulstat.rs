@@ -1,5 +1,5 @@
 use super::{address, html::element_text};
-use crate::{BgBusinessId, CompanyRecord, Provider, RegistryDetails, RegistryError};
+use crate::{BgBusinessId, BgCompanyLookupResult, Provider, RegistryDetails, RegistryError};
 use scraper::{ElementRef, Html, Selector};
 
 pub(super) const BASE: &str = "https://reports.bulstat.bg/bulstat-ireports/";
@@ -100,7 +100,7 @@ pub(super) fn detail(
     body: &[u8],
     id: &BgBusinessId,
     name: String,
-) -> Result<CompanyRecord, RegistryError> {
+) -> Result<BgCompanyLookupResult, RegistryError> {
     let doc = document(body)?;
     let table = doc
         .select(&Selector::parse("table#tab1").unwrap())
@@ -162,7 +162,12 @@ pub(super) fn detail(
     } else {
         address::bulstat(raw_address)
     };
-    Ok(CompanyRecord {
+    let status_text = values.get("Състояние").cloned().filter(|s| !s.is_empty());
+    let status = status_text.as_deref().map(|text| match text {
+        "развиващ дейност" => crate::CompanyStatus::Active,
+        _ => crate::CompanyStatus::Unknown,
+    });
+    Ok(BgCompanyLookupResult {
         tax_id: id.clone(),
         source: Provider::Bulstat,
         registry_url: public_url(id),
@@ -172,13 +177,11 @@ pub(super) fn detail(
             .split_once(", правна форма: ")
             .map(|(_, s)| super::legal_form::abbreviate(s)),
         address,
-        status: values
-            .get("Състояние")
-            .cloned()
-            .filter(|s| !s.is_empty())
-            .map(crate::CompanyStatus::Other),
+        status,
+        native_registry_status: status_text.clone(),
         registry_details: RegistryDetails::Bulstat(crate::BulstatDetails {
             subject_text: subject.clone(),
+            status_text,
         }),
     })
 }

@@ -20,8 +20,43 @@ macro_rules! source_enum {
         }
     }
 }
-source_enum!(CompanyStatus, "Source record lifecycle, distinct from VAT validity.", { Active => "active", Closed => "closed" });
-source_enum!(LegalForm, "Known Bulgarian legal forms with lossless source fallback.", { Et => "ЕТ", Eood => "ЕООД", Ood => "ООД", Ad => "АД", Ead => "ЕАД" });
+/// Shared normalized company lifecycle across registry results, distinct from tax status.
+/// Provider values that cannot be mapped safely become `Unknown`; raw values live
+/// in separate source fields. Missing provider status is represented by `None`.
+///
+/// Arbitrary strings cannot be constructed as a company status:
+/// ```compile_fail
+/// use eu_company_lookup::CompanyStatus;
+/// let status = CompanyStatus::Other("custom status".into());
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[non_exhaustive]
+pub enum CompanyStatus {
+    /// The source explicitly identifies an active company/record.
+    Active,
+    /// The source explicitly identifies a closed or deleted company/record.
+    Closed,
+    /// A source status exists but has no verified lifecycle mapping.
+    Unknown,
+}
+impl CompanyStatus {
+    /// Stable normalized JSON value, never provider text.
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Active => "active",
+            Self::Closed => "closed",
+            Self::Unknown => "unknown",
+        }
+    }
+}
+impl std::ops::Deref for CompanyStatus {
+    type Target = str;
+    fn deref(&self) -> &str {
+        self.as_str()
+    }
+}
+source_enum!(LegalForm, "Known Bulgarian legal forms with lossless source fallback.", { Et => "ЕТ", Eood => "ЕООД", Ood => "ООД", Ad => "АД", Ead => "ЕАД", Sd => "СД" });
 
 /// Registry role supplied by a supported field.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]

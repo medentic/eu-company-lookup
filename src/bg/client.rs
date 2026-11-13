@@ -1,6 +1,6 @@
 use super::{BgBusinessId, bulstat, commercial};
 use crate::{
-    CompanyRecord, LookupError, Provider, RegistryError, RetryAfter, UnavailabilityReason,
+    BgCompanyLookupResult, LookupError, Provider, RegistryError, RetryAfter, UnavailabilityReason,
 };
 use chrono::{DateTime, TimeZone, Utc};
 use chrono_tz::Europe::Sofia;
@@ -28,8 +28,8 @@ pub struct BgRegistryConfig {
     pub timeout: Duration,
     /// Connection timeout. Default: 3 seconds.
     pub connect_timeout: Duration,
-    /// Minimum interval between HTTP requests to each provider. Default: 10 seconds.
-    /// This is a conservative client policy, not an official provider quota.
+    /// Optional minimum interval between HTTP requests to each provider. Default: zero.
+    /// Requests proceed immediately unless callers opt into pacing or a cooldown applies.
     pub start_interval: Duration,
     /// Cooldown after unavailability or throttling. Default: 60 seconds.
     pub failure_cooldown: Duration,
@@ -41,7 +41,7 @@ impl Default for BgRegistryConfig {
         Self {
             timeout: Duration::from_secs(30),
             connect_timeout: Duration::from_secs(3),
-            start_interval: Duration::from_secs(10),
+            start_interval: Duration::ZERO,
             failure_cooldown: Duration::from_secs(60),
             max_response_bytes: 1_048_576,
         }
@@ -68,6 +68,8 @@ pub struct BgRegistryClient {
     bulstat_endpoint: String,
     #[cfg(test)]
     trace: Arc<std::sync::Mutex<RequestTrace>>,
+    #[cfg(test)]
+    captured: Arc<std::sync::Mutex<Option<Vec<serde_json::Value>>>>,
 }
 
 #[cfg(test)]
@@ -135,13 +137,15 @@ impl BgRegistryClient {
             commercial_endpoint: COMMERCIAL.into(),
             #[cfg(test)]
             trace: Arc::new(std::sync::Mutex::new(RequestTrace::default())),
+            #[cfg(test)]
+            captured: Arc::new(std::sync::Mutex::new(None)),
             bulstat_endpoint: format!("{}preview", bulstat::BASE),
         })
     }
 
     /// Look up one complete nine- or thirteen-digit ЕИК/BULSTAT code.
     /// `NotFound` means both sources definitively missed; outages never mean absence.
-    pub async fn lookup(&self, value: &str) -> Result<CompanyRecord, LookupError> {
+    pub async fn lookup(&self, value: &str) -> Result<BgCompanyLookupResult, LookupError> {
         let id = BgBusinessId::parse(value)?;
         let deadline = Instant::now() + self.config.timeout;
         let mut state = self.state.try_lock().map_err(|_| LookupError::Busy)?;
@@ -238,17 +242,31 @@ impl BgRegistryClient {
         tokio::time::sleep_until(admission.next).await;
         #[cfg(test)]
         {
-            self.trace.lock().unwrap().admission_wait_ms = waiting.elapsed().as_millis();
+            *self.trace.lock().unwrap() = RequestTrace {
+                admission_wait_ms: waiting.elapsed().as_millis(),
+                ..Default::default()
+            };
         }
         #[cfg(test)]
         let sending = Instant::now();
         admission.next = Instant::now() + self.config.start_interval;
+        #[cfg(test)]
+        let request_url = url.to_string();
         let result = tokio::time::timeout_at(deadline, self.send(url))
             .await
             .unwrap_or_else(|_| Err(unavailable(UnavailabilityReason::Timeout, None)));
         #[cfg(test)]
         {
             self.trace.lock().unwrap().http_ms = Some(sending.elapsed().as_millis());
+            if let Some(rows) = self.captured.lock().unwrap().as_mut() {
+                rows.push(serde_json::json!({
+                    "provider":provider, "url":request_url,
+                    "trace":self.trace.lock().unwrap().clone(),
+                    "body":result.as_ref().ok().map(|r| &r.body),
+                    "contentType":result.as_ref().ok().map(|r| &r.content_type),
+                    "error":result.as_ref().err().map(ToString::to_string),
+                }));
+            }
         }
         if let Err(
             RegistryError::ServiceUnavailable { retry_after, .. }
@@ -373,7 +391,7 @@ pub(super) fn end_of_day(now: DateTime<Utc>) -> String {
 
 #[cfg(test)]
 impl BgRegistryClient {
-    pub(super) fn for_test(cr: String, bulstat: String, config: BgRegistryConfig) -> Self {
+    pub(crate) fn for_test(cr: String, bulstat: String, config: BgRegistryConfig) -> Self {
         let mut client = Self::with_config(config).unwrap();
         client.commercial_endpoint = cr;
         client.bulstat_endpoint = bulstat;
@@ -407,5 +425,16 @@ impl BgRegistryClient {
             return Err(wrap(provider, RegistryError::UnexpectedResponse));
         }
         Ok(response.body)
+    }
+}
+
+#[cfg(test)]
+impl BgRegistryClient {
+    pub(super) fn begin_capture(&self) {
+        *self.captured.lock().unwrap() = Some(Vec::new());
+        *self.trace.lock().unwrap() = RequestTrace::default();
+    }
+    pub(super) fn take_capture(&self) -> Vec<serde_json::Value> {
+        self.captured.lock().unwrap().take().unwrap_or_default()
     }
 }

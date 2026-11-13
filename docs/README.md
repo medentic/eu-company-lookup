@@ -10,6 +10,8 @@ These references describe the public contract and are included in the crate:
 - [VIES](reference/vies.md): identifiers, VAT results, address fields and failures.
 - [Bulgarian registry](reference/bulgarian-registry.md): Commercial Register/BULSTAT
   lookup, fallback, company fields and coverage limitations.
+- [Romanian registry](reference/romanian-registry.md): ANAF taxpayer details,
+  fiscal status, dates and verification limitations.
 - [API stability](reference/api-stability.md): Rust/JSON compatibility and address policy.
 
 ## Contributing

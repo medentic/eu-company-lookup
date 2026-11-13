@@ -63,9 +63,16 @@ or withheld. Names and addresses can also be supplied with a negative result;
 those values must not override `valid: false`.
 
 Conservative address rules cover AT, BE, BG, CY, CZ, DK, EE, EL, FI, FR, IT, LT,
-LU, NL, PL, PT, SE, SI and SK. Unsupported formats retain original text and country
+LU, NL, PL, PT, RO, SE, SI and SK. Unsupported formats retain original text and country
 metadata with unknown delivery components. A matching format does not establish
 postal correctness. See [shared address policy](api-stability.md#address-policy).
+
+Romanian locality-first formats retain the labelled settlement and source postcode.
+Four-, five- and six-digit source postcodes are kept without padding; all-zero
+placeholders remain null. Explicit building, staircase, floor and apartment labels
+start `address2`. Bucharest sector text stays with the city. Parent commune/town
+labels are available in the shared parser's `municipality`, while the unchanged
+full source remains in the VIES envelope. No county is inferred from a settlement.
 
 ## Failures and admission
 

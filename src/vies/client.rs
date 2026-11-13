@@ -1,5 +1,7 @@
-use super::{VatId, capabilities, identifiers::FORMATS, soap, transport, validate_vat_syntax};
-use crate::{JurisdictionCapabilities, LimitScope, LookupError, Provider, RetryAfter, VatCheck};
+use super::{VatId, identifiers::FORMATS, soap, transport, validate_vat_syntax};
+use crate::{
+    JurisdictionCapabilities, LimitScope, LookupError, Provider, RetryAfter, VatLookupResult,
+};
 use chrono::Utc;
 use std::{
     collections::HashMap,
@@ -90,7 +92,7 @@ struct State {
     countries: HashMap<&'static str, Mutex<Admission>>,
 }
 
-/// Cloneable asynchronous VAT client. Use inside a Tokio runtime with I/O and time
+/// Cloneable asynchronous VAT and company lookup client. Use inside a Tokio runtime with I/O and time
 /// enabled. Reuse one client so limits and cooldowns are shared. No automatic
 /// retries, redirects, persistent cache, ambient proxy or cookies are used.
 #[derive(Clone)]
@@ -100,6 +102,7 @@ pub struct Client {
     state: Arc<State>,
     endpoint: String,
     registry: crate::BgRegistryClient,
+    romanian_registry: crate::RoRegistryClient,
 }
 
 impl std::fmt::Debug for Client {
@@ -126,6 +129,15 @@ impl Client {
     pub fn with_configs(
         config: ClientConfig,
         registry_config: crate::BgRegistryConfig,
+    ) -> Result<Self, LookupError> {
+        Self::with_registry_configs(config, registry_config, crate::RoRegistryConfig::default())
+    }
+
+    /// Configure VIES, Bulgarian and Romanian registry clients independently.
+    pub fn with_registry_configs(
+        config: ClientConfig,
+        registry_config: crate::BgRegistryConfig,
+        romanian_config: crate::RoRegistryConfig,
     ) -> Result<Self, LookupError> {
         if config.timeout.is_zero()
             || config.timeout > Duration::from_secs(300)
@@ -172,33 +184,51 @@ impl Client {
             state,
             endpoint: ENDPOINT.into(),
             registry: crate::BgRegistryClient::with_config(registry_config)?,
+            romanian_registry: crate::RoRegistryClient::with_config(romanian_config)?,
         })
     }
 
     /// Return implemented capabilities without network calls. Enabled support is
     /// distinct from live source availability; VIES has no language parameter.
     pub fn capabilities(&self) -> Vec<JurisdictionCapabilities> {
-        let mut catalog = capabilities::catalog();
-        let bg = catalog
-            .iter_mut()
-            .find(|c| c.country_code == "BG")
-            .expect("BG VAT jurisdiction");
-        for provider in [Provider::BulgarianCommercialRegister, Provider::Bulstat] {
-            bg.providers.push(crate::ProviderCapabilities {
-                provider,
-                operations: vec![
-                    crate::Operation::ValidateBgBusinessIdSyntax,
-                    crate::Operation::LookupBgCompany,
-                ],
-                identifier_scheme: crate::IdentifierScheme::BgBusinessId,
-                checksum: crate::ChecksumSupport::NotImplemented,
-                languages: crate::LanguageSupport::BulgarianOnly,
-                requires_credentials: false,
-                optional_owner_details: true,
-                address_splitting: true,
-            });
+        crate::capabilities::catalog()
+    }
+
+    /// Look up a supported national business identifier without inferring VAT validity.
+    pub async fn lookup_company(
+        &self,
+        identifier: &crate::BusinessId,
+    ) -> Result<crate::CompanyLookupResult, LookupError> {
+        match identifier.scheme() {
+            crate::IdentifierScheme::BgBusinessId => self
+                .registry
+                .lookup(identifier.as_str())
+                .await
+                .map(Into::into),
+            crate::IdentifierScheme::RoBusinessId => self
+                .romanian_registry
+                .lookup(identifier.as_str())
+                .await
+                .map(Into::into),
+            _ => Err(LookupError::InvalidInput),
         }
-        catalog
+    }
+
+    /// Look up a Romanian CUI through ANAF for today's date in Europe/Bucharest.
+    pub async fn lookup_ro_company(
+        &self,
+        tax_id: &str,
+    ) -> Result<crate::RoCompanyLookupResult, LookupError> {
+        self.romanian_registry.lookup(tax_id).await
+    }
+
+    /// Look up Romanian fiscal status for an explicit date.
+    pub async fn lookup_ro_company_at(
+        &self,
+        tax_id: &str,
+        date: chrono::NaiveDate,
+    ) -> Result<crate::RoCompanyLookupResult, LookupError> {
+        self.romanian_registry.lookup_at(tax_id, date).await
     }
 
     /// Look up an ЕИК/BULSTAT business code. Tries the Commercial Register, then
@@ -206,15 +236,17 @@ impl Client {
     pub async fn lookup_bg_company(
         &self,
         tax_id: &str,
-    ) -> Result<crate::CompanyRecord, LookupError> {
+    ) -> Result<crate::BgCompanyLookupResult, LookupError> {
         self.registry.lookup(tax_id).await
     }
 
-    /// Check one VAT ID. `valid: false` is returned only for a matching negative
+    /// Look up VAT validity and available company identity/address details.
+    /// `valid: false` is returned only for a matching negative
     /// VIES response. Capacity, service failures and deadlines remain errors.
-    pub async fn lookup_vat(&self, vat_id: &str) -> Result<VatCheck, LookupError> {
+    pub async fn lookup_vat(&self, vat_id: &str) -> Result<VatLookupResult, LookupError> {
         let vat = validate_vat_syntax(vat_id)?;
-        self.check(&vat, Instant::now() + self.config.timeout).await
+        self.lookup_with_deadline(&vat, Instant::now() + self.config.timeout)
+            .await
     }
 
     /// Convenience wrapper around [`Self::lookup_vat`]. Do not call both for one
@@ -223,7 +255,11 @@ impl Client {
         Ok(self.lookup_vat(vat_id).await?.valid)
     }
 
-    async fn check(&self, vat: &VatId, deadline: Instant) -> Result<VatCheck, LookupError> {
+    async fn lookup_with_deadline(
+        &self,
+        vat: &VatId,
+        deadline: Instant,
+    ) -> Result<VatLookupResult, LookupError> {
         let _permit = self
             .state
             .capacity
@@ -260,7 +296,7 @@ impl Client {
             return Err(LookupError::Busy);
         }
         country.next_start = Instant::now() + self.config.country_start_interval;
-        let result = tokio::time::timeout_at(deadline, self.send(vat))
+        let result = tokio::time::timeout_at(deadline, self.fetch_vat_result(vat))
             .await
             .unwrap_or(Err(LookupError::DeadlineExceeded));
         let scope = match &result {
@@ -297,7 +333,7 @@ impl Client {
         result
     }
 
-    async fn send(&self, vat: &VatId) -> Result<VatCheck, LookupError> {
+    async fn fetch_vat_result(&self, vat: &VatId) -> Result<VatLookupResult, LookupError> {
         let response = transport::exchange(
             &self.http,
             &self.endpoint,
@@ -370,7 +406,7 @@ impl Client {
             });
         }
         let decoded = decoded?;
-        Ok(VatCheck {
+        Ok(VatLookupResult {
             vat_id: vat.clone(),
             valid: decoded.valid,
             request_date: decoded.request_date,
@@ -410,6 +446,15 @@ fn retry_delay(value: &RetryAfter) -> Duration {
 
 #[cfg(test)]
 impl Client {
+    pub(crate) fn with_test_registries(
+        bg: crate::BgRegistryClient,
+        ro: crate::RoRegistryClient,
+    ) -> Self {
+        let mut client = Self::new().unwrap();
+        client.registry = bg;
+        client.romanian_registry = ro;
+        client
+    }
     pub(super) fn for_test(endpoint: String, config: ClientConfig) -> Self {
         let mut client = Self::with_config(config).unwrap();
         client.endpoint = endpoint;

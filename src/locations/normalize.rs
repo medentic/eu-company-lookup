@@ -116,10 +116,17 @@ fn remove_empty_details(value: &str) -> String {
             marker.as_str().to_lowercase().as_str(),
             "бл." | "вх." | "ет." | "ап."
         ) && value[marker.end()..next]
-            .trim_matches([' ', ',', '.', '-'])
+            .trim_matches([' ', ',', '.', '-', '*'])
             .is_empty()
         {
-            out.push_str(value[end..marker.start()].trim_end_matches([' ', ',']));
+            let prefix = &value[end..marker.start()];
+            let preserve_comma = next < value.len()
+                && value[marker.end()..next].contains('*')
+                && prefix.trim_end().ends_with(',');
+            out.push_str(prefix.trim_end_matches([' ', ',']));
+            if preserve_comma {
+                out.push(',');
+            }
             out.push(' ');
             end = next;
         }

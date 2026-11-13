@@ -6,11 +6,12 @@ Read [README.md](README.md) and [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
 ## Scope and invariants
 
-- Version 1.0 targets VIES and Bulgarian Commercial Register/BULSTAT lookup only.
-  The README priority table is future work, not implemented coverage.
+- Version 2.0 covers VIES, Bulgarian Commercial Register/BULSTAT lookup and
+  Romanian ANAF taxpayer lookup. The README priority table describes further work.
 - Preserve full identifiers and leading zeroes. Syntax is not checksum or registration.
 - `valid: false` requires a matched negative VIES response. `NotFound` requires both
-  Bulgarian registers to miss definitively. Operational errors never prove absence.
+  Bulgarian registers to miss definitively. `RegistryNotFound` identifies an ANAF
+  miss only. Operational errors never prove absence.
 - BULSTAT fallback follows a definitive Commercial Register miss, never a failure.
 - Keep original decoded address text. Normalize only a working copy; do not invent
   missing data. Review JSON/API changes against the compatibility contract.
@@ -23,6 +24,10 @@ Read [README.md](README.md) and [CONTRIBUTING.md](CONTRIBUTING.md) first.
   overlapping changes with other active tasks under the user's standing authorization.
 - Use the contributor check commands. CI remains Linux-only; do not add other OS jobs
   without an explicit change to that preference.
+- Country completion requires live verification of at least 200 distinct VAT IDs
+  and 200 distinct company/tax IDs, with reviewed source-bound expectations and
+  passing offline replay. Report negative observations, provider failures and
+  ambiguities separately; request counts alone do not establish completion.
 - Default to offline tests. Live calls require explicit identifiers or a bounded
   selection authorized by the user. Never run every ignored test as a shortcut.
 - Collected records, identifier queues and their provenance stay local-only. Do not

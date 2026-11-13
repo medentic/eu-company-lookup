@@ -30,13 +30,15 @@ def write_json(path, value):
     temp.replace(path)
 
 
-def selection(path, offset, count):
+def selection(path, offset, count, country="BG"):
     ids = json.loads(path.read_text())
     if offset < 0 or not 1 <= count <= 100 or offset + count > len(ids):
         raise ValueError('offset/count outside queue; count must be 1..100')
     selected = ids[offset:offset + count]
-    if len(set(ids)) != len(ids) or any(not isinstance(x, str) or not x.startswith('BG') or not x[2:].isascii() or not x[2:].isdigit() for x in ids):
-        raise ValueError('queue contains duplicate or malformed BG identifiers')
+    if country not in ('BG', 'RO'):
+        raise ValueError('unsupported collector country')
+    if len(set(ids)) != len(ids) or any(not isinstance(x, str) or not x.startswith(country) or not x[2:].isascii() or not x[2:].isdigit() or (country == 'RO' and not 2 <= len(x[2:]) <= 10) for x in ids):
+        raise ValueError('queue contains duplicate or malformed country identifiers')
     return selected
 
 
@@ -61,9 +63,12 @@ def report(folder):
     rows = load_rows(folder)
     if any(r['vatId'] not in ids for r in rows):
         raise ValueError('journal contains IDs outside selection')
-    fixtures_path = ROOT / 'src/vies/fixtures/countries/bg.json'
+    country = ids[0][:2].lower()
+    if country not in ('bg', 'ro') or any(i[:2].lower() != country for i in ids):
+        raise ValueError('mixed or unsupported report country')
+    fixtures_path = ROOT / f'src/vies/fixtures/countries/{country}.json'
     fixtures = {c['vatId']: c for c in json.loads(fixtures_path.read_text())} if fixtures_path.exists() else {}
-    reviews_path = ROOT / 'src/vies/fixtures/countries/reviews/bg.json'
+    reviews_path = ROOT / f'src/vies/fixtures/countries/reviews/{country}.json'
     reviews = {r['vatId']: r for r in json.loads(reviews_path.read_text())} if reviews_path.exists() else {}
     replay_path = folder / 'offline-replay.json'
     replay = {r['vatId']: r['actual'] for r in json.loads(replay_path.read_text())} if replay_path.exists() else {}
@@ -126,7 +131,7 @@ def collect(args):
     with (folder / '.collector.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         manifest_path = folder / 'manifest.json'
-        selected = selection(args.queue, args.offset, args.count)
+        selected = selection(args.queue, args.offset, args.count, getattr(args, "country", "BG"))
         if manifest_path.exists():
             if not args.resume:
                 raise ValueError('run already exists; use --resume')
@@ -186,6 +191,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='action', required=True)
     p = sub.add_parser('collect')
+    p.add_argument('--country', choices=['BG', 'RO'], default='BG')
     p.add_argument('--queue', type=Path, default=ROOT / 'src/vies/fixtures/ids/bg.json')
     p.add_argument('--offset', type=int, required=True, help='zero-based; 100 starts at ID 101')
     p.add_argument('--count', type=int, default=100)

@@ -1,5 +1,43 @@
 # Changelog
 
+## 2.0.0
+
+### Breaking changes
+
+- Replace `CompanyStatus::Other(String)` with `Unknown`. Status serializes as
+  `active`, `closed`, `unknown`, or null when absent. Unknown Commercial Register
+  codes now produce `unknown`; BULSTAT `развиващ дейност` produces `active`.
+  Native values remain available separately.
+- Make capability VAT prefixes optional and replace the `LanguageSupport` enum
+  with explicit available/default/selectable metadata. Metadata-only EEA entries
+  have no enabled providers and do not imply lookup support.
+
+See [migration guidance](docs/reference/api-stability.md#migrating-from-1x).
+
+### Added
+
+- Shared `BusinessId` validates country, identifier scheme and value together.
+  `Client::lookup_company` returns `CompanyLookupResult` for BG/RO, with separate
+  registered/fiscal addresses and typed provider details.
+- Romanian ANAF taxpayer lookup, dated domestic tax flags, bounded transport,
+  explicit source-specific misses and conservative Romanian VIES address parsing.
+  Tax flags remain distinct from VIES validity and company lifecycle.
+- `nativeRegistryStatus` preserves source status text or numeric codes as strings
+  for all company results. Romanian lifecycle stays unknown until source mappings
+  are verified; fiscal inactivity never implies closure.
+- Preferred native result names `VatLookupResult` and `BgCompanyLookupResult`.
+  `VatCheck` and `CompanyRecord` remain aliases without deprecation warnings.
+
+### Fixed
+
+- Preserve Bulgarian locality-only addresses, remove empty delivery placeholders,
+  separate explicit ground-floor/office details and normalize duplicate portal
+  street labels without discarding original provider address text.
+- Extract corporate holder names with explicit business-code metadata and map
+  Bulgarian partnership legal form `СД`.
+- Remove artificial default spacing between Bulgarian registry requests while
+  retaining configurable pacing, shared admission and failure cooldowns.
+
 ## 1.0.0
 
 Initial release, scoped to VIES and Bulgarian registry lookup:

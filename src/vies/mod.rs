@@ -1,5 +1,5 @@
 mod address;
-mod capabilities;
+pub(crate) mod capabilities;
 mod client;
 mod identifiers;
 #[cfg(test)]
