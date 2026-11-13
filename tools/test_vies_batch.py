@@ -7,6 +7,20 @@ import vies_batch as batch
 
 
 class BatchTests(unittest.TestCase):
+    def test_public_checkout_reports_unreviewed_responses_without_local_corpus(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root/'ids.json').write_text(json.dumps(['BG123456789']))
+            row = {'vatId': 'BG123456789', 'totalMs': 1, 'attempts': [{'response': {
+                'valid': True, 'company': 'Example', 'address': {'fullAddressByVies': 'Example street'}
+            }}]}
+            (root/'observations.jsonl').write_text(json.dumps(row)+'\n')
+            with patch.object(batch, 'ROOT', root):
+                result = batch.report(root)
+            self.assertTrue(result['complete'])
+            self.assertEqual(result['statuses'], {'needsReview': 1})
+            self.assertEqual(result['passed'], 0)
+
     def test_selection_and_duplicates(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / 'ids.json'

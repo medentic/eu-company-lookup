@@ -61,7 +61,8 @@ def report(folder):
     rows = load_rows(folder)
     if any(r['vatId'] not in ids for r in rows):
         raise ValueError('journal contains IDs outside selection')
-    fixtures = {c['vatId']: c for c in json.loads((ROOT / 'src/vies/fixtures/countries/bg.json').read_text())}
+    fixtures_path = ROOT / 'src/vies/fixtures/countries/bg.json'
+    fixtures = {c['vatId']: c for c in json.loads(fixtures_path.read_text())} if fixtures_path.exists() else {}
     reviews_path = ROOT / 'src/vies/fixtures/countries/reviews/bg.json'
     reviews = {r['vatId']: r for r in json.loads(reviews_path.read_text())} if reviews_path.exists() else {}
     replay_path = folder / 'offline-replay.json'
