@@ -29,3 +29,26 @@ Synthetic cases live beside these modules and in
 [the VIES address tests](../vies/address/tests.rs) and [BG tests](../bg/tests.rs).
 Use focused offline tests and available reviewed corpus replay; a parser supporting
 a country format is not proof of complete national address coverage.
+
+Estonian wide-space postal boundaries are normalized before extraction. Explicit
+`linnaosa` district labels go to the second address line; `küla` settlements and
+`vald` municipalities remain separate locality and municipality fields. The original
+VIES address stays unchanged in its envelope.
+
+Finnish `000xx` postal recipient labels remain secondary delivery text, with the
+city unknown: these labels may identify organizations rather than settlements.
+
+Croatian comma-delimited observations distinguish the settlement from the final
+postal routing locality. Hungarian observations support a final four-digit
+postcode and digit-free locality. Extra ambiguous components remain unparsed.
+
+Maltese observations support a standalone alphanumeric postcode line followed by
+locality; all preceding delivery lines retain their order. Short source postal
+labels are preserved without padding or asserting current postal validity.
+
+Swedish postal-only observations may omit the delivery line entirely; street
+fields remain unknown while the supplied postcode and locality are retained.
+
+For incomplete Portuguese observations, an explicitly labelled `AVENIDA` or
+`RUA` line and a second non-numeric line can be retained as delivery text. City
+and postcode remain unknown; external addresses are never substituted.

@@ -10,10 +10,13 @@ fn country_formats() {
         ("EE", "Example 1   61602 Town", "61602", "Town"),
         ("EL", "Example 1   16231 - Town", "16231", "Town"),
         ("FI", "Example 1\n04261 Town", "04261", "Town"),
+        ("HR", "Example 1, Town, 12345 Postal town", "12345", "Town"),
+        ("HU", "Example 1 1234 Town", "1234", "Town"),
         ("FR", "Building\nExample 1\n78180 Town", "78180", "Town"),
         ("IT", "Example 1\n34170 Town GO\n", "34170", "Town"),
         ("LT", "Example 1, Town, LT-12345", "LT-12345", "Town"),
         ("LU", "Example 1\nL-8232 Town", "L-8232", "Town"),
+        ("MT", "Example 1\nABC 1234\nTown", "ABC 1234", "Town"),
         ("NL", "\nExample 1\n1234 AB Town\n", "1234 AB", "Town"),
         ("PL", "Example 1\n05-850 Town", "05-850", "Town"),
         (
@@ -153,9 +156,9 @@ fn capabilities_do_not_claim_address_rules_for_unsupported_countries() {
                 .iter()
                 .any(|p| p.provider == crate::Provider::Vies && p.address_splitting))
             .count(),
-        20
+        23
     );
-    for prefix in ["DE", "ES", "IE", "MT", "LV", "HR", "HU", "XI"] {
+    for prefix in ["DE", "ES", "IE", "LV", "XI"] {
         let p = split(prefix, Some("Example 1\n12345 City".into()));
         assert!(p.address.is_none() && p.city.is_none() && p.country.is_some());
         assert!(
@@ -569,5 +572,97 @@ fn bulgarian_terminal_ground_floor_annotation_is_delivery_detail() {
             crate::locations::split_delivery(line, "BG"),
             (Some(line.into()), None)
         );
+    }
+}
+
+#[test]
+fn estonian_spacing_and_labelled_localities() {
+    for gap in ["  ", "   ", "\t\t", "\n"] {
+        let raw = format!("Example tn 12{gap}12345 Example linnaosa Town");
+        let parsed = split("EE", Some(raw.clone()));
+        assert_eq!(parsed.full_address_by_vies, Some(raw));
+        assert_eq!(parsed.address.as_deref(), Some("Example tn 12"));
+        assert_eq!(parsed.address2.as_deref(), Some("Example linnaosa"));
+        assert_eq!(parsed.postcode.as_deref(), Some("12345"));
+        assert_eq!(parsed.city.as_deref(), Some("Town"));
+    }
+    let parsed = split("EE", Some("Farm  12345 Example küla Sample vald".into()));
+    assert_eq!(parsed.city.as_deref(), Some("Example küla"));
+    assert_eq!(parsed.municipality.as_deref(), Some("Sample vald"));
+    assert!(parsed.region.is_none());
+    let parsed = split("EE", Some("Street 12345 Town".into()));
+    assert!(parsed.city.is_none());
+}
+
+#[test]
+fn finnish_special_postal_recipient_is_not_asserted_as_city() {
+    let raw = "PL 123\n00012 EXAMPLE ORGANIZATION";
+    let parsed = split("FI", Some(raw.into()));
+    assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+    assert_eq!(parsed.address.as_deref(), Some("PL 123"));
+    assert_eq!(parsed.postcode.as_deref(), Some("00012"));
+    assert_eq!(parsed.address2.as_deref(), Some("EXAMPLE ORGANIZATION"));
+    assert!(parsed.city.is_none());
+}
+
+#[test]
+fn croatian_settlement_and_hungarian_numeric_boundaries() {
+    let raw = "Example 17, Settlement, 12345 Postal town";
+    let parsed = split("HR", Some(raw.into()));
+    assert_eq!(parsed.city.as_deref(), Some("Settlement"));
+    assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+    let parsed = split(
+        "HR",
+        Some("Extra, Example 17, Settlement, 12345 Postal town".into()),
+    );
+    assert!(parsed.city.is_none());
+    let parsed = split("HU", Some("Example 1234 Block 1056 Town".into()));
+    assert_eq!(parsed.address.as_deref(), Some("Example 1234 Block"));
+    assert_eq!(parsed.postcode.as_deref(), Some("1056"));
+    assert_eq!(parsed.city.as_deref(), Some("Town"));
+    let parsed = split("HU", Some("Example 1234".into()));
+    assert!(parsed.postcode.is_none());
+}
+
+#[test]
+fn maltese_postcode_line_preserves_multiple_delivery_lines() {
+    let raw = "\nExample Centre\nRoad\nIndustrial Estate\nABC1234\nTown";
+    let parsed = split("MT", Some(raw.into()));
+    assert_eq!(parsed.address.as_deref(), Some("Example Centre"));
+    assert_eq!(parsed.address2.as_deref(), Some("Road\nIndustrial Estate"));
+    assert_eq!(parsed.postcode.as_deref(), Some("ABC1234"));
+    assert_eq!(parsed.city.as_deref(), Some("Town"));
+    assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+    let parsed = split("MT", Some("Example\nABC 04\nTown".into()));
+    assert_eq!(parsed.postcode.as_deref(), Some("ABC 04"));
+    let parsed = split("MT", Some("Example\n1234\nTown".into()));
+    assert!(parsed.postcode.is_none());
+}
+
+#[test]
+fn swedish_postal_only_address_does_not_require_a_blank_delivery_line() {
+    let raw = "123 45 Town";
+    let parsed = split("SE", Some(raw.into()));
+    assert!(parsed.address.is_none() && parsed.address2.is_none());
+    assert_eq!(parsed.postcode.as_deref(), Some("123 45"));
+    assert_eq!(parsed.city.as_deref(), Some("Town"));
+    assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+}
+
+#[test]
+fn portuguese_partial_delivery_never_invents_missing_locality_or_postcode() {
+    let raw = "AVENIDA EXEMPLO N 1\n CIDADE BAIRRO";
+    let parsed = split("PT", Some(raw.into()));
+    assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+    assert_eq!(parsed.address.as_deref(), Some("AVENIDA EXEMPLO N 1"));
+    assert_eq!(parsed.address2.as_deref(), Some("CIDADE BAIRRO"));
+    assert!(parsed.city.is_none() && parsed.postcode.is_none() && parsed.region.is_none());
+    for raw in [
+        "Unlabelled text\nPlace",
+        "RUA EXEMPLO 1\n1234",
+        "RUA EXEMPLO 1\nPlace\nExtra",
+    ] {
+        let parsed = split("PT", Some(raw.into()));
+        assert!(parsed.address.is_none() && parsed.city.is_none() && parsed.postcode.is_none());
     }
 }

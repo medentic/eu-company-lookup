@@ -272,6 +272,7 @@ fn historical_journal_errors_are_preserved_at_input_boundary() {
 fn validate_saved_typed_journals() {
     let root = std::path::PathBuf::from(std::env::var("VIES_REPLAY_DIR").unwrap());
     let mut count = 0;
+    let mut soap_bodies = 0;
     for entry in std::fs::read_dir(root).unwrap() {
         let path = entry.unwrap().path();
         let name = path.file_name().unwrap().to_string_lossy();
@@ -286,9 +287,63 @@ fn validate_saved_typed_journals() {
             let round_trip = Observation::from_json(&encoded).unwrap();
             assert_eq!(record.vat_id, round_trip.vat_id);
             assert_eq!(record.run.attempts.len(), round_trip.run.attempts.len());
+            soap_bodies += validate_saved_soap(&record).expect("saved SOAP outcome changed");
             count += 1;
         }
     }
     assert!(count > 0);
-    eprintln!("Validated {count} historical records through typed schema round trips");
+    eprintln!("Validated {count} historical records and {soap_bodies} saved SOAP bodies");
+}
+
+fn validate_saved_soap(record: &Observation) -> Result<usize, &'static str> {
+    let mut count = 0;
+    for attempt in &record.run.attempts {
+        let Some(raw) = &attempt.raw_body else {
+            continue;
+        };
+        let successful_http = attempt.http_status.is_some_and(|s| (200..300).contains(&s));
+        match (super::soap::decode(raw, &record.vat_id), &attempt.outcome) {
+            (Ok(decoded), Outcome::Success { response })
+                if successful_http
+                    && decoded.valid == response.valid
+                    && decoded.company == response.company
+                    && decoded.address == response.address.full_address_by_vies => {}
+            (Err(decoded), Outcome::Failure { error }) => {
+                if AttemptError::from(decoded) != *error {
+                    return Err("SOAP fault differs from recorded outcome");
+                }
+            }
+            (
+                Ok(_),
+                Outcome::Failure {
+                    error: AttemptError::HttpError,
+                },
+            ) if !successful_http => {}
+            _ => return Err("SOAP body differs from recorded outcome"),
+        }
+        count += 1;
+    }
+    Ok(count)
+}
+
+#[test]
+fn saved_soap_validation_rejects_changed_faults() {
+    let mut record = Observation {
+        schema_version: SCHEMA_VERSION,
+        vat_id: VatId::parse("BG123456789").unwrap(),
+        checked_at: "2026-11-13T10:00:00Z".parse().unwrap(),
+        run: Run {
+            total_ms: 1,
+            attempts: vec![Attempt {
+                attempt: 1,
+                duration_ms: 1,
+                http_status: Some(200),
+                raw_body: Some(crate::vies::tests::soap::fault("MS_UNAVAILABLE")),
+                ..Attempt::failure(AttemptError::MemberStateUnavailable)
+            }],
+        },
+    };
+    assert_eq!(validate_saved_soap(&record), Ok(1));
+    record.run.attempts[0].raw_body = Some(crate::vies::tests::soap::fault("INVALID_INPUT"));
+    assert!(validate_saved_soap(&record).is_err());
 }

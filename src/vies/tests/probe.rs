@@ -7,13 +7,21 @@ use records::{
     Attempt, AttemptError, Observation, ObservedCompany, Outcome, Run, SCHEMA_VERSION, Source,
 };
 
-async fn experiment<F, Fut>(mut call: F) -> Run
+async fn experiment<F, Fut>(call: F) -> Run
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = Attempt>,
+{
+    experiment_with_budget(call, Duration::from_secs(6)).await
+}
+
+async fn experiment_with_budget<F, Fut>(mut call: F, budget: Duration) -> Run
 where
     F: FnMut() -> Fut,
     Fut: Future<Output = Attempt>,
 {
     let start = Instant::now();
-    let deadline = start + Duration::from_secs(6);
+    let deadline = start + budget;
     let mut attempts = Vec::new();
     for index in 0..3 {
         if index == 2 {
@@ -190,4 +198,34 @@ async fn preserves_retry_after_when_body_cannot_be_used() {
         assert_eq!(row.retry_after.as_deref(), Some("120"));
         assert!(matches!(row.outcome, Outcome::Failure { error } if error == expected));
     }
+}
+
+#[tokio::test(start_paused = true)]
+async fn extended_profile_is_bounded_and_accepts_a_slow_response() {
+    let slow = experiment_with_budget(
+        || async {
+            sleep(Duration::from_secs(20)).await;
+            Attempt::status(200)
+        },
+        Duration::from_secs(25),
+    )
+    .await;
+    assert_eq!(slow.total_ms, 20_000);
+    assert_eq!(slow.attempts.len(), 1);
+    assert_eq!(slow.attempts[0].http_status, Some(200));
+    let expired = experiment_with_budget(
+        || async {
+            sleep(Duration::from_secs(30)).await;
+            Attempt::status(200)
+        },
+        Duration::from_secs(25),
+    )
+    .await;
+    assert_eq!(expired.total_ms, 25_000);
+    assert!(matches!(
+        expired.attempts[0].outcome,
+        Outcome::Failure {
+            error: AttemptError::TotalDeadlineExceeded
+        }
+    ));
 }

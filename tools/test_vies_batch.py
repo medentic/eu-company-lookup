@@ -7,6 +7,61 @@ import vies_batch as batch
 
 
 class BatchTests(unittest.TestCase):
+    def test_selection_accepts_every_client_format_and_rejects_malformed_ids(self):
+        import re
+        examples = re.findall(r'"([A-Z]{2}[A-Z0-9]+)"',
+            (batch.ROOT / 'src/vies/tests/identifiers.rs').read_text().split('];', 1)[0])
+        self.assertEqual({v[:2] for v in examples}, set(batch.FORMATS))
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'ids.json'
+            for vat in examples:
+                with self.subTest(country=vat[:2]):
+                    path.write_text(json.dumps([vat]))
+                    self.assertEqual(batch.selection(path, 0, 1, vat[:2]), [vat])
+                    for invalid in [vat + '!', vat[:2] + '1', 123, {}, vat.lower()]:
+                        path.write_text(json.dumps([invalid]))
+                        with self.assertRaises(ValueError):
+                            batch.selection(path, 0, 1, vat[:2])
+
+    def test_extended_profile_is_explicit_and_frozen(self):
+        import argparse
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            queue, binary = root/'ids.json', root/'binary'
+            queue.write_text(json.dumps(['BG123456789']))
+            binary.write_text('synthetic executable')
+            args = argparse.Namespace(queue=queue, offset=0, count=1,
+                run_dir=root/'run', binary=binary, docker_image=None,
+                resume=False, deadline_seconds=25)
+            with patch.object(batch.subprocess, 'call', return_value=0) as call, patch('builtins.print'):
+                self.assertEqual(batch.collect(args), 2)
+            self.assertIn('live_extended_probe', call.call_args.args[0])
+            manifest = json.loads((args.run_dir/'manifest.json').read_text())
+            self.assertEqual(manifest['policy'], {**batch.POLICY, 'deadlineSeconds': 25})
+            args.resume, args.deadline_seconds = True, 6
+            with self.assertRaisesRegex(ValueError, 'policy changed'):
+                batch.collect(args)
+
+    def test_greek_report_reads_iso_country_fixture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixtures = root / 'src/vies/fixtures/countries'
+            fixtures.mkdir(parents=True)
+            vat = 'EL123456789'
+            (root / 'ids.json').write_text(json.dumps([vat]))
+            address = {'fullAddressByVies': None, 'city': None}
+            (root / 'observations.jsonl').write_text(json.dumps({
+                'vatId': vat, 'totalMs': 1, 'attempts': [{'response': {
+                    'valid': False, 'company': None, 'address': address}}]}) + '\n')
+            (fixtures / 'gr.json').write_text(json.dumps([{
+                'vatId': vat, 'valid': False,
+                'viesOutput': {'company': None, 'address': None},
+                'expected': {'address': {'city': None}}}]))
+            with patch.object(batch, 'ROOT', root):
+                result = batch.report(root)
+            self.assertEqual(result['passed'], 1)
+            self.assertEqual(result['invalidResponses'], 1)
+
     def test_public_checkout_reports_unreviewed_responses_without_local_corpus(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -78,6 +133,10 @@ sys.exit(3 if not rows else 0)
             self.assertEqual(batch.collect(args), 3)
             binary.write_text('changed source binary; frozen copy must be used')
             args.resume = True
+            args.deadline_seconds = 25
+            with self.assertRaisesRegex(ValueError, 'policy changed'):
+                batch.collect(args)
+            args.deadline_seconds = 6
             self.assertEqual(batch.collect(args), 0)
             self.assertEqual(len(batch.load_rows(args.run_dir)), 2)
             self.assertFalse((args.run_dir/'probe-bin').exists())
@@ -93,22 +152,23 @@ class ReportContractTests(unittest.TestCase):
         import hashlib
         from datetime import date
         root = batch.ROOT/'src/vies/fixtures'
-        if not (root/'countries/bg.json').exists():
+        if not list((root/'countries').glob('*.json')):
             self.skipTest('local-only reviewed VIES corpus is not installed')
         policy = json.loads((root/'review-policy.json').read_text())
-        reviews = json.loads((root/'countries/reviews/bg.json').read_text())
-        lookup = {r['vatId']:r for r in reviews}
-        self.assertEqual(len(lookup), len(reviews))
-        cases = json.loads((root/'countries/bg.json').read_text())
-        self.assertEqual(set(lookup), {c['vatId'] for c in cases})
-        for case in cases:
-            review = lookup[case['vatId']]
-            self.assertIn(review['normalizationVersion'], policy.get('knownNormalizationVersions', [policy['normalizationVersion']]))
-            self.assertGreaterEqual(review['reviewVersion'], 1)
-            date.fromisoformat(review['reviewedAt'])
-            self.assertTrue(review['note'])
-            expected_hash = hashlib.sha256(json.dumps(case['expected'], sort_keys=True, ensure_ascii=False, separators=(',', ':')).encode()).hexdigest()
-            self.assertEqual(review['expectedSha256'], expected_hash, case['vatId'])
+        for path in sorted((root/'countries').glob('*.json')):
+            reviews = json.loads((root/'countries/reviews'/path.name).read_text())
+            lookup = {r['vatId']:r for r in reviews}
+            self.assertEqual(len(lookup), len(reviews))
+            cases = json.loads(path.read_text())
+            self.assertEqual(set(lookup), {c['vatId'] for c in cases})
+            for case in cases:
+                review = lookup[case['vatId']]
+                self.assertIn(review['normalizationVersion'], policy.get('knownNormalizationVersions', [policy['normalizationVersion']]))
+                self.assertGreaterEqual(review['reviewVersion'], 1)
+                date.fromisoformat(review['reviewedAt'])
+                self.assertTrue(review['note'])
+                expected_hash = hashlib.sha256(json.dumps(case['expected'], sort_keys=True, ensure_ascii=False, separators=(',', ':')).encode()).hexdigest()
+                self.assertEqual(review['expectedSha256'], expected_hash, case['vatId'])
 
 if __name__ == '__main__': unittest.main()
 

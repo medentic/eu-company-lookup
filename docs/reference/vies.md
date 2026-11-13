@@ -62,8 +62,8 @@ The provider has no language-selection parameter. Owner information may be absen
 or withheld. Names and addresses can also be supplied with a negative result;
 those values must not override `valid: false`.
 
-Conservative address rules cover AT, BE, BG, CY, CZ, DK, EE, EL, FI, FR, IT, LT,
-LU, NL, PL, PT, RO, SE, SI and SK. Unsupported formats retain original text and country
+Conservative address rules cover AT, BE, BG, CY, CZ, DK, EE, EL, FI, FR, HR, HU, IT, LT,
+LU, MT, NL, PL, PT, RO, SE, SI and SK. Unsupported formats retain original text and country
 metadata with unknown delivery components. A matching format does not establish
 postal correctness. See [shared address policy](api-stability.md#address-policy).
 
@@ -73,6 +73,22 @@ placeholders remain null. Explicit building, staircase, floor and apartment labe
 start `address2`. Bucharest sector text stays with the city. Parent commune/town
 labels are available in the shared parser's `municipality`, while the unchanged
 full source remains in the VIES envelope. No county is inferred from a settlement.
+
+### Known source limitations
+
+Maltese VIES addresses can contain a short postcode that differs from the
+postcode published by the company. The parser retains the supplied postcode;
+it does not certify postal correctness or replace it with external data.
+
+Portuguese VIES addresses can omit the postcode and combine city and
+neighbourhood in an unlabelled line. For recognized partial formats, the parser
+retains the street and remaining delivery text while leaving uncertain city and
+postcode fields null. It does not enrich missing fields from other sources.
+
+These are known limitations of the supplied address data, independent of VAT
+validity. A successful source-preservation replay confirms the library's handling,
+not the completeness or correctness of the upstream address. Applications should
+allow customers to review billing details.
 
 ## Failures and admission
 

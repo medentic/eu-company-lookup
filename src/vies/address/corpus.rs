@@ -120,10 +120,22 @@ fn differences(expected: &Value, actual: &Value) -> Vec<Value> {
 }
 
 fn report(mut rows: Vec<Value>, mode: &str) {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("src/vies/fixtures/countries/reviews/bg.json");
-    if path.exists() {
-        let reviews: Vec<Review> = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+    let root =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/vies/fixtures/countries/reviews");
+    if root.is_dir() {
+        let mut reviews = Vec::<Review>::new();
+        let mut seen = HashSet::new();
+        for entry in std::fs::read_dir(root).unwrap() {
+            let path = entry.unwrap().path();
+            if path.extension().is_none_or(|ext| ext != "json") {
+                continue;
+            }
+            let batch: Vec<Review> = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+            for review in batch {
+                assert!(seen.insert(review.vat_id.clone()), "duplicate VAT review");
+                reviews.push(review);
+            }
+        }
         for row in &mut rows {
             if let Some(review) = reviews
                 .iter()

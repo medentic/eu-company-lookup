@@ -55,6 +55,16 @@ fn next_allowed(row: &Observation) -> Result<chrono::DateTime<chrono::Utc>, &'st
 #[tokio::test]
 #[ignore = "explicit live batch; use tools/vies_batch.py with a fixed test binary"]
 async fn live_six_second_probe() {
+    live_batch(Duration::from_secs(6)).await;
+}
+
+#[tokio::test]
+#[ignore = "explicit bounded recovery; select the 25-second collector profile"]
+async fn live_extended_probe() {
+    live_batch(Duration::from_secs(25)).await;
+}
+
+async fn live_batch(budget: Duration) {
     let ids: Vec<_> = std::env::var("VIES_PROBE_IDS")
         .unwrap()
         .split(',')
@@ -113,7 +123,7 @@ async fn live_six_second_probe() {
             schema_version: SCHEMA_VERSION,
             vat_id: vat.clone(),
             checked_at: chrono::Utc::now(),
-            run: experiment(|| request(&http, vat)).await,
+            run: experiment_with_budget(|| request(&http, vat), budget).await,
         };
         // Timestamp the completed lookup for cooldown accounting.
         let result = Observation {

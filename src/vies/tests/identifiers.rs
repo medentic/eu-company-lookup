@@ -1,7 +1,7 @@
 use super::super::{Client, VatId, validate_vat_syntax};
 use crate::{ChecksumSupport, LanguageSupport, LookupError};
 
-const EXAMPLES: &[&str] = &[
+pub(super) const EXAMPLES: &[&str] = &[
     "ATU12345678",
     "BE0123456789",
     "BG123456789",

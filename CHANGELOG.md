@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.0.1
+
+- Extend synthetic VIES identity and validity tests across every supported prefix,
+  and replay saved SOAP outcomes and reviewed country address corpora offline.
+- Add conservative Croatian, Hungarian and Maltese address formats; refine
+  Estonian locality labels, Finnish corporate postal labels, Swedish postal-only
+  addresses and Portuguese delivery lines without postcodes. Preserve original
+  source text and leave uncertain components unknown.
+- Document Maltese postcode discrepancies and incomplete Portuguese source
+  addresses as known limitations, separate from VAT validity.
+- Extend bounded VIES collection to all supported prefixes with immutable six-
+  and twenty-five-second test profiles. Production timeout and retry behavior
+  remain unchanged.
+
 ## 2.0.0
 
 ### Breaking changes

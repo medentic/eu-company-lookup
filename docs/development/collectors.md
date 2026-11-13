@@ -61,9 +61,18 @@ VIES_REPLAY_DIR=target/vies-review \
   cargo test --locked validate_saved_typed_journals -- --ignored --nocapture
 ```
 
+Select another supported VIES jurisdiction with `--country <VAT-prefix>` and
+`--queue <local-json-array>`. Queues contain full identifiers as strings, including
+leading zeroes and letters. The collector uses the client's syntax table; it does
+not infer checksum validity or registration. Greece uses `EL` in queues and `gr`
+in country fixtures; Northern Ireland uses `XI` and `gb`, respectively. Keep each
+queue's source URLs and dated evidence locally beside it.
+
 Add `--docker-image <existing-local-image>` for a Linux executable on a non-Linux
 host. Resume checks the queue, selection, frozen binary and Docker image. Replay
-writes a separate derived snapshot and never changes observations. Partial JSONL
+writes a separate derived snapshot and never changes observations. Typed-journal
+validation also decodes available saved SOAP bodies and compares their outcomes
+with the original observations. Partial JSONL
 tails are recovery errors, not permission to truncate journals. Growth is bounded
 near 20 MiB per run.
 
@@ -75,6 +84,12 @@ Each attempt receives only the remaining budget. Retry-After stops immediate ret
 other statuses, SOAP faults, transport errors and expired deadlines are not retried.
 Distinct lookups are spaced five seconds after a response and sixty after failure,
 outside the lookup budget. Retry-After stops collection for review.
+
+An explicitly selected `--deadline-seconds 25` profile allows a bounded recovery
+run for previously authorized identifiers when the six-second experiment is too
+short. It keeps the same retry and pacing rules. Use a fresh run directory and
+retain the earlier failures; resume rejects a changed profile. It does not change
+the production client's configured timeout.
 
 This policy is an experiment, not production behavior or a latency promise.
 Production remains single-attempt. Shared transport handles request construction,
