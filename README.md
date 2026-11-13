@@ -291,7 +291,7 @@ country. Target scope does not imply implemented national lookup support.
 
 Counts below are distinct identifiers in the retained, reviewed live-response
 corpora, not HTTP requests, retries or synthetic tests. They describe the evidence
-reviewed for 2.0.0, not an exhaustive record of every live attempt. A zero means no
+reviewed for 2.0.1, not an exhaustive record of every live attempt. A zero means no
 reviewed corpus is retained for that operation. Provider failures are not negative
 registration results and are not counted as reviewed outcomes.
 
@@ -344,42 +344,44 @@ establish exhaustive field or entity-type coverage.
 ### VIES VAT verification
 
 The VIES adapter is released for the prefixes below. Implementation and live
-verification are separate: countries with zero reviewed VAT IDs still use the
-adapter, but have no retained country-specific live corpus. Iceland, Liechtenstein
-and Norway have no VIES mapping in this library.
+verification are separate. All EU VIES jurisdictions have retained reviewed
+observations; Northern Ireland (XI) still has no retained live corpus. France
+also has an unresolved provider rate-limit observation, excluded from the
+reviewed-result count. Iceland, Liechtenstein and Norway have no VIES mapping
+in this library.
 
 | Country | VIES prefix | Distinct VAT IDs tested | Valid / invalid observations | Verification status |
 | --- | --- | ---: | --- | --- |
-| Austria | AT | 0 | — | Live verification pending |
-| Belgium | BE | 0 | — | Live verification pending |
+| Austria | AT | 10 | 10 / 0 | Reviewed; offline replay passed |
+| Belgium | BE | 10 | 10 / 0 | Reviewed; offline replay passed |
 | Bulgaria | BG | 961 | 960 / 1 | Offline replay matched; 82 address ambiguities |
-| Croatia | HR | 0 | — | Live verification pending |
-| Cyprus | CY | 0 | — | Live verification pending |
-| Czechia | CZ | 0 | — | Live verification pending |
-| Denmark | DK | 0 | — | Live verification pending |
-| Estonia | EE | 0 | — | Live verification pending |
-| Finland | FI | 0 | — | Live verification pending |
-| France | FR | 0 | — | Live verification pending |
-| Germany | DE | 0 | — | Live verification pending |
-| Greece | EL | 0 | — | Live verification pending |
-| Hungary | HU | 0 | — | Live verification pending |
+| Croatia | HR | 10 | 10 / 0 | Reviewed; offline replay passed |
+| Cyprus | CY | 10 | 10 / 0 | Reviewed; offline replay passed |
+| Czechia | CZ | 10 | 10 / 0 | Reviewed; offline replay passed |
+| Denmark | DK | 10 | 10 / 0 | Reviewed; offline replay passed |
+| Estonia | EE | 10 | 10 / 0 | Reviewed; offline replay passed |
+| Finland | FI | 10 | 10 / 0 | Reviewed; offline replay passed |
+| France | FR | 9 | 9 / 0 | Offline replay passed; one additional ID rate-limited |
+| Germany | DE | 10 | 10 / 0 | Reviewed; offline replay passed |
+| Greece | EL | 10 | 10 / 0 | Reviewed; offline replay passed |
+| Hungary | HU | 10 | 10 / 0 | Reviewed; offline replay passed |
 | Iceland | — | — | — | Not supported by VIES |
-| Ireland | IE | 0 | — | Live verification pending |
-| Italy | IT | 0 | — | Live verification pending |
-| Latvia | LV | 0 | — | Live verification pending |
+| Ireland | IE | 10 | 10 / 0 | Reviewed; offline replay passed |
+| Italy | IT | 10 | 10 / 0 | Reviewed; offline replay passed |
+| Latvia | LV | 10 | 10 / 0 | Reviewed; offline replay passed |
 | Liechtenstein | — | — | — | Not supported by VIES |
-| Lithuania | LT | 0 | — | Live verification pending |
-| Luxembourg | LU | 0 | — | Live verification pending |
-| Malta | MT | 0 | — | Live verification pending |
-| Netherlands | NL | 0 | — | Live verification pending |
+| Lithuania | LT | 10 | 9 / 1 | Reviewed; offline replay passed |
+| Luxembourg | LU | 10 | 10 / 0 | Reviewed; offline replay passed |
+| Malta | MT | 10 | 10 / 0 | Offline replay matched; one known address limitation |
+| Netherlands | NL | 10 | 10 / 0 | Reviewed; offline replay passed |
 | Norway | — | — | — | Not supported by VIES |
-| Poland | PL | 0 | — | Live verification pending |
-| Portugal | PT | 0 | — | Live verification pending |
+| Poland | PL | 10 | 10 / 0 | Reviewed; offline replay passed |
+| Portugal | PT | 10 | 10 / 0 | Offline replay matched; one known address limitation |
 | Romania | RO | 200 | 191 / 9 | Reviewed; offline replay passed |
-| Slovakia | SK | 0 | — | Live verification pending |
-| Slovenia | SI | 0 | — | Live verification pending |
-| Spain | ES | 0 | — | Live verification pending |
-| Sweden | SE | 0 | — | Live verification pending |
+| Slovakia | SK | 10 | 10 / 0 | Reviewed; offline replay passed |
+| Slovenia | SI | 10 | 9 / 1 | Reviewed; offline replay passed |
+| Spain | ES | 10 | 10 / 0 | Reviewed; offline replay passed |
+| Sweden | SE | 10 | 10 / 0 | Reviewed; offline replay passed |
 | Northern Ireland (outside EEA) | XI | 0 | — | Live verification pending |
 
 A matched invalid VIES observation counts as a tested identifier. An address

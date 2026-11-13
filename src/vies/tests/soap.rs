@@ -180,3 +180,39 @@ fn request_is_the_documented_soap_operation() {
     assert!(!request.contains("language"));
     assert!(roxmltree::Document::parse(&request).is_ok());
 }
+
+#[test]
+fn every_jurisdiction_round_trips_identity_and_explicit_validity() {
+    for raw in super::identifiers::EXAMPLES {
+        let vat = VatId::parse(raw).unwrap();
+        let request = soap::request(&vat);
+        assert!(request.contains(&format!("<countryCode>{}</countryCode>", vat.prefix())));
+        assert!(request.contains(&format!("<vatNumber>{}</vatNumber>", vat.number())));
+        for valid in [true, false] {
+            let xml = VALID
+                .replace(
+                    "<countryCode>BG</countryCode>",
+                    &format!("<countryCode>{}</countryCode>", vat.prefix()),
+                )
+                .replace(
+                    "<vatNumber>123456789</vatNumber>",
+                    &format!("<vatNumber>{}</vatNumber>", vat.number()),
+                )
+                .replace("<valid>true</valid>", &format!("<valid>{valid}</valid>"));
+            let response = soap::decode(&xml, &vat).unwrap();
+            assert_eq!(response.valid, valid, "{raw}");
+            assert_eq!(
+                response.address.as_deref(),
+                Some("Примерна улица 1\nСофия 1000")
+            );
+            let wrong = xml.replace("</vatNumber>", "0</vatNumber>");
+            assert!(
+                matches!(
+                    soap::decode(&wrong, &vat),
+                    Err(LookupError::MismatchedResponse)
+                ),
+                "{raw}"
+            );
+        }
+    }
+}

@@ -17,15 +17,17 @@ static BG_ENTRANCE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"([вВ][хХ]\. +)([а-яА-Яa-zA-Z])([ ,]|$)").unwrap());
 static POSTAL_SEPARATOR: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"[ \t]{3,}([0-9]{5}|[0-9]{3} [0-9]{2})[ ]+").unwrap());
+static EE_POSTAL_SEPARATOR: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"[ \t]{2,}([0-9]{5})[ ]+").unwrap());
 
 pub(crate) fn address(prefix: &str, raw: &str) -> String {
     let raw = raw.replace("\r\n", "\n").replace('\r', "\n");
     // EE/EL use wide spacing as a structural separator. Preserve that boundary
     // as a newline before collapsing whitespace; ordinary line breaks also stay.
-    let raw = if matches!(prefix, "EE" | "EL") {
-        POSTAL_SEPARATOR.replace_all(&raw, "\n$1 ").into_owned()
-    } else {
-        raw
+    let raw = match prefix {
+        "EE" => EE_POSTAL_SEPARATOR.replace_all(&raw, "\n$1 ").into_owned(),
+        "EL" => POSTAL_SEPARATOR.replace_all(&raw, "\n$1 ").into_owned(),
+        _ => raw,
     };
     let mut value = raw
         .trim_end()

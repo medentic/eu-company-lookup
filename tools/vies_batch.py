@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import os
+import re
 from pathlib import Path
 import shutil
 import statistics
@@ -30,14 +31,29 @@ def write_json(path, value):
     temp.replace(path)
 
 
+# Read the private Rust format table so collector syntax cannot drift from the client.
+def vat_formats():
+    source = (ROOT / 'src/vies/identifiers.rs').read_text()
+    table = source.split('const FORMATS:', 1)[1].split('];', 1)[0]
+    formats = dict(re.findall(r'\("([A-Z]{2})", "([^"\n]+)"\)', table))
+    if len(formats) != 28:
+        raise ValueError('cannot read the supported VIES format table')
+    return formats
+
+
+FORMATS = vat_formats()
+
+
 def selection(path, offset, count, country="BG"):
     ids = json.loads(path.read_text())
+    if not isinstance(ids, list):
+        raise ValueError("queue must be a JSON array")
     if offset < 0 or not 1 <= count <= 100 or offset + count > len(ids):
         raise ValueError('offset/count outside queue; count must be 1..100')
     selected = ids[offset:offset + count]
-    if country not in ('BG', 'RO'):
+    if country not in FORMATS:
         raise ValueError('unsupported collector country')
-    if len(set(ids)) != len(ids) or any(not isinstance(x, str) or not x.startswith(country) or not x[2:].isascii() or not x[2:].isdigit() or (country == 'RO' and not 2 <= len(x[2:]) <= 10) for x in ids):
+    if (not isinstance(ids, list) or any(not isinstance(x, str) or not x.startswith(country) or re.fullmatch(FORMATS[country], x[2:]) is None for x in ids) or len(set(ids)) != len(ids)):
         raise ValueError('queue contains duplicate or malformed country identifiers')
     return selected
 
@@ -64,8 +80,9 @@ def report(folder):
     if any(r['vatId'] not in ids for r in rows):
         raise ValueError('journal contains IDs outside selection')
     country = ids[0][:2].lower()
-    if country not in ('bg', 'ro') or any(i[:2].lower() != country for i in ids):
+    if country.upper() not in FORMATS or any(i[:2].lower() != country for i in ids):
         raise ValueError('mixed or unsupported report country')
+    country = {'el': 'gr', 'xi': 'gb'}.get(country, country)
     fixtures_path = ROOT / f'src/vies/fixtures/countries/{country}.json'
     fixtures = {c['vatId']: c for c in json.loads(fixtures_path.read_text())} if fixtures_path.exists() else {}
     reviews_path = ROOT / f'src/vies/fixtures/countries/reviews/{country}.json'
@@ -131,11 +148,17 @@ def collect(args):
     with (folder / '.collector.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         manifest_path = folder / 'manifest.json'
+        deadline = getattr(args, 'deadline_seconds', 6)
+        if deadline not in (6, 25):
+            raise ValueError('unsupported collector deadline')
+        policy = {**POLICY, 'deadlineSeconds': deadline}
         selected = selection(args.queue, args.offset, args.count, getattr(args, "country", "BG"))
         if manifest_path.exists():
             if not args.resume:
                 raise ValueError('run already exists; use --resume')
             manifest = json.loads(manifest_path.read_text())
+            if manifest['policy'] != policy:
+                raise ValueError('resume collection policy changed')
             if manifest['ids'] != selected or manifest['queueSha256'] != sha(args.queue):
                 raise ValueError('resume queue/selection changed')
         else:
@@ -146,7 +169,7 @@ def collect(args):
             source.update({p: sha(ROOT / p) for p in ['Cargo.toml', 'Cargo.lock']})
             manifest = {'ids': selected, 'offset': args.offset, 'queueSha256': sha(args.queue),
                         'binarySha256': sha(binary), 'sourceHashes': source,
-                        'policy': POLICY, 'journalSchemaVersion': 2,
+                        'policy': policy, 'journalSchemaVersion': 2,
                         'reviewPolicy': json.loads((ROOT / 'src/vies/fixtures/review-policy.json').read_text()),
                         'createdAt': datetime.now(timezone.utc).isoformat(),
                         'gitHead': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
@@ -165,7 +188,7 @@ def collect(args):
             raise ValueError('resume Docker image changed')
         journal = folder / 'observations.jsonl'
         env = {'VIES_PROBE_IDS': ','.join(selected), 'VIES_PROBE_RESUME': '1'}
-        test_args = ['live_six_second_probe', '--ignored', '--nocapture']
+        test_args = ['live_six_second_probe' if deadline == 6 else 'live_extended_probe', '--ignored', '--nocapture']
         if args.docker_image:
             relative = folder.relative_to(ROOT)
             env['VIES_PROBE_REPORT'] = '/work/' + str(relative / journal.name)
@@ -191,7 +214,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='action', required=True)
     p = sub.add_parser('collect')
-    p.add_argument('--country', choices=['BG', 'RO'], default='BG')
+    p.add_argument('--country', choices=sorted(FORMATS), default='BG')
+    p.add_argument('--deadline-seconds', type=int, choices=[6, 25], default=6,
+                   help='6-second experiment (default) or explicit 25-second recovery profile')
     p.add_argument('--queue', type=Path, default=ROOT / 'src/vies/fixtures/ids/bg.json')
     p.add_argument('--offset', type=int, required=True, help='zero-based; 100 starts at ID 101')
     p.add_argument('--count', type=int, default=100)

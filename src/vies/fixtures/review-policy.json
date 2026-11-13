@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "normalizationVersion": "address-rules-v12",
+  "normalizationVersion": "address-rules-v19",
   "expectationHash": "SHA-256 of UTF-8 JSON expected object; sorted keys, compact separators, unescaped Unicode",
   "versionRule": "Bump normalizationVersion for deliberate parsing behavior changes. Update only independently re-reviewed expectations, increment their reviewVersion and record reason/date. Structural refactors without behavior changes keep the version.",
   "knownNormalizationVersions": [
@@ -15,7 +15,14 @@
     "address-rules-v9",
     "address-rules-v10",
     "address-rules-v11",
-    "address-rules-v12"
+    "address-rules-v12",
+    "address-rules-v13",
+    "address-rules-v14",
+    "address-rules-v15",
+    "address-rules-v16",
+    "address-rules-v17",
+    "address-rules-v18",
+    "address-rules-v19"
   ],
   "changes": [
     {
@@ -77,6 +84,41 @@
       "version": "address-rules-v12",
       "date": "2026-11-13",
       "reason": "Move comma-delimited explicit Bulgarian кабинет components with nonempty values into address2; preserve embedded street names, empty labels and original source text."
+    },
+    {
+      "version": "address-rules-v13",
+      "date": "2026-11-13",
+      "reason": "Accept two-space postal separators; separate explicitly labelled Estonian city districts and village municipalities without changing source text."
+    },
+    {
+      "version": "address-rules-v14",
+      "date": "2026-11-13",
+      "reason": "Preserve Finnish 000xx postal recipient labels as secondary delivery text instead of asserting a geographic city."
+    },
+    {
+      "version": "address-rules-v15",
+      "date": "2026-11-13",
+      "reason": "Map explicitly labelled Estonian vald to the shared municipality field rather than administrative region; retain original text in VIES."
+    },
+    {
+      "version": "address-rules-v16",
+      "date": "2026-11-13",
+      "reason": "Add source-reviewed Croatian settlement/postal and Hungarian street/postcode/locality formats; retain raw text and reject ambiguous boundaries."
+    },
+    {
+      "version": "address-rules-v17",
+      "date": "2026-11-13",
+      "reason": "Add Maltese multiline delivery, standalone postcode and locality format without losing delivery lines."
+    },
+    {
+      "version": "address-rules-v18",
+      "date": "2026-11-13",
+      "reason": "Accept Swedish postal-only observations without requiring a leading empty delivery line."
+    },
+    {
+      "version": "address-rules-v19",
+      "date": "2026-11-13",
+      "reason": "Retain explicitly labelled Portuguese two-line delivery text when postcode is missing, without inferring city or importing external address data."
     }
   ]
 }
