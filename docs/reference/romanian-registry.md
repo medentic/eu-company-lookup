@@ -1,6 +1,6 @@
 # Romanian taxpayer lookup
 
-`Client::lookup_ro_company` and `RoRegistryClient::lookup` query the Romanian
+`Client::lookup_company(code, "RO")` and `RoRegistryClient::lookup` query the Romanian
 National Agency for Fiscal Administration (ANAF) by CUI. This is taxpayer-register
 information, not an ONRC trade-register extract. Romanian VAT IDs are separately
 supported by `Client::lookup_vat` through VIES.
@@ -25,33 +25,42 @@ an integer for transport and matches the response's numeric identity; the result
 retains the requested identifier spelling. This conversion does not change the
 string representation returned to consumers.
 
-The default lookup uses today's date in Europe/Bucharest. `lookup_ro_company_at`
-and `RoRegistryClient::lookup_at` accept an explicit `chrono::NaiveDate`; future
+The default lookup uses today's date in Europe/Bucharest. `RoRegistryClient::lookup_at` accepts an explicit `chrono::NaiveDate`; future
 dates are rejected locally. Historical fiscal status is not a historical extract
 of every company detail. Both the requested date and UTC observation time are
 included in the result.
 
 ```no_run
-use eu_company_lookup::{Client, LookupError};
+use eu_company_lookup::{Client, CompanyDetails, LookupError};
 
 # async fn example() -> Result<(), LookupError> {
 let client = Client::new()?;
 // Synthetic CUI; no registration claim.
-let record = client.lookup_ro_company("1234").await?;
+let record = client.lookup_company("1234", "RO").await?;
 println!("{}: {}", record.tax_id, record.company_name);
-println!("ANAF VAT registration: {:?}", record.tax_status.vat_registered);
+if let CompanyDetails::RomanianAnaf { details, .. } = &record.registry_details {
+    println!("ANAF VAT registration: {:?}", details.tax_status.vat_registered);
+}
 # Ok(())
 # }
 ```
 
 ## Result and failures
 
-`RoCompanyLookupResult` is separate from the Bulgarian `BgCompanyLookupResult`
+The facade returns `CompanyLookupResult` with typed ANAF `registryDetails`.
+The lower-level `RoCompanyLookupResult` is separate from the Bulgarian `BgCompanyLookupResult`
 and its typed `BgBusinessId`. JSON uses camelCase; `source` is `RomanianAnaf`.
 The result retains company name, trade-register number, registration-status/date
 text, legal form and CAEN code when supplied. Original fiscal-address text and
 source structured registered-office/fiscal-address fields remain separate.
-No address country, translation, managers or owners are inferred.
+Country names use title-case display formatting. `countryISO2` is uppercase
+when the supplied country is recognized, otherwise null. This applies to both
+common and native ANAF addresses; original full fiscal text stays unchanged.
+Missing, null or blank address countries default to `Romania` / `RO` based on
+the ANAF jurisdiction, including fiscal addresses available only as raw text.
+Explicit source countries take precedence. Absent addresses remain absent.
+This is a library default, not an explicit ANAF observation. Translations,
+managers and owners are not inferred.
 
 `taxStatus` contains nullable `vatRegistered`, `vatOnCollection`, `inactive`,
 `splitVat` and `eInvoiceRegistered` flags. Missing flags are null. Domestic VAT
@@ -91,7 +100,32 @@ No credentials, database, bulk collection or ONRC fallback are added.
 `status` uses the same `CompanyStatus` enum as Bulgarian registry results. Until
 ANAF registration descriptions have verified lifecycle mappings, a supplied
 `registrationStatus` yields `Unknown` (JSON `unknown`); absent status yields null.
-`nativeRegistryStatus` consistently exposes the original ANAF status text,
+`registryDetails.data.nativeRegistryStatus` in the shared result exposes the original ANAF status text,
 including when normalized; it is null when absent. `registrationStatus` retains
-the same original text for compatibility. Fiscal inactivity and VAT
+the same original text for compatibility. Lower-level native results retain
+top-level `nativeRegistryStatus`. Fiscal inactivity and VAT
 registration remain separate tax flags and never imply company closure or activity.
+
+## Shared VAT fields
+
+`CompanyLookupResult.vat_registered` (`vatRegistered`) reports standard domestic
+VAT registration for the matched fiscal identifier at `requestDate`. It copies
+ANAF's nullable `scpTVA` flag; the source flag also remains in the native tax status.
+The [ANAF v9 specification](https://static.anaf.ro/static/10/Anaf/Informatii_R/Servicii_web/doc_WS_V9.txt)
+limits this registration check to article 316. False does not rule out special
+article-317 registration, and neither value is a VIES observation.
+
+When this flag is explicitly true, `vatId` is `RO` plus the matched numeric fiscal
+ID, validated against the supported VAT syntax. `taxId` retains caller-supplied
+leading zeroes; the derived VAT ID uses the numeric identity matched by ANAF.
+For example, synthetic `taxId: "001234"` produces `vatId: "RO1234"` only after a
+positive matched registration. False/missing flags or an unusable numeric VAT
+identity leave `vatId` null. No additional network call is made.
+
+This is not a rule for arbitrary business IDs. The
+[ANAF VAT return instructions](https://static.anaf.ro/static/10/Anaf/legislatie/OPANAF_77_2022.pdf)
+describe a VAT identifier as the fiscal identifier prefixed with RO, but
+[ANAF's public-institution guidance](https://static.anaf.ro/static/10/Anaf/AsistentaContribuabili_r/Brosura_TVA_Instituii_Publice.pdf)
+explains that separate taxable activities or special registrations can have a
+different numeric identifier from the institution's ordinary fiscal ID. Never
+infer or merge those alternate registrations from the requested identifier.

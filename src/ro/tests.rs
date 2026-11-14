@@ -44,6 +44,9 @@ fn retains_identity_source_text_and_unknown_statuses() {
     assert_eq!(wire["source"], "RomanianAnaf");
     assert_eq!(wire["taxStatus"]["vatOnCollection"], Value::Null);
     assert!(wire.get("valid").is_none());
+    assert_eq!(wire["registryUrl"], serde_json::Value::Null);
+    assert_eq!(wire["foreignName"], serde_json::Value::Null);
+    assert!(wire.get("details").is_none());
 }
 #[test]
 fn only_exact_negative_envelopes_are_misses() {
@@ -340,6 +343,13 @@ fn company_status_is_shared_and_never_inferred_from_fiscal_inactivity() {
 #[test]
 fn native_registry_status_keeps_exact_anaf_text_and_missing_value() {
     let missing = decode(fixture()).unwrap().unwrap();
+    let shared: crate::CompanyLookupResult = missing.clone().into();
+    let wire = serde_json::to_value(shared).unwrap();
+    assert!(wire.get("nativeRegistryStatus").is_none());
+    assert_eq!(
+        wire["registryDetails"]["data"].get("nativeRegistryStatus"),
+        Some(&Value::Null)
+    );
     assert!(missing.native_registry_status.is_none());
     assert!(serde_json::to_value(missing).unwrap()["nativeRegistryStatus"].is_null());
     let mut source = fixture();
@@ -350,6 +360,14 @@ fn native_registry_status_keeps_exact_anaf_text_and_missing_value() {
         Some("  STARE NECUNOSCUTĂ  ")
     );
     assert_eq!(record.native_registry_status, record.registration_status);
+    let shared: crate::CompanyLookupResult = record.clone().into();
+    let wire = serde_json::to_value(shared).unwrap();
+    assert!(wire.get("nativeRegistryStatus").is_none());
+    assert_eq!(
+        wire["registryDetails"]["data"]["nativeRegistryStatus"],
+        "  STARE NECUNOSCUTĂ  "
+    );
+    assert_eq!(wire["status"], "unknown");
     assert_eq!(
         serde_json::to_value(record).unwrap()["nativeRegistryStatus"],
         "  STARE NECUNOSCUTĂ  "
@@ -369,22 +387,48 @@ fn explicit_null_status_metadata_is_not_treated_as_omission() {
 fn shared_company_preserves_fiscal_semantics_and_source_components() {
     let native = decode(fixture()).unwrap().unwrap();
     let shared: crate::CompanyLookupResult = native.clone().into();
-    assert_eq!(shared.identifier.as_str(), "001234");
-    assert_eq!(shared.identifier.country(), "RO");
+    assert_eq!(shared.tax_id, "001234");
+    assert_eq!(shared.country, "RO");
     assert!(shared.registered_office.is_none());
     assert!(shared.status.is_none()); // Fiscal inactivity is not legal closure.
     let fiscal = shared.fiscal_address.as_ref().unwrap();
     assert_eq!(fiscal.full_address_by_registry, native.full_fiscal_address);
     assert_eq!(fiscal.postcode.as_deref(), Some("012345"));
-    assert!(fiscal.country_iso2.is_none()); // Never inferred from identifier country.
-    let crate::CompanyDetails::RomanianAnaf(details) = &shared.details else {
+    assert_eq!(fiscal.country_iso2.as_deref(), Some("RO"));
+    let crate::CompanyDetails::RomanianAnaf { details, .. } = &shared.registry_details else {
         panic!("wrong details")
     };
     assert_eq!(details.fiscal_address, native.fiscal_address);
     assert_eq!(details.tax_status, native.tax_status);
     let wire = serde_json::to_value(shared).unwrap();
     assert!(wire.get("valid").is_none());
-    assert_eq!(wire["details"]["provider"], "RomanianAnaf");
+    assert_eq!(wire["registryUrl"], serde_json::Value::Null);
+    assert_eq!(wire["foreignName"], serde_json::Value::Null);
+    let expected_keys = [
+        "companyName",
+        "country",
+        "fiscalAddress",
+        "foreignName",
+        "legalForm",
+        "registeredOffice",
+        "registryDetails",
+        "registryUrl",
+        "source",
+        "status",
+        "taxId",
+        "vatId",
+        "vatRegistered",
+    ];
+    let mut keys: Vec<_> = wire
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect();
+    keys.sort_unstable();
+    assert_eq!(keys, expected_keys);
+    assert!(wire.get("details").is_none());
+    assert_eq!(wire["registryDetails"]["provider"], "RomanianAnaf");
 }
 
 #[tokio::test]
@@ -414,7 +458,7 @@ async fn shared_dispatch_uses_anaf_and_preserves_negative_observations() {
             RoRegistryClient::for_test(url, Default::default()),
         );
         let id = crate::BusinessId::from(RoBusinessId::parse("001234").unwrap());
-        let result = client.lookup_company(&id).await;
+        let result = client.lookup_company(id.as_str(), id.country()).await;
         if negative {
             assert!(matches!(
                 result,
@@ -424,9 +468,157 @@ async fn shared_dispatch_uses_anaf_and_preserves_negative_observations() {
             ));
         } else {
             let result = result.unwrap();
-            assert_eq!(result.identifier, id);
+            assert_eq!(result.tax_id, id.as_str());
+            assert_eq!(result.country, id.country());
             assert!(result.status.is_none());
         }
         assert!(task.await.unwrap().starts_with("POST /tva HTTP/1.1"));
     }
+}
+
+#[test]
+fn address_countries_have_shared_display_casing_and_iso_codes() {
+    for (raw, name, code) in [
+        ("ROMANIA", "Romania", Some("RO")),
+        ("rOmÂnIa", "România", Some("RO")),
+        ("ro", "România", Some("RO")),
+        ("БЪЛГАРИЯ", "България", Some("BG")),
+        ("UNITED KINGDOM", "United Kingdom", Some("GB")),
+        ("UNKNOWN COUNTRY", "Unknown Country", None),
+    ] {
+        let mut value = fixture();
+        value["found"][0]["adresa_sediu_social"] = json!({"stara": raw});
+        value["found"][0]["adresa_domiciliu_fiscal"]["dtara"] = json!(raw);
+        let native = decode(value).unwrap().unwrap();
+        for address in [&native.registered_office, &native.fiscal_address] {
+            let address = address.as_ref().unwrap();
+            assert_eq!(address.country.as_deref(), Some(name));
+            assert_eq!(address.country_iso2.as_deref(), code);
+        }
+        let shared: crate::CompanyLookupResult = native.into();
+        for address in [&shared.registered_office, &shared.fiscal_address] {
+            let address = address.as_ref().unwrap();
+            assert_eq!(address.country.as_deref(), Some(name));
+            assert_eq!(address.country_iso2.as_deref(), code);
+        }
+        assert_eq!(
+            shared
+                .fiscal_address
+                .as_ref()
+                .unwrap()
+                .full_address_by_registry
+                .as_deref(),
+            Some("  Strada Exemplu 1\nBucurești  ")
+        );
+        let wire = serde_json::to_value(shared).unwrap();
+        assert_eq!(wire["registeredOffice"]["countryISO2"], json!(code));
+        assert_eq!(
+            wire["registryDetails"]["data"]["fiscalAddress"]["countryISO2"],
+            json!(code)
+        );
+        assert_eq!(
+            wire["registryDetails"]["data"]["registeredOffice"]["country"],
+            name
+        );
+    }
+}
+
+#[test]
+fn shared_vat_fields_require_matched_anaf_registration_and_preserve_tax_id() {
+    for (flag, expected) in [
+        (json!(true), Some(true)),
+        (json!(false), Some(false)),
+        (Value::Null, None),
+    ] {
+        for raw_id in ["1234", "001234"] {
+            let mut source = fixture();
+            source["found"][0]["inregistrare_scop_Tva"]["scpTVA"] = flag.clone();
+            let native = super::decode::decode(
+                &serde_json::to_vec(&source).unwrap(),
+                &RoBusinessId::parse(raw_id).unwrap(),
+                date(),
+            )
+            .unwrap()
+            .unwrap();
+            let shared: crate::CompanyLookupResult = native.into();
+            assert_eq!(shared.tax_id, raw_id);
+            assert_eq!(shared.vat_registered, expected);
+            let vat = if expected == Some(true) {
+                Some("RO1234")
+            } else {
+                None
+            };
+            assert_eq!(shared.vat_id.as_ref().map(crate::VatId::as_str), vat);
+            let wire = serde_json::to_value(shared).unwrap();
+            assert_eq!(wire["vatRegistered"], json!(expected));
+            assert_eq!(wire["vatId"], json!(vat));
+        }
+    }
+    let mut source = fixture();
+    source["found"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("inregistrare_scop_Tva");
+    let shared: crate::CompanyLookupResult = decode(source).unwrap().unwrap().into();
+    assert!(shared.vat_registered.is_none());
+    assert!(shared.vat_id.is_none());
+}
+
+#[test]
+fn vat_id_is_not_invented_for_nonstandard_numeric_identity() {
+    // Even an inconsistent synthetic positive flag cannot produce a malformed VAT ID.
+    for (raw, numeric) in [("00", 0), ("01", 1)] {
+        let mut source = fixture();
+        source["found"][0]["date_generale"]["cui"] = json!(numeric);
+        source["found"][0]["inregistrare_scop_Tva"]["scpTVA"] = json!(true);
+        let native = super::decode::decode(
+            &serde_json::to_vec(&source).unwrap(),
+            &RoBusinessId::parse(raw).unwrap(),
+            date(),
+        )
+        .unwrap()
+        .unwrap();
+        let shared: crate::CompanyLookupResult = native.into();
+        assert_eq!(shared.tax_id, raw);
+        assert_eq!(shared.vat_registered, Some(true));
+        assert!(shared.vat_id.is_none());
+    }
+}
+
+#[test]
+fn shared_mapping_derives_source_from_anaf_details() {
+    let mut native = decode(fixture()).unwrap().unwrap();
+    native.source = Provider::Vies;
+    let shared: crate::CompanyLookupResult = native.into();
+    let wire = serde_json::to_value(shared).unwrap();
+    assert_eq!(wire["source"], "RomanianAnaf");
+    assert_eq!(wire["source"], wire["registryDetails"]["provider"]);
+}
+
+#[test]
+fn missing_anaf_address_countries_default_to_romania() {
+    for missing in [serde_json::Value::Null, json!(""), json!("   ")] {
+        let mut value = fixture();
+        value["found"][0]["adresa_sediu_social"] = json!({"stara": missing});
+        value["found"][0]["adresa_domiciliu_fiscal"]["dtara"] = missing;
+        let native = decode(value).unwrap().unwrap();
+        for address in [&native.registered_office, &native.fiscal_address] {
+            let address = address.as_ref().unwrap();
+            assert_eq!(address.country.as_deref(), Some("Romania"));
+            assert_eq!(address.country_iso2.as_deref(), Some("RO"));
+        }
+        let shared: crate::CompanyLookupResult = native.into();
+        for address in [&shared.registered_office, &shared.fiscal_address] {
+            let address = address.as_ref().unwrap();
+            assert_eq!(address.country.as_deref(), Some("Romania"));
+            assert_eq!(address.country_iso2.as_deref(), Some("RO"));
+        }
+    }
+    let mut native = decode(fixture()).unwrap().unwrap();
+    native.fiscal_address = None;
+    let shared: crate::CompanyLookupResult = native.into();
+    assert!(shared.registered_office.is_none());
+    let fiscal = shared.fiscal_address.unwrap();
+    assert_eq!(fiscal.country.as_deref(), Some("Romania"));
+    assert_eq!(fiscal.country_iso2.as_deref(), Some("RO"));
 }

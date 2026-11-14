@@ -7,6 +7,7 @@ supported providers and the country-registry roadmap.
 
 These references describe the public contract and are included in the crate:
 
+- [Shared company object](reference/company-result.md): all common fields, addresses, provider details and null semantics.
 - [VIES](reference/vies.md): identifiers, VAT results, address fields and failures.
 - [Bulgarian registry](reference/bulgarian-registry.md): Commercial Register/BULSTAT
   lookup, fallback, company fields and coverage limitations.
@@ -19,6 +20,7 @@ These references describe the public contract and are included in the crate:
 Read [CONTRIBUTING.md](../CONTRIBUTING.md) for setup, module layout and required checks.
 Repository-only development guides cover:
 
+- [Registry adapter design](development/registry-adapters.md): field placement, source mappings, implementation and verification for new registries.
 - [Testing and evidence](development/testing.md): offline coverage, reviewed fixtures,
   provenance and interpretation of reports.
 - [Live collectors](development/collectors.md): queue import, bounded collection,

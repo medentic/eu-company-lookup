@@ -1,5 +1,51 @@
 # Changelog
 
+## 3.0.0
+
+- Automatically enrich nine-digit BG company lookups through a required VIES
+  dependency owned by the Bulgarian adapter.
+  Require valid, name-matched responses for common VAT fields and retain full
+  `vatVerification` in BG details. Skip branches; propagate VIES failures. Native
+  BG registry clients remain registry-only; disabling standalone VIES operations
+  does not disable verification inside shared BG company lookup.
+
+- Default missing BG address countries to `България` / `BG` in Commercial
+  Register and BULSTAT results; normalize supplied party country names in details.
+
+- Default missing ANAF address countries to `Romania` / `RO`; preserve explicit
+  source countries and keep absent address objects null.
+
+- Move native-to-common projections into the owning registry adapters and derive
+  source labels from typed details to prevent mismatched provider tags. Document
+  the complete common object and the implementation contract for future adapters.
+
+- Add common nullable `vatRegistered` and `vatId` company fields. RO maps ANAF's
+  standard domestic registration flag and derives a VAT ID only for a positive
+  matched fiscal registration; preserve the requested `taxId` spelling. BG uses the supplementary VIES enrichment described above. No generic
+  cross-country prefix inference is introduced.
+
+### Breaking changes
+
+- Move the shared result's `nativeRegistryStatus` into `registryDetails.data`.
+  Keep only normalized lifecycle `status` at the top level and document the
+  common-model versus provider-specific extension boundary. `CompanyDetails`
+  variants now have named `native_registry_status` and `details` fields.
+
+- Normalize country names to title case across structured addresses and expose
+  uppercase `countryISO2` on native ANAF addresses as well as common addresses.
+  Preserve original full address text and keep unrecognized country codes null.
+
+- Replace the shared company result's nested `identifier` with top-level `country`
+  and string `taxId` (`tax_id` in Rust), preserving leading zeroes.
+
+- Unify company fields with nullable top-level `registryUrl` and `foreignName`.
+  Rename shared `details` to `registryDetails` (`registry_details` in Rust), with
+  direct Commercial Register, BULSTAT and ANAF variants for provider-only facts.
+
+- Consolidate company lookup on `Client::lookup_company(value, country)`, returning
+  `CompanyLookupResult`. Remove country-specific facade methods; explicit Romanian
+  fiscal dates remain available through `RoRegistryClient::lookup_at`.
+
 ## 2.0.1
 
 - Extend synthetic VIES identity and validity tests across every supported prefix,

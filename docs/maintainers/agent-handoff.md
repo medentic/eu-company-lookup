@@ -61,7 +61,9 @@ defines bounded live work. Counts alone never establish country completion.
 
 ## Extend coverage coherently
 
-Follow [Adding a country adapter](../../CONTRIBUTING.md#adding-a-country-adapter).
+Read the [registry adapter guide](../development/registry-adapters.md) and
+[shared field reference](../reference/company-result.md) before choosing field
+names or mapping source values. Follow [Adding a country adapter](../../CONTRIBUTING.md#adding-a-country-adapter).
 Specify identifier scheme, provider, supported operations, language behavior,
 dates, definitive negative evidence, lifecycle mapping and address provenance
 before implementing them. Review public contract changes with the maintainer.

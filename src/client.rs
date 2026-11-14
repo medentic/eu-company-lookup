@@ -1,7 +1,7 @@
 use crate::{
-    BgRegistryClient, BgRegistryConfig, BusinessId, ClientConfig, CompanyLookupResult,
-    IdentifierScheme, JurisdictionCapabilities, LookupError, Operation, Provider, RoRegistryClient,
-    RoRegistryConfig, VatLookupResult,
+    BgRegistryClient, BgRegistryConfig, ClientConfig, CompanyLookupResult, IdentifierScheme,
+    JurisdictionCapabilities, LookupError, Operation, Provider, RoRegistryClient, RoRegistryConfig,
+    VatLookupResult,
 };
 
 /// Provider-independent lookup facade. Clones share each enabled adapter's
@@ -9,7 +9,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct Client {
     vies: Option<crate::vies::ViesClient>,
-    bg: Option<BgRegistryClient>,
+    bg: Option<crate::bg::BgCompanyClient>,
     ro: Option<RoRegistryClient>,
 }
 
@@ -40,7 +40,8 @@ impl ClientBuilder {
             ro: None,
         }
     }
-    /// Enable VIES with these transport/admission bounds.
+    /// Enable standalone VIES with these transport/admission bounds.
+    /// BG company verification shares this client and its admission limits.
     pub fn vies(mut self, config: ClientConfig) -> Self {
         self.vies = Some(config);
         self
@@ -55,7 +56,8 @@ impl ClientBuilder {
         self.ro = Some(config);
         self
     }
-    /// Disable VIES without affecting country registry clients.
+    /// Disable only standalone VAT lookup operations.
+    /// BG company lookup still performs its required internal VIES check, using defaults.
     pub fn without_vies(mut self) -> Self {
         self.vies = None;
         self
@@ -72,12 +74,26 @@ impl ClientBuilder {
     }
     /// Validate and construct only the enabled adapters. Makes no provider requests.
     pub fn build(self) -> Result<Client, LookupError> {
+        let vies = self
+            .vies
+            .map(crate::vies::ViesClient::with_config)
+            .transpose()?;
+        let bg = self
+            .bg
+            .map(|config| -> Result<_, LookupError> {
+                let verification = match &vies {
+                    Some(client) => client.clone(),
+                    None => crate::vies::ViesClient::with_config(Default::default())?,
+                };
+                Ok(crate::bg::BgCompanyClient::new(
+                    BgRegistryClient::with_config(config)?,
+                    verification,
+                ))
+            })
+            .transpose()?;
         Ok(Client {
-            vies: self
-                .vies
-                .map(crate::vies::ViesClient::with_config)
-                .transpose()?,
-            bg: self.bg.map(BgRegistryClient::with_config).transpose()?,
+            vies,
+            bg,
             ro: self.ro.map(RoRegistryClient::with_config).transpose()?,
         })
     }
@@ -91,6 +107,12 @@ fn disabled(operation: Operation, identifier_scheme: IdentifierScheme) -> Lookup
 }
 
 impl Client {
+    /// ISO 3166-1 alpha-2 countries supported by company lookup.
+    ///
+    /// This lists compiled support; use `capabilities()` to inspect which
+    /// providers are enabled on a particular client.
+    pub const SUPPORTED_COMPANY_COUNTRIES: [&'static str; 2] = ["BG", "RO"];
+
     /// Configure adapters by name, starting with all current adapters enabled.
     pub fn builder() -> ClientBuilder {
         ClientBuilder::default()
@@ -120,7 +142,9 @@ impl Client {
             .build()
     }
     /// Capabilities of adapters enabled on this client. Empty provider lists do
-    /// not establish lookup support. Use the free `capabilities()` for compiled support.
+    /// not establish lookup support. This describes public operations, not internal
+    /// dependencies: BG company lookup always uses VIES for eligible identifiers.
+    /// Use the free `capabilities()` for compiled support.
     pub fn capabilities(&self) -> Vec<JurisdictionCapabilities> {
         let mut catalog = crate::capabilities();
         for country in &mut catalog {
@@ -148,62 +172,49 @@ impl Client {
             .ok_or_else(|| disabled(Operation::IsVatValid, IdentifierScheme::Vat))?;
         Ok(vies.lookup_vat(value).await?.valid)
     }
-    /// Lookup a national identifier through the corresponding enabled adapter.
+    /// Look up a national business identifier using its ISO 3166-1 alpha-2 country.
+    ///
+    /// Supports countries in [Self::SUPPORTED_COMPANY_COUNTRIES]
+    /// (case-insensitive, surrounding whitespace ignored).
+    /// Supply the national code without a VAT prefix. Leading zeroes are preserved.
+    /// Returns a common company view with typed source details. Romanian lookups
+    /// request today's fiscal status in Europe/Bucharest. BG nine-digit results are
+    /// automatically checked by the BG adapter through VIES; errors propagate, adding its own
+    /// deadline after the registry lookup. A valid, name-matched response fills VAT
+    /// fields. Negative or unnamed/mismatched responses retain unknown VAT fields
+    /// and remain available in `registryDetails.data.vatVerification`.
+    /// Thirteen-digit branch IDs are not converted to VAT candidates.
+    ///
+    /// Unsupported countries return `UnsupportedIdentifierScheme`. For supported
+    /// countries, disabled adapters return `OperationDisabled` before ID validation.
     pub async fn lookup_company(
         &self,
-        id: &BusinessId,
+        value: &str,
+        country: &str,
     ) -> Result<CompanyLookupResult, LookupError> {
-        match id.scheme() {
-            IdentifierScheme::BgBusinessId => self
-                .bg
-                .as_ref()
-                .ok_or_else(|| disabled(Operation::LookupCompany, id.scheme()))?
-                .lookup(id.as_str())
-                .await
-                .map(Into::into),
-            IdentifierScheme::RoBusinessId => self
+        let country = country.trim().to_ascii_uppercase();
+        if !Self::SUPPORTED_COMPANY_COUNTRIES.contains(&country.as_str()) {
+            return Err(LookupError::UnsupportedIdentifierScheme);
+        }
+        match country.as_str() {
+            "BG" => {
+                self.bg
+                    .as_ref()
+                    .ok_or_else(|| {
+                        disabled(Operation::LookupCompany, IdentifierScheme::BgBusinessId)
+                    })?
+                    .lookup(value)
+                    .await
+            }
+            "RO" => self
                 .ro
                 .as_ref()
-                .ok_or_else(|| disabled(Operation::LookupCompany, id.scheme()))?
-                .lookup(id.as_str())
+                .ok_or_else(|| disabled(Operation::LookupCompany, IdentifierScheme::RoBusinessId))?
+                .lookup(value)
                 .await
                 .map(Into::into),
             _ => Err(LookupError::UnsupportedIdentifierScheme),
         }
-    }
-    /// Bulgarian lookup with definitive-miss-only BULSTAT fallback.
-    pub async fn lookup_bg_company(
-        &self,
-        value: &str,
-    ) -> Result<crate::BgCompanyLookupResult, LookupError> {
-        self.bg
-            .as_ref()
-            .ok_or_else(|| disabled(Operation::LookupBgCompany, IdentifierScheme::BgBusinessId))?
-            .lookup(value)
-            .await
-    }
-    /// Romanian fiscal lookup for today's date in Europe/Bucharest.
-    pub async fn lookup_ro_company(
-        &self,
-        value: &str,
-    ) -> Result<crate::RoCompanyLookupResult, LookupError> {
-        self.ro
-            .as_ref()
-            .ok_or_else(|| disabled(Operation::LookupRoCompany, IdentifierScheme::RoBusinessId))?
-            .lookup(value)
-            .await
-    }
-    /// Romanian fiscal lookup for an explicit date; not a historical company extract.
-    pub async fn lookup_ro_company_at(
-        &self,
-        value: &str,
-        date: chrono::NaiveDate,
-    ) -> Result<crate::RoCompanyLookupResult, LookupError> {
-        self.ro
-            .as_ref()
-            .ok_or_else(|| disabled(Operation::LookupRoCompanyAt, IdentifierScheme::RoBusinessId))?
-            .lookup_at(value, date)
-            .await
     }
 }
 
@@ -212,9 +223,25 @@ impl Client {
     pub(crate) fn with_test_registries(bg: BgRegistryClient, ro: RoRegistryClient) -> Self {
         Self {
             vies: None,
-            bg: Some(bg),
+            bg: Some(crate::bg::BgCompanyClient::new(
+                bg,
+                crate::vies::ViesClient::for_test(
+                    "http://127.0.0.1:1/unused".into(),
+                    Default::default(),
+                ),
+            )),
             ro: Some(ro),
         }
+    }
+    pub(crate) fn with_test_vies(mut self, endpoint: String) -> Self {
+        self.bg
+            .as_mut()
+            .unwrap()
+            .set_test_vies(crate::vies::ViesClient::for_test(
+                endpoint,
+                Default::default(),
+            ));
+        self
     }
     pub(crate) fn for_test(endpoint: String, config: ClientConfig) -> Self {
         let mut client = Self::new().unwrap();

@@ -1,6 +1,6 @@
 # Bulgarian business lookup
 
-Use `Client::lookup_bg_company(code)` or `BgRegistryClient::lookup(code)` to look up
+Use `Client::lookup_company(code, "BG")` or `BgRegistryClient::lookup(code)` to look up
 a Bulgarian business identifier. The adapter tries the Commercial Register first
 and BULSTAT only after a definitive miss. It does not infer VAT registration.
 
@@ -24,6 +24,12 @@ BULSTAT can return related subjects; the full code must match both the search ro
 and detail record. An unmatched nonempty report is inconclusive and returns an error.
 
 ## Company record
+
+The facade returns `CompanyLookupResult`: the code is in `taxId` and its country in `country`, the
+address in `registeredOffice`, and source-specific fields in typed `registryDetails`.
+The table below describes the native `BgCompanyLookupResult` returned by the
+lower-level `BgRegistryClient`. Conversion to the shared result preserves these
+source details.
 
 | JSON field | Meaning |
 | --- | --- |
@@ -86,8 +92,8 @@ ownership, historical documents or entry dates from BULSTAT.
 `address`, `address2`, `city`, `postcode`, `region`, `municipality`, `country` and
 `countryISO2`. Uncertain components remain null.
 
-Country is derived only from explicit recognized source text and normalized to the
-shared native name. Bulgarian delivery normalization applies only when that country
+Explicit recognized countries are normalized to the shared native name; missing
+address countries default to `България` / `BG`. Bulgarian delivery normalization applies only when the normalized or default country
 is BG. City districts and labelled contact fields remain in the original text but
 are omitted from structured delivery fields. Explicit building details and
 comma-delimited office (`кабинет`) details with values move to `address2`; empty
@@ -118,3 +124,50 @@ Live coverage remains limited for successful thirteen-digit branch records,
 natural-person BULSTAT records and legal-form transitions. Saved address reviews
 do not certify every role holder, capital value or document. There is no selectable
 English fetch, checksum verification or complete address-format coverage.
+
+## Shared VAT fields
+
+`Client::lookup_company` delegates to the Bulgarian company adapter, which always
+performs sequential VAT enrichment after a successful Commercial Register or
+BULSTAT lookup. VIES is a required internal dependency of that adapter. For a
+nine-digit matched business ID it checks the candidate `BG` plus the unchanged ID.
+Thirteen-digit branch IDs are skipped; no suffix is removed or parent inferred.
+The native `BgRegistryClient` and native-to-common conversions remain registry-only.
+
+Both shared BG details variants contain nullable `vatVerification`, a full
+`VatLookupResult` with its own `source: "Vies"`. It is null when skipped or produced by native conversion. A completed negative or name-mismatched VIES
+response remains available there. Primary `source`, registry URL, lifecycle,
+company name and registry addresses are not replaced by VIES fields.
+
+Common `vatRegistered` becomes true and `vatId` is copied from VIES only when the
+response is valid, its echoed VAT ID matches the candidate, and its company name
+matches the registry name after Unicode case, punctuation and whitespace
+normalization. Word boundaries and legal-form tokens are preserved. There is no
+fuzzy matching, translation, transliteration or suffix removal. An absent or
+different name leaves both common fields null even when VIES says valid. A negative
+VIES result also leaves them null: it does not prove domestic nonregistration.
+This conservative comparison may leave genuine registrations unenriched.
+
+VIES failures propagate as `LookupError`; registry success does not hide a failed
+verification. Registry errors or definitive misses never trigger VIES. Sequential
+calls retain their individual configured deadlines (BG 30 seconds, then VIES 8
+seconds by default), spacing, admission limits and cooldowns. There are no retries.
+There is no opt-out for the shared BG company lookup. `without_vies()` disables
+only standalone `lookup_vat` / `is_vat_valid` operations; it does not disable this
+internal dependency. When standalone VIES is configured, the BG adapter shares
+its client, configuration and admission limits. Otherwise BG creates its required
+VIES dependency with default bounds. RO still uses ANAF without a VIES call.
+Capability discovery lists enabled public operations, not internal dependencies.
+
+The [NRA public VAT register](https://portal.nra.bg/details/report-cash-terminal)
+is a future source of domestic registration evidence. Its observed form asks for
+a VAT number; automated access and EIK-to-VAT discovery need investigation. The
+header's `ЕИК по БУЛСТАТ 131063188` identifies NRA, not the queried company.
+
+Missing or blank address countries default to `България` / `BG` for both
+Commercial Register and BULSTAT results. This is a library default based on the
+provider jurisdiction; explicit source countries take precedence. Country names
+use title case and recognized ISO codes use uppercase. Original address and party
+source text remain unchanged. Manager/owner countries are normalized when supplied,
+but missing party countries remain null: an address default does not establish
+a person’s country.

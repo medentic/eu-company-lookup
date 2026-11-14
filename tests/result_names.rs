@@ -17,8 +17,6 @@ fn lookup_methods_accept_both_preferred_and_legacy_result_annotations() {
     // Futures are deliberately not polled: this is an offline consumer contract.
     vat_lookup(client.lookup_vat("BG123456789"));
     legacy_vat_lookup(client.lookup_vat("BG123456789"));
-    company_lookup(client.lookup_bg_company("123456789"));
-    legacy_company_lookup(client.lookup_bg_company("123456789"));
     company_lookup(registry.lookup("123456789"));
     legacy_company_lookup(registry.lookup("123456789"));
 }

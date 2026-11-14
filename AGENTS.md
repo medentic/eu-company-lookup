@@ -9,9 +9,19 @@ For maintenance without prior chat context, use the
 [source domain map](src/README.md). Scoped instructions live in
 [src/AGENTS.md](src/AGENTS.md) and [tools/AGENTS.md](tools/AGENTS.md).
 
+## Registry design
+
+For registry work, read the [shared field contract](docs/reference/company-result.md)
+and [adapter implementation guide](docs/development/registry-adapters.md). Common
+company concepts stay at the top level with consistent meanings; native codes,
+status text and provider-specific facts stay in typed `registryDetails.data`.
+Missing common facts remain null. Provider-local pure mappings own conversion;
+keep the documented BG VIES orchestration in the Bulgarian company adapter.
+Do not introduce universal prefix inference or undocumented address substitutions.
+
 ## Scope and invariants
 
-- Version 2.0 covers VIES, Bulgarian Commercial Register/BULSTAT lookup and
+- Version 3.0 covers VIES, Bulgarian Commercial Register/BULSTAT lookup and
   Romanian ANAF taxpayer lookup. The README priority table describes further work.
 - Preserve full identifiers and leading zeroes. Syntax is not checksum or registration.
 - `valid: false` requires a matched negative VIES response. `NotFound` requires both

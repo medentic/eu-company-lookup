@@ -15,11 +15,13 @@ pub use country::Country;
 pub fn parse_address(raw: &str, localization: &str) -> Address {
     let code = localization.to_uppercase();
     let code = if code == "GR" { "EL" } else { &code };
-    if code == "RO" {
+    let mut address = if code == "RO" {
         romanian::parse(raw)
     } else {
         parser::split_fields(code, raw)
-    }
+    };
+    address.normalize_country();
+    address
 }
 /// Whether extraction rules exist for an ISO country-format hint.
 pub fn supports_address(localization: &str) -> bool {

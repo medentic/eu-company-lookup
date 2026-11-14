@@ -134,7 +134,10 @@ fn people(f: Option<&Field>, role: RegistryRole) -> Option<Vec<RegistryPerson>> 
                     .as_deref()
                     .and_then(crate::locations::Country::from_name);
                 let country_iso2 = recognized.map(|c| c.iso2().into());
-                let country = recognized.map(|c| c.native_name().into()).or(country);
+                let country = recognized
+                    .map(|c| c.native_name().into())
+                    .or(country)
+                    .map(|name| crate::locations::normalize::country_name(&name));
                 RegistryPerson {
                     name,
                     role,

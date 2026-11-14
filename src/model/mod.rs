@@ -1,4 +1,4 @@
-//! Public result contracts and lossless source-to-common mappings.
+//! Public result contracts; provider adapters own source-to-common projections.
 //! Keep native evidence separate from normalized lifecycle and address presentation.
 mod capabilities;
 mod company;

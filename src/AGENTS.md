@@ -9,6 +9,9 @@ editing. Root [agent instructions](../AGENTS.md) still apply.
   tests deliberately when changing the public API.
 - Keep facade behavior, capability contracts and actual enabled adapters aligned.
   Discovery must remain offline and must not construct transport clients.
+- Keep provider-to-common projections in the owning adapter's `mapping.rs`.
+  Shared model files define contracts; they must not accumulate provider decoding
+  or mapping rules. Typed registry details determine the returned provider label.
 - Preserve source text and native status alongside normalization. Review the
   model conversion as well as the native decoder when changing a provider field.
 - Keep unit/parser/transport tests next to their owner; use `tests/` for public

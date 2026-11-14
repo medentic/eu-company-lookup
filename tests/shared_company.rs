@@ -36,7 +36,7 @@ fn identifiers_validate_country_scheme_and_wire_input() {
 }
 
 #[test]
-fn one_lookup_signature_accepts_both_national_types() {
+fn one_lookup_signature_accepts_both_countries() {
     let client = Client::new().unwrap();
     fn shared(
         _: impl std::future::Future<Output = Result<CompanyLookupResult, LookupError>> + Send,
@@ -46,7 +46,7 @@ fn one_lookup_signature_accepts_both_national_types() {
         BusinessId::from(BgBusinessId::parse("123456789").unwrap()),
         BusinessId::from(RoBusinessId::parse("001234").unwrap()),
     ] {
-        shared(client.lookup_company(&id)); // Not polled; no network calls.
+        shared(client.lookup_company(id.as_str(), id.country())); // Not polled; no network calls.
     }
 }
 
@@ -58,7 +58,7 @@ fn non_vies_eea_countries_are_discoverable_without_claiming_lookup_support() {
         assert!(entry.vat_prefix.is_none());
         assert!(entry.providers.is_empty());
     }
-    for code in ["BG", "RO"] {
+    for code in Client::SUPPORTED_COMPANY_COUNTRIES {
         let entry = catalog.iter().find(|c| c.country_code == code).unwrap();
         assert!(entry.providers.iter().any(|p| {
             p.operations
@@ -66,5 +66,31 @@ fn non_vies_eea_countries_are_discoverable_without_claiming_lookup_support() {
                 .any(|op| op.operation == Operation::LookupCompany)
         }));
         assert!(entry.providers.iter().all(|p| !p.languages.selectable));
+    }
+}
+
+#[tokio::test]
+async fn company_support_list_matches_discovery_and_dispatch() {
+    let client = Client::new().unwrap();
+    let catalog = client.capabilities();
+    let discovered: Vec<_> = catalog
+        .iter()
+        .filter(|country| {
+            country.providers.iter().any(|provider| {
+                provider
+                    .operations
+                    .iter()
+                    .any(|op| op.operation == Operation::LookupCompany)
+            })
+        })
+        .map(|country| country.country_code)
+        .collect();
+    assert_eq!(discovered, Client::SUPPORTED_COMPANY_COUNTRIES);
+    for country in Client::SUPPORTED_COMPANY_COUNTRIES {
+        // Empty IDs fail locally; a missing dispatch branch would instead report unsupported.
+        assert!(matches!(
+            client.lookup_company("", country).await,
+            Err(LookupError::InvalidInput)
+        ));
     }
 }

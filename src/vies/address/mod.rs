@@ -27,6 +27,7 @@ pub(super) fn split(prefix: &str, original: Option<String>) -> VatAddress {
             fields.country = Some(name.into());
         }
     }
+    fields.normalize_country();
     VatAddress {
         full_address_by_vies: original,
         fields,

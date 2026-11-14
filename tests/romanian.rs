@@ -39,11 +39,11 @@ fn cui_is_a_string_and_vat_remains_separate() {
 async fn invalid_input_fails_before_network() {
     let client = Client::new().unwrap();
     assert!(matches!(
-        client.lookup_ro_company("RO1234").await,
+        client.lookup_company("RO1234", "RO").await,
         Err(LookupError::InvalidInput)
     ));
-    let future =
-        client.lookup_ro_company_at("1234", chrono::NaiveDate::from_ymd_opt(9999, 1, 1).unwrap());
+    let registry = RoRegistryClient::new().unwrap();
+    let future = registry.lookup_at("1234", chrono::NaiveDate::from_ymd_opt(9999, 1, 1).unwrap());
     fn send<T: Send>(_: &T) {}
     send(&future);
     assert!(matches!(future.await, Err(LookupError::InvalidInput)));

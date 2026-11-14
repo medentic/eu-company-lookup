@@ -52,3 +52,7 @@ fields remain unknown while the supplied postcode and locality are retained.
 For incomplete Portuguese observations, an explicitly labelled `AVENIDA` or
 `RUA` line and a second non-numeric line can be retained as delivery text. City
 and postcode remain unknown; external addresses are never substituted.
+
+Address country names use shared title-case display normalization, preserving
+language and diacritics. `countryISO2` is uppercase when recognized; missing or
+unrecognized countries retain a null code. Original full address text is unchanged.
