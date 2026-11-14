@@ -7,6 +7,15 @@ Start with the [consumer reference](../../docs/reference/bulgarian-registry.md).
 [html.rs](html.rs), [address.rs](address.rs) and [legal_form.rs](legal_form.rs)
 interpret their text. All modules remain private.
 
+[mapping.rs](mapping.rs) owns the pure native-to-common projection. It retains
+registry-specific facts and derives the common source from the typed details;
+it performs no extra lookups or VAT inference. [vat.rs](vat.rs) owns the BG-only
+candidate and name-matching rules and the private `BgCompanyClient` orchestrator.
+The facade delegates to that adapter; it always calls its required VIES dependency
+after eligible registry success and records the full response under shared
+`vatVerification`. Standalone VAT API enablement does not gate this step. Native clients
+remain registry-only. See [enrichment semantics](../../docs/reference/bulgarian-registry.md#shared-vat-fields).
+
 ## Provider routing and absence
 
 The configured Commercial Register endpoint is on `portal.registryagency.bg`
@@ -60,3 +69,11 @@ status. Never infer a new code's meaning from its number.
 Use [tests.rs](tests.rs) for synthetic decoder/transport regressions. The probe
 modules are test-only evidence tools, not public APIs. Read the
 [collector guide](../../docs/development/collectors.md) before invoking them.
+
+Missing or blank address countries default to `България` / `BG` for both
+Commercial Register and BULSTAT results. This is a library default based on the
+provider jurisdiction; explicit source countries take precedence. Country names
+use title case and recognized ISO codes use uppercase. Original address and party
+source text remain unchanged. Manager/owner countries are normalized when supplied,
+but missing party countries remain null: an address default does not establish
+a person’s country.

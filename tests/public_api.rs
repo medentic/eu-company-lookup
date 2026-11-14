@@ -37,7 +37,7 @@ async fn consumer_gets_typed_errors_instead_of_false() {
         Err(LookupError::UnsupportedJurisdiction)
     ));
     assert!(matches!(
-        client.lookup_bg_company("BG123456789").await,
+        client.lookup_company("BG123456789", "BG").await,
         Err(LookupError::InvalidInput)
     ));
     assert!(LookupError::ServiceUnavailable { retry_after: None }.is_service_unavailable());

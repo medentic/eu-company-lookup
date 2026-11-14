@@ -71,12 +71,19 @@ fn address(
         Some(value) => object(value)?,
     };
     let get = |suffix: &str| text(fields, &format!("{prefix}{suffix}"));
+    let mut country = crate::locations::Address {
+        // ANAF-specific default; an explicit source country always wins.
+        country: Some(get("tara")?.unwrap_or_else(|| "Romania".into())),
+        ..Default::default()
+    };
+    country.normalize_country();
     Ok(Some(RoRegistryAddress {
         street: get("denumire_Strada")?,
         street_number: get("numar_Strada")?,
         locality: get("denumire_Localitate")?,
         county: get("denumire_Judet")?,
-        country: get("tara")?,
+        country: country.country,
+        country_iso2: country.country_iso2,
         postcode: get("cod_Postal")?,
         details: get("detalii_Adresa")?,
     }))

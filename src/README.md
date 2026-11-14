@@ -19,11 +19,21 @@ working source; they do not establish a published version or live coverage.
 
 ## Request flow
 
+`Client::SUPPORTED_COMPANY_COUNTRIES` is the shared ISO alpha-2 support list for
+company lookup, business identity validation and national capability discovery.
+Use it when listing supported company countries. Country-specific dispatch,
+scheme mappings and source parsing remain explicit; adding a country requires
+its adapter as well as a support-list entry.
+
 A facade method checks whether its adapter is enabled, then the adapter validates
 input, applies admission/deadline policy, exchanges bounded responses and checks
-source identity before producing a result. `lookup_company` takes an already
-validated `BusinessId` and converts the native BG/RO result into a common view.
-Conversion performs no extra lookup and does not combine evidence from providers.
+source identity before producing a result. `lookup_company` takes a national code and country string, selects
+the BG/RO adapter, validates the code and converts the native BG/RO result into a common view.
+Provider-local `mapping.rs` modules own these pure projections. Conversion
+performs no extra lookup. The facade delegates BG company lookup to its private country
+orchestrator, which owns a required VIES dependency and retains supplementary
+evidence in BG details. Standalone VIES enablement does not gate that dependency. The
+shared model defines field contracts; typed details determine the source tag.
 
 Country metadata, VAT jurisdiction, national identifier scheme, provider and
 physical address country are different concepts. For example, EL is the VIES

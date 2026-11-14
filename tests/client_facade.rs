@@ -71,7 +71,10 @@ async fn disabled_operations_are_local_errors_never_negative_observations() {
         ("RO", IdentifierScheme::RoBusinessId, "001234"),
     ] {
         let id = BusinessId::parse(country, scheme, value).unwrap();
-        let error = client.lookup_company(&id).await.unwrap_err();
+        let error = client
+            .lookup_company(id.as_str(), id.country())
+            .await
+            .unwrap_err();
         assert!(
             matches!(error, LookupError::OperationDisabled { operation: Operation::LookupCompany, identifier_scheme } if identifier_scheme == scheme)
         );
@@ -88,29 +91,6 @@ async fn disabled_operations_are_local_errors_never_negative_observations() {
         client.is_vat_valid("BG123456789").await,
         Err(LookupError::OperationDisabled {
             operation: Operation::IsVatValid,
-            ..
-        })
-    ));
-    assert!(matches!(
-        client.lookup_bg_company("123456789").await,
-        Err(LookupError::OperationDisabled {
-            operation: Operation::LookupBgCompany,
-            ..
-        })
-    ));
-    assert!(matches!(
-        client.lookup_ro_company("1234").await,
-        Err(LookupError::OperationDisabled {
-            operation: Operation::LookupRoCompany,
-            ..
-        })
-    ));
-    assert!(matches!(
-        client
-            .lookup_ro_company_at("1234", chrono::NaiveDate::from_ymd_opt(2025, 1, 1).unwrap())
-            .await,
-        Err(LookupError::OperationDisabled {
-            operation: Operation::LookupRoCompanyAt,
             ..
         })
     ));
@@ -160,4 +140,34 @@ fn unsupported_scheme_is_distinct_from_malformed_national_value() {
         BusinessId::parse("BG", IdentifierScheme::BgBusinessId, "bad"),
         Err(LookupError::InvalidInput)
     ));
+}
+
+#[tokio::test]
+async fn company_country_and_value_errors_are_local() {
+    let enabled = Client::new().unwrap();
+    let disabled = ClientBuilder::empty().build().unwrap();
+    for country in ["", "DE", "BGR", "BG RO", "БГ"] {
+        for client in [&enabled, &disabled] {
+            assert!(matches!(
+                client.lookup_company("123456789", country).await,
+                Err(LookupError::UnsupportedIdentifierScheme)
+            ));
+        }
+    }
+    for (country, scheme) in [
+        (" bg ", IdentifierScheme::BgBusinessId),
+        ("ro", IdentifierScheme::RoBusinessId),
+    ] {
+        assert!(matches!(
+            disabled.lookup_company("invalid", country).await,
+            Err(LookupError::OperationDisabled {
+                operation: Operation::LookupCompany,
+                identifier_scheme,
+            }) if identifier_scheme == scheme
+        ));
+        assert!(matches!(
+            enabled.lookup_company("invalid", country).await,
+            Err(LookupError::InvalidInput)
+        ));
+    }
 }

@@ -77,6 +77,10 @@ are repository-only; consumers use [reference documentation](docs/README.md#usin
 
 ## Adding a country adapter
 
+Follow the [registry adapter guide](docs/development/registry-adapters.md) and
+[shared field reference](docs/reference/company-result.md) for field placement,
+source mappings, unknown values and acceptance criteria.
+
 Keep identifiers, provider decoding, transport and provider-specific tests in the
 country module. Extend the typed `Provider`/`IdentifierScheme` enums and the
 validated `BusinessId` mapping; do not accept arbitrary country strings as proof

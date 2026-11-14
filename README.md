@@ -26,10 +26,8 @@ sources on demand rather than maintaining a database of all European companies.
 
 | You have | Call | Returns on success |
 | --- | --- | --- |
-| EU VAT number | `client.lookup_vat("BG123456789")` | `VatLookupResult`: validity, company name and address |
-| Bulgarian ЕИК / BULSTAT code | `client.lookup_bg_company("123456789")` | `BgCompanyLookupResult`: identity, address and registry details |
-| Romanian CUI | `client.lookup_ro_company("1234")` | `RoCompanyLookupResult`: identity, addresses and domestic tax status |
-| BG or RO business identifier | `client.lookup_company(&id)` | `CompanyLookupResult`: common company view with typed source details |
+| EU VAT number | `client.lookup_vat("BG131129282")` | `VatLookupResult`: validity, company name and address |
+| BG or RO business identifier | `client.lookup_company("131129282", "BG")` | `CompanyLookupResult`: common company view with typed source details |
 
 National business lookup currently covers **BG and RO only** (ANAF is a taxpayer
 source). VAT verification and company registration are separate checks. Syntax validation does not prove
@@ -85,9 +83,13 @@ evidence, known limitations and national-registry priorities.
 
 Requires **Rust 1.98.1+** and **Tokio with I/O and time enabled**.
 
+Version **3** exposes the shared BG/RO company contract and automatic BG VIES
+verification. See [migration from 2.x](docs/reference/api-stability.md#migrating-from-2x)
+when upgrading an existing integration.
+
 ```toml
 [dependencies]
-eu-company-lookup = "2"
+eu-company-lookup = "3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 serde_json = "1" # To print the JSON shown below.
 ```
@@ -99,10 +101,11 @@ serde_json = "1" # To print the JSON shown below.
 ## Examples
 
 Each network example is a complete Rust program: put it in `src/main.rs` with
-the dependencies above and run `cargo run`. Replace the synthetic identifier
-with one you intend to look up. The JSON shows illustrative successful returns,
-not live observations or guaranteed results for these identifiers. All fields
-are shown, including nulls; available values depend on the provider.
+the dependencies above and run `cargo run`. These programs contact live providers.
+The VAT example shows an observed VIES result for Kaufland Bulgaria. The company
+examples show Kaufland Bulgaria and Automobile Dacia, including every common field and all
+`registryDetails` fields exactly as returned. Null values are included. Registry
+data and availability can change between requests.
 
 The `rust,no_run` code-fence annotation tells rustdoc to compile these Rust
 examples without executing live requests during documentation tests.
@@ -117,28 +120,28 @@ use eu_company_lookup::Client;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::new()?;
-    let result = client.lookup_vat("BG123456789").await?;
+    let result = client.lookup_vat("BG131129282").await?;
     println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
 }
 ```
 
-**Returns** `Result<VatLookupResult, LookupError>`. This is an illustrative
-successful response with synthetic data, not a live result for the example ID:
+**Returns** `Result<VatLookupResult, LookupError>`. Complete serialized result
+from a live VIES lookup of Kaufland Bulgaria (`BG131129282`):
 
 ```json
 {
-  "vatId": "BG123456789",
+  "vatId": "BG131129282",
   "valid": true,
   "source": "Vies",
-  "company": "Synthetic Company",
+  "company": "КАУФЛАНД БЪЛГАРИЯ ЕООД ЕНД КО - КД",
   "address": {
-    "fullAddressByVies": "ул. ПРИМЕР 1 обл.РУСЕ, гр.РУСЕ 7000",
-    "address": "ул. ПРИМЕР 1",
+    "fullAddressByVies": " жк ж.к. Банишора ул. Скопие  №1А обл.СОФИЯ, гр.СОФИЯ 1233",
+    "address": "жк. ж.к. Банишора, ул. Скопие №1А",
     "address2": null,
-    "city": "Русе",
-    "postcode": "7000",
-    "region": "Русе",
+    "city": "София",
+    "postcode": "1233",
+    "region": "София",
     "country": "България",
     "countryISO2": "BG"
   }
@@ -149,260 +152,281 @@ Company details may be withheld or missing. Unknown address components remain
 null; the original decoded address is retained. `valid: false` requires a matched
 negative VIES response. A timeout or provider failure returns an error.
 
-Only need a boolean? `client.is_vat_valid("BG123456789").await` returns
+Only need a boolean? `client.is_vat_valid("BG131129282").await` returns
 `Result<bool, LookupError>`. It makes its own request; use `result.valid` if you
 already have the full result. [VIES input rules and field meanings](docs/reference/vies.md).
+
+### Bulgarian VAT verification and future NRA integration
+
+BG `lookup_company` always performs its VIES check after a successful nine-digit
+Commercial Register or BULSTAT lookup. The Bulgarian company adapter owns this
+step and calls the VIES domain internally; no separate enablement is required. It checks `BG` plus the full matched identifier; thirteen-digit branch
+codes are never truncated or queried. A candidate alone does not establish VAT
+identity. Only a valid VIES response with the same company name after case,
+punctuation and whitespace normalization fills `vatRegistered: true` and `vatId`.
+No fuzzy matching, translation or legal-form removal is performed.
+
+The full VIES result is retained at `registryDetails.data.vatVerification`, including
+negative responses and name mismatches. These leave the common VAT fields null;
+VIES invalidity alone does not establish absence of domestic VAT registration.
+`source` and `registryUrl` still identify the primary company registry; the nested
+verification identifies `Vies` as its source. No VIES address replaces a registry
+address. RO remains based on ANAF and makes no additional VIES request.
+
+A VIES failure returns a lookup error, even if the preceding registry request
+succeeded. The calls are sequential and each uses its own configured deadline and
+admission limits (up to 30 seconds for BG, then up to 8 seconds for VIES by default).
+The standalone VAT API is separate: `without_vies()` disables `lookup_vat` and
+`is_vat_valid`, but does not disable the BG company adapter’s internal check. When
+the standalone VIES API is configured, both paths share its client and rate limits;
+otherwise BG uses default VIES bounds. There is no enrichment opt-out on the
+shared BG company lookup. Use the direct VAT call when the VAT number is already
+known; do not repeat it just to read an enrichment result.
+
+A future improvement is integration with the official
+[NRA public VAT register](https://portal.nra.bg/details/report-cash-terminal)
+([service description](https://iisda.government.bg/adm_services/services/service_provision/83394)).
+The register can supply the VAT number, name, correspondence address, registration
+date and basis, and deregistration date. Its observed search form asks for a VAT
+number; reliable EIK-to-VAT discovery and automated access still need investigation.
+
+The page header also displays **ЕИК по БУЛСТАТ 131063188**. This identifies the
+**National Revenue Agency itself**, not the company being queried. Never use that
+header identifier to match a company or populate its `taxId` or `vatId`.
 
 ## Look up a company across supported countries
 
 Use the common result when your application handles both Bulgaria and Romania.
 Pass a national business code without its VAT prefix; leading zeroes are preserved.
 
-**Call:**
+Both calls return `Result<CompanyLookupResult, LookupError>` with the same
+top-level fields. Only the typed `registryDetails` payload varies by source.
 
 ```rust,no_run
-use eu_company_lookup::{BusinessId, Client, IdentifierScheme};
+use eu_company_lookup::Client;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::new()?;
-    let id = BusinessId::parse("RO", IdentifierScheme::RoBusinessId, "001234")?;
-    let company = client.lookup_company(&id).await?;
-    println!("{}", serde_json::to_string_pretty(&company)?);
+    let kaufland = client.lookup_company("131129282", "BG").await?;
+    let dacia = client.lookup_company("160796", "RO").await?;
+    println!("{}", serde_json::to_string_pretty(&kaufland)?);
+    println!("{}", serde_json::to_string_pretty(&dacia)?);
     Ok(())
 }
 ```
 
-**Returns** `Result<CompanyLookupResult, LookupError>`. Complete serialized example:
+### Bulgaria: Kaufland
+
+Kaufland Bulgaria publishes business identifier `131129282` in its
+[official company details](https://www.kaufland.bg/moyat-kaufland/igri/tiktok-usloviya.html).
+The complete serialized company result, including automatic VIES enrichment:
 
 ```json
 {
-  "identifier": {
-    "country": "RO",
-    "scheme": "RoBusinessId",
-    "value": "001234"
+  "country": "BG",
+  "taxId": "131129282",
+  "vatRegistered": true,
+  "vatId": "BG131129282",
+  "source": "BulgarianCommercialRegister",
+  "registryUrl": "https://portal.registryagency.bg/CR/Reports/ActiveConditionTabResult?uic=131129282",
+  "foreignName": "KAUFLAND BULGARIA EOOD & CO",
+  "companyName": "\"КАУФЛАНД БЪЛГАРИЯ ЕООД ЕНД КО\" КД",
+  "legalForm": "Командитно дружество",
+  "registeredOffice": {
+    "fullAddressByRegistry": "Държава: БЪЛГАРИЯ\nОбласт: София (столица), Община: Столична\nНаселено място: гр. София, п.к. 1233\nр-н Сердика\nж.к. ж.к. Банишора, бул./ул. ул. Скопие № 1А",
+    "address": "жк. ж.к. Банишора, ул. Скопие № 1А",
+    "address2": null,
+    "city": "София",
+    "postcode": "1233",
+    "region": "София (столица)",
+    "municipality": "Столична",
+    "country": "България",
+    "countryISO2": "BG"
   },
+  "fiscalAddress": null,
+  "status": "active",
+  "registryDetails": {
+    "provider": "BulgarianCommercialRegister",
+    "data": {
+      "nativeRegistryStatus": "2",
+      "vatVerification": {
+        "vatId": "BG131129282",
+        "valid": true,
+        "source": "Vies",
+        "company": "КАУФЛАНД БЪЛГАРИЯ ЕООД ЕНД КО - КД",
+        "address": {
+          "fullAddressByVies": " жк ж.к. Банишора ул. Скопие  №1А обл.СОФИЯ, гр.СОФИЯ 1233",
+          "address": "жк. ж.к. Банишора, ул. Скопие №1А",
+          "address2": null,
+          "city": "София",
+          "postcode": "1233",
+          "region": "София",
+          "country": "България",
+          "countryISO2": "BG"
+        }
+      },
+      "statusCode": 2,
+      "registeredName": "КАУФЛАНД БЪЛГАРИЯ ЕООД ЕНД КО",
+      "identifierEntryDate": "2008-05-30",
+      "identifierEntryYear": 2008,
+      "managers": null,
+      "owners": null,
+      "capital": {
+        "registered": null,
+        "paidIn": null
+      },
+      "businessActivity": "Търговия на дребно със стоки за широко потребление, които са допуснати до обществения пазар, между които промишлени и хранителни стоки в т.ч. пиротехнически средства, управление и участие в други предприятия, които осъществяват дейност в горепосочените отрасли и свързаните с тях сделки, придобиване, разпореждане, вземане и отдаване под наем, управление и експлоатация на недвижими имоти, както и на други вещни права върху недвижими имоти, както и всяка друга дейност, незабранена от българското законодателство.",
+      "documents": [
+        {
+          "type": "constitutiveDocument",
+          "title": "Актуален дружествен договор/учредителен акт/устав",
+          "announcedAtLocal": "2023-09-14T16:58:59",
+          "url": "https://portal.registryagency.bg/CR/DocumentAccess/MTMxMTI5MjgyJmUmY2I0ZTMwNGE5YTIyNGY4ZmEyMGE5YTRmMmMwZTkwNTCt2hlTAQvk8DHWIlGoXXyTS0lXdu08qI9iQVYT_Dtvtw"
+        }
+      ],
+      "hasInstructions": true
+    }
+  }
+}
+```
+
+The common VAT fields are populated by the successful, name-matched VIES check
+recorded in `registryDetails.data.vatVerification`. The Commercial Register itself
+does not report VAT registration. `foreignName` is the registered foreign-script
+name. `identifierEntryDate` dates the UIC field entry, not incorporation. The
+address preserves source wording, including repeated locality labels.
+
+### Romania: Automobile Dacia
+
+Automobile Dacia publishes fiscal identifier `160796` in its
+[official company report](https://cdn.group.renault.com/dac/ro/despre-marca/Declaratianefinanciara2024.pdf).
+The complete serialized ANAF lookup result:
+
+```json
+{
+  "country": "RO",
+  "taxId": "160796",
+  "vatRegistered": true,
+  "vatId": "RO160796",
   "source": "RomanianAnaf",
-  "companyName": "Synthetic Company SRL",
-  "legalForm": null,
+  "registryUrl": null,
+  "foreignName": null,
+  "companyName": "AUTOMOBILE-DACIA SA",
+  "legalForm": "SOCIETATE COMERCIALĂ PE ACŢIUNI",
   "registeredOffice": {
     "fullAddressByRegistry": null,
-    "address": "Strada Exemplului 1",
+    "address": "Str. UZINEI 1",
     "address2": null,
-    "city": "București",
-    "postcode": "010101",
-    "region": "București",
+    "city": "Loc. Mioveni Orş. Mioveni",
+    "postcode": "115400",
+    "region": "ARGEŞ",
     "municipality": null,
-    "country": "ROMANIA",
+    "country": "Romania",
     "countryISO2": "RO"
   },
   "fiscalAddress": {
-    "fullAddressByRegistry": "Strada Exemplului 1, București, 010101",
-    "address": "Strada Exemplului 1",
+    "fullAddressByRegistry": "JUD. ARGEŞ, LOC. MIOVENI ORŞ. MIOVENI, STR. UZINEI, NR.1",
+    "address": "Str. UZINEI 1",
     "address2": null,
-    "city": "București",
-    "postcode": "010101",
-    "region": "București",
+    "city": "Loc. Mioveni Orş. Mioveni",
+    "postcode": "115400",
+    "region": "ARGEŞ",
     "municipality": null,
-    "country": "ROMANIA",
+    "country": "Romania",
     "countryISO2": "RO"
   },
   "status": "unknown",
-  "nativeRegistryStatus": "INREGISTRAT",
-  "details": {
+  "registryDetails": {
     "provider": "RomanianAnaf",
     "data": {
+      "nativeRegistryStatus": "INREGISTRAT din data 30.11.1992",
       "requestDate": "2026-11-14",
-      "checkedAt": "2026-11-14T10:00:00Z",
-      "tradeRegisterNumber": null,
-      "registrationDate": null,
-      "registrationStatus": "INREGISTRAT",
-      "activityCode": null,
+      "checkedAt": "2026-11-14T16:13:58.179494339Z",
+      "tradeRegisterNumber": "J1991000081036",
+      "registrationDate": "1992-11-30",
+      "registrationStatus": "INREGISTRAT din data 30.11.1992",
+      "activityCode": "2910",
       "registeredOffice": {
-        "street": "Strada Exemplului",
+        "street": "Str. UZINEI",
         "streetNumber": "1",
-        "locality": "București",
-        "county": "București",
-        "country": "ROMANIA",
-        "postcode": "010101",
+        "locality": "Loc. Mioveni Orş. Mioveni",
+        "county": "ARGEŞ",
+        "country": "Romania",
+        "countryISO2": "RO",
+        "postcode": "115400",
         "details": null
       },
       "fiscalAddress": {
-        "street": "Strada Exemplului",
+        "street": "Str. UZINEI",
         "streetNumber": "1",
-        "locality": "București",
-        "county": "București",
-        "country": "ROMANIA",
-        "postcode": "010101",
+        "locality": "Loc. Mioveni Orş. Mioveni",
+        "county": "ARGEŞ",
+        "country": "Romania",
+        "countryISO2": "RO",
+        "postcode": "115400",
         "details": null
       },
       "taxStatus": {
         "vatRegistered": true,
         "vatOnCollection": false,
         "inactive": false,
-        "splitVat": null,
-        "eInvoiceRegistered": null
+        "splitVat": false,
+        "eInvoiceRegistered": false
       }
     }
   }
 }
 ```
 
+ANAF supplied no address country in this response. The adapter defaults missing
+address countries to `"Romania"` / `"RO"` based on the ANAF jurisdiction; these are
+library defaults, not country values explicitly returned by ANAF. Explicit source
+countries take precedence, with title-case names and uppercase recognized ISO codes.
+The current adapter supplies no
+verified company-record URL, so `registryUrl` remains null. `status: "unknown"`
+reflects the conservative lifecycle mapping; ANAF's original status is retained
+in the details.
+
+Missing address countries default to `България` / `BG` for Bulgarian registries
+and `Romania` / `RO` for ANAF. Explicit source countries take precedence. Country
+names use title case and recognized ISO codes use uppercase throughout structured
+addresses and registry details; original source text is preserved.
+
+The top-level object is the shared company model: fields have the same meaning
+and shape across providers. Provider-specific codes, native status text, special tax
+regimes and source structures belong in `registryDetails` and cannot override
+common fields. `status` is the normalized lifecycle; the original status lives
+in `registryDetails.data.nativeRegistryStatus`.
+
+`vatRegistered` reports VAT registration supported by the provider-specific
+evidence, otherwise null. RO uses ANAF article 316 at the requested
+fiscal date; this does not cover every special VAT registration. A positive
+matched ANAF result supplies the RO `vatId`, using `RO` plus the numeric fiscal ID.
+For RO, input padding remains in `taxId` but not the derived VAT ID. BG preserves
+all nine digits in its VIES candidate. With BG automatic enrichment, valid and name-matched
+results fill both VAT fields; other successful responses leave them null. There
+is no generic country-prefix derivation across providers.
+[VAT field scope and derivation](docs/reference/romanian-registry.md#shared-vat-fields).
+
 The common view keeps `registeredOffice` and `fiscalAddress` separate and retains
-ANAF-specific fields under `details`. Unavailable optional fields remain null.
-For Bulgaria, use country `"BG"` and
-`IdentifierScheme::BgBusinessId`. [Shared result contract](docs/reference/api-stability.md).
+ANAF-specific fields under `registryDetails`. `registryUrl` and `foreignName` are
+common nullable fields: BG supplies a record link and, when present, a registered
+foreign-script name; the current ANAF adapter supplies neither. The name is not a
+translation. Unavailable optional fields remain null.
+Country codes are case-insensitive and surrounding whitespace is ignored.
+Unsupported countries return `UnsupportedIdentifierScheme`.
+[Complete shared field reference](docs/reference/company-result.md) ·
+[Compatibility and migration](docs/reference/api-stability.md).
 
-## Look up a Bulgarian business
+Bulgarian codes must contain nine or thirteen digits. BULSTAT fallback follows
+only a definitive Commercial Register miss, never a provider failure.
+[Bulgarian fields and limitations](docs/reference/bulgarian-registry.md).
 
-**Call:**
-
-```rust,no_run
-use eu_company_lookup::Client;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::new()?;
-    let company = client.lookup_bg_company("123456789").await?;
-    println!("{}", serde_json::to_string_pretty(&company)?);
-    Ok(())
-}
-```
-
-**Returns** `Result<BgCompanyLookupResult, LookupError>`. Complete serialized example:
-
-```json
-{
-  "taxId": "123456789",
-  "source": "BulgarianCommercialRegister",
-  "registryUrl": "https://portal.registryagency.bg/CR/Reports/ActiveConditionTabResult?uic=123456789",
-  "companyName": "Пример ЕООД",
-  "companyEnglishName": null,
-  "legalForm": "ЕООД",
-  "address": {
-    "fullAddressByRegistry": "БЪЛГАРИЯ, гр. СОФИЯ 1000, ул. Примерна 1",
-    "address": "ул. Примерна 1",
-    "address2": null,
-    "city": "София",
-    "postcode": "1000",
-    "region": null,
-    "municipality": null,
-    "country": "България",
-    "countryISO2": "BG"
-  },
-  "status": "active",
-  "nativeRegistryStatus": "1",
-  "registryDetails": {
-    "statusCode": 1,
-    "registeredName": "Пример",
-    "identifierEntryDate": "2020-01-15",
-    "identifierEntryYear": 2020,
-    "managers": [
-      {
-        "name": "Примерен Управител",
-        "role": "manager",
-        "country": "България",
-        "countryISO2": "BG",
-        "sourceText": "Примерен Управител, Държава: БЪЛГАРИЯ"
-      }
-    ],
-    "owners": null,
-    "capital": {
-      "registered": {
-        "amount": "100.00",
-        "currency": "EUR",
-        "sourceText": "100.00 EUR"
-      },
-      "paidIn": null
-    },
-    "businessActivity": null,
-    "documents": null,
-    "hasInstructions": false
-  }
-}
-```
-
-`companyEnglishName` is a separately registered foreign-script name, not a
-translation. `identifierEntryDate` dates the UIC field entry, not necessarily
-incorporation. Null `owners` or `documents` means unavailable, not proof of absence.
-Capital values use exact decimal strings; currencies are retained from the source.
-
-For BULSTAT, the top-level fields are the same, `source` becomes `"Bulstat"`, and
-`registryDetails` contains `subjectText` and `statusText` instead of Commercial
-Register fields. Only nine- or thirteen-digit business codes are accepted;
-BG-prefixed VAT IDs and ten-digit personal identifiers are rejected. Fallback to
-BULSTAT happens only after a definitive Commercial Register miss, never after a
-provider failure.
-[Bulgarian fields and coverage limitations](docs/reference/bulgarian-registry.md).
-
-## Look up a Romanian taxpayer
-
-**Call:**
-
-```rust,no_run
-use eu_company_lookup::Client;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Client::new()?;
-    let company = client.lookup_ro_company("1234").await?;
-    println!("{}", serde_json::to_string_pretty(&company)?);
-    Ok(())
-}
-```
-
-**Returns** `Result<RoCompanyLookupResult, LookupError>`. Complete serialized example:
-
-```json
-{
-  "taxId": "1234",
-  "source": "RomanianAnaf",
-  "requestDate": "2026-11-14",
-  "checkedAt": "2026-11-14T10:00:00Z",
-  "companyName": "Synthetic Company SRL",
-  "tradeRegisterNumber": null,
-  "status": "unknown",
-  "nativeRegistryStatus": "INREGISTRAT",
-  "registrationStatus": "INREGISTRAT",
-  "registrationDate": null,
-  "legalForm": null,
-  "activityCode": null,
-  "fullFiscalAddress": "Strada Exemplului 1, București, 010101",
-  "registeredOffice": {
-    "street": "Strada Exemplului",
-    "streetNumber": "1",
-    "locality": "București",
-    "county": "București",
-    "country": "ROMANIA",
-    "postcode": "010101",
-    "details": null
-  },
-  "fiscalAddress": {
-    "street": "Strada Exemplului",
-    "streetNumber": "1",
-    "locality": "București",
-    "county": "București",
-    "country": "ROMANIA",
-    "postcode": "010101",
-    "details": null
-  },
-  "taxStatus": {
-    "vatRegistered": true,
-    "vatOnCollection": false,
-    "inactive": false,
-    "splitVat": null,
-    "eInvoiceRegistered": null
-  }
-}
-```
-
-`lookup_ro_company` requests today's fiscal status in Europe/Bucharest;
-`requestDate` and `checkedAt` above are illustrative. `lookup_ro_company_at`
-accepts an explicit fiscal date. ANAF structured addresses retain street numbers
-separately. A supplied registration description currently maps to `"unknown"`;
-missing status remains null. Domestic tax flags do not establish company lifecycle.
-ANAF domestic VAT status is separate from VIES validity. This is taxpayer
-information, not an ONRC extract. [Romanian fields and dated lookups](docs/reference/romanian-registry.md).
+Romanian lookups use today's fiscal date in Europe/Bucharest. Domestic tax flags
+are separate from VIES validity and company lifecycle. For an explicit fiscal
+date, use the lower-level `RoRegistryClient::lookup_at`.
+[Romanian fields and dates](docs/reference/romanian-registry.md).
 
 ## Handle failures and configure limits
 

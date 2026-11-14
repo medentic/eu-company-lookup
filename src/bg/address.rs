@@ -14,7 +14,15 @@ fn value(s: &str) -> Option<String> {
     (!s.is_empty()).then(|| s.to_owned())
 }
 
-fn country(address: &mut CompanyAddress) {
+pub(super) fn country(address: &mut CompanyAddress) {
+    if address
+        .country
+        .as_deref()
+        .is_none_or(|name| name.trim().is_empty())
+        && address.country_iso2.is_none()
+    {
+        address.country = Some("България".into());
+    }
     if let Some(country) = address
         .country
         .as_deref()
@@ -23,6 +31,7 @@ fn country(address: &mut CompanyAddress) {
         address.country = Some(country.native_name().into());
         address.country_iso2 = Some(country.iso2().into());
     }
+    address.fields.normalize_country();
 }
 
 fn split_delivery(address: &mut CompanyAddress) {
@@ -56,6 +65,7 @@ pub(super) fn commercial(raw: Option<String>) -> CompanyAddress {
         ..Default::default()
     };
     let Some(raw) = raw else {
+        country(&mut result);
         return result;
     };
     let mut delivery = Vec::new();
@@ -145,13 +155,21 @@ pub(super) fn bulstat(raw: Option<String>) -> CompanyAddress {
         ..Default::default()
     };
     let Some(raw) = raw else {
+        country(&mut result);
         return result;
     };
     let Some(s) = raw.strip_prefix("седалище и адрес на управление:")
     else {
+        country(&mut result);
         return result;
     };
     let parts: Vec<_> = s.split(", ").map(str::trim).collect();
+    if let Some(name) = parts
+        .first()
+        .filter(|name| crate::locations::Country::from_name(name).is_some())
+    {
+        result.country = value(name);
+    }
     // Only the observed labeled Bulgarian structure is split. Unknown/foreign
     // variants retain source text instead of guessing a street or postcode.
     if parts.len() >= 3

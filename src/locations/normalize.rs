@@ -188,3 +188,27 @@ pub(crate) fn place_name(prefix: &str, mut value: String) -> String {
         .collect::<Vec<_>>()
         .join(" ")
 }
+
+/// Country display casing only; language and diacritics are retained.
+pub(crate) fn country_name(value: &str) -> String {
+    let value = super::Country::from_iso2(value)
+        .map(super::Country::native_name)
+        .unwrap_or(value)
+        .trim();
+    let mut start = true;
+    let mut result = String::new();
+    for c in value.chars() {
+        if c.is_alphabetic() {
+            if start {
+                result.extend(c.to_uppercase());
+            } else {
+                result.extend(c.to_lowercase());
+            }
+            start = false;
+        } else {
+            result.push(c);
+            start = true;
+        }
+    }
+    result
+}

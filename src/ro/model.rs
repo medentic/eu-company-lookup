@@ -43,7 +43,7 @@ pub struct RoCompanyLookupResult {
     pub tax_status: RoTaxStatus,
 }
 
-/// Source-provided address components; no country or delivery details are inferred.
+/// ANAF address components; missing country defaults to Romania (RO).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -56,8 +56,11 @@ pub struct RoRegistryAddress {
     pub locality: Option<String>,
     /// Source county name.
     pub county: Option<String>,
-    /// Source country name, if supplied.
+    /// Title-case country name; defaults to Romania when ANAF supplies none.
     pub country: Option<String>,
+    /// Uppercase ISO country code when the supplied country is recognized.
+    #[serde(rename = "countryISO2")]
+    pub country_iso2: Option<String>,
     /// Source postcode, retaining leading zeroes.
     pub postcode: Option<String>,
     /// Source additional address details.
@@ -79,4 +82,18 @@ pub struct RoTaxStatus {
     pub split_vat: Option<bool>,
     /// Listed in the RO e-Factura register at the requested date.
     pub e_invoice_registered: Option<bool>,
+}
+
+impl RoCompanyLookupResult {
+    /// The matched ANAF article-316 fiscal registration supplies the numeric ID.
+    /// This is not a rule for arbitrary company IDs or special article-317 codes.
+    pub(crate) fn registered_vat_id(&self) -> Option<crate::VatId> {
+        if self.tax_status.vat_registered != Some(true) {
+            return None;
+        }
+        // ANAF matches CUI numerically. Keep the caller's spelling in tax_id,
+        // but use that matched numeric identity without input padding for VAT.
+        let number = self.tax_id.as_str().trim_start_matches('0');
+        crate::VatId::parse(&format!("RO{number}")).ok()
+    }
 }

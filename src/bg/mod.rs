@@ -7,6 +7,10 @@ mod commercial;
 mod html;
 mod identifiers;
 mod legal_form;
+mod mapping;
+mod vat;
+
+pub(crate) use vat::BgCompanyClient;
 
 pub use client::{BgRegistryClient, BgRegistryConfig};
 pub use identifiers::{BgBusinessId, validate_bg_business_id_syntax};

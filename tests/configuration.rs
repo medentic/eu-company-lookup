@@ -40,7 +40,7 @@ fn lookup_futures_can_be_used_on_a_multithreaded_runtime() {
     // Futures are not polled: this verifies the consumer contract without traffic.
     send_future(client.lookup_vat("BG000123456"));
     send_future(client.is_vat_valid("BG000123456"));
-    send_future(client.lookup_bg_company("000123456"));
+    send_future(client.lookup_company("000123456", "BG"));
     send_future(registry.lookup("000123456"));
     assert!(format!("{client:?}").starts_with("Client { vies:"));
     assert!(format!("{registry:?}").starts_with("BgRegistryClient { config:"));

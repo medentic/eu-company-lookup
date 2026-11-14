@@ -37,7 +37,20 @@ Missing optional text/flags stay null; unexpected types fail decoding. Observati
 time is UTC decoding time; the fiscal request date does not establish historical
 identity/address coverage. No tax flag substitutes for VIES validity.
 
-[model.rs](model.rs) owns the native result; [../model/business.rs](../model/business.rs)
+[model.rs](model.rs) owns the native result; [mapping.rs](mapping.rs)
 owns conversion into the common company view. Test both [tests.rs](tests.rs) and
 [consumer contracts](../../tests/romanian.rs) when adjusting decoder behavior.
 [probe.rs](probe.rs) and the collector are test-only/local evidence workflows.
+
+Address country names use shared title-case display normalization, preserving
+language and diacritics. Missing, null or blank countries default to `Romania` /
+`RO` for existing addresses, including a fiscal address built from raw text only.
+Explicit source countries take precedence; unrecognized names retain a null ISO
+code. Missing address objects remain absent. Original full address text is unchanged.
+
+The shared VAT fields map ANAF's article-316 `scpTVA` observation. Only an explicit
+true flag allows `registered_vat_id` to derive `RO` plus the matched numeric fiscal
+ID, subject to VAT syntax validation. The original requested CUI spelling stays
+in `taxId`. Missing/false flags yield no VAT ID; false does not exclude special
+article-317 registration or a different identifier for another fiscal activity.
+This conversion adds no VIES request. See the consumer reference's shared VAT fields.

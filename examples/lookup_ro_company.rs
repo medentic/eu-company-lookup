@@ -1,5 +1,5 @@
 //! Look up one explicitly supplied Romanian CUI through ANAF.
-use eu_company_lookup::RoRegistryClient;
+use eu_company_lookup::Client;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -10,7 +10,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.next().is_some() {
         return Err("supply exactly one CUI".into());
     }
-    let result = RoRegistryClient::new()?.lookup(&id).await?;
+    let result = Client::new()?.lookup_company(&id, "RO").await?;
     println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
 }

@@ -3,6 +3,7 @@
 mod client;
 mod decode;
 mod identifiers;
+mod mapping;
 mod model;
 
 pub use client::{RoRegistryClient, RoRegistryConfig};

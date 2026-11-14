@@ -21,6 +21,9 @@ pub fn capabilities() -> Vec<JurisdictionCapabilities> {
                     vat_prefix: None,
                     providers: vec![],
                 });
+            if !crate::Client::SUPPORTED_COMPANY_COUNTRIES.contains(&code) {
+                return entry;
+            }
             match code {
                 "BG" => {
                     for provider in [Provider::BulgarianCommercialRegister, Provider::Bulstat] {
