@@ -1,222 +1,423 @@
 # eu-company-lookup
 
-An asynchronous Rust library for **EU VAT verification through VIES** and
-**Bulgarian business lookup through the Commercial Register and BULSTAT**,
-and **Romanian ANAF taxpayer lookup**.
-It returns typed results, source-provided company details, structured addresses
-and explicit errors. No database, service account or full-registry download is required.
+Async Rust lookups for **EU VAT numbers (VIES)**, **Bulgarian businesses
+(Commercial Register / BULSTAT)** and **Romanian taxpayers (ANAF)**.
+Returns typed company details, source-preserving addresses and explicit errors.
+No account, database or full-registry download is required for the current providers.
 
-Version 2.0 provides a shared company lookup for Bulgaria and Romania while
-keeping VAT verification and provider-specific results separate. See the
-[1.x migration notes](docs/reference/api-stability.md#migrating-from-1x) before upgrading.
+## Why this exists
 
-## What it does
+Looking up a European business means integrating multiple national registries and
+VIES, each with its own identifiers, interfaces, response formats and failure
+rules. That knowledge is difficult to gather and maintain in one place.
 
-| Operation | Result |
-| --- | --- |
-| `validate_vat_syntax(value)` / `VatId::parse(value)` | Offline VAT format validation and normalization. |
-| `client.lookup_vat(value)` | VIES validity, checked identifier, company name and address when supplied. |
-| `client.is_vat_valid(value)` | The same VIES lookup, returning only its validity flag. |
-| `validate_bg_business_id_syntax(value)` / `BgBusinessId::parse(value)` | Offline nine- or thirteen-digit Bulgarian business-code validation. |
-| `client.lookup_company(&identifier)` | Common BG/RO company view from a validated `BusinessId`; preserves typed source details. |
-| `client.lookup_bg_company(value)` | Exact Commercial Register match, with BULSTAT fallback only after a definitive miss. |
-| `validate_ro_business_id_syntax(value)` / `RoBusinessId::parse(value)` | Offline Romanian CUI syntax validation. |
-| `client.lookup_ro_company(value)` | ANAF taxpayer details and dated domestic tax status. |
-| `capabilities()` / `client.capabilities()` | Compiled support or enabled providers, with typed operation inputs and language behavior. |
-| `locations::parse_address(text, country_hint)` | Offline, conservative address extraction. |
+This library brings those integrations and their country-specific parsing rules
+behind one Rust API. The initial use case is to look up a business by tax or VAT
+ID and use the returned company name and address in business details and billing
+flows, while checking VAT validity separately. Applications can reuse this work
+instead of building and maintaining each registry integration themselves.
 
-Syntax acceptance does **not** prove checksum validity or registration. A company
-record does not establish VAT registration. Address extraction is heuristic;
-original provider address text is retained and uncertain components remain null.
+The project started with Bulgaria and is expanding country by country toward
+**EU and EEA business lookup**. Bulgaria and Romania are implemented today;
+most national registry integrations are still pending. It queries supported
+sources on demand rather than maintaining a database of all European companies.
 
-Beyond these providers, the library does not implement other national registries, D-U-N-S, checksum
-validation, verification reports, bulk-download APIs, automatic retries or caching.
-Bulgarian adapters use observed public portal interfaces, which can change.
+## Choose a lookup
+
+| You have | Call | Returns on success |
+| --- | --- | --- |
+| EU VAT number | `client.lookup_vat("BG123456789")` | `VatLookupResult`: validity, company name and address |
+| Bulgarian ЕИК / BULSTAT code | `client.lookup_bg_company("123456789")` | `BgCompanyLookupResult`: identity, address and registry details |
+| Romanian CUI | `client.lookup_ro_company("1234")` | `RoCompanyLookupResult`: identity, addresses and domestic tax status |
+| BG or RO business identifier | `client.lookup_company(&id)` | `CompanyLookupResult`: common company view with typed source details |
+
+National business lookup currently covers **BG and RO only** (ANAF is a taxpayer
+source). VAT verification and company registration are separate checks. Syntax validation does not prove
+checksum validity or registration.
+
+## Country support
+
+“Supported” means an implemented adapter, not guaranteed provider availability
+or complete live verification. “Pending” means no national lookup is implemented.
+The table covers all 30 EEA countries, plus the separate Northern Ireland scope.
+
+| Country | VIES VAT lookup | National business / taxpayer lookup |
+| --- | --- | --- |
+| Austria | Supported (`AT`) | Pending |
+| Belgium | Supported (`BE`) | Pending |
+| Bulgaria | Supported (`BG`) | Supported — Commercial Register, BULSTAT fallback |
+| Croatia | Supported (`HR`) | Pending |
+| Cyprus | Supported (`CY`) | Pending |
+| Czechia | Supported (`CZ`) | Pending |
+| Denmark | Supported (`DK`) | Pending |
+| Estonia | Supported (`EE`) | Pending |
+| Finland | Supported (`FI`) | Pending |
+| France | Supported (`FR`) | Pending |
+| Germany | Supported (`DE`) | Pending |
+| Greece | Supported (`EL`) | Pending |
+| Hungary | Supported (`HU`) | Pending |
+| Iceland | Not supported by VIES | Pending |
+| Ireland | Supported (`IE`) | Pending |
+| Italy | Supported (`IT`) | Pending |
+| Latvia | Supported (`LV`) | Pending |
+| Liechtenstein | Not supported by VIES | Pending |
+| Lithuania | Supported (`LT`) | Pending |
+| Luxembourg | Supported (`LU`) | Pending |
+| Malta | Supported (`MT`) | Pending |
+| Netherlands | Supported (`NL`) | Pending |
+| Norway | Not supported by VIES | Pending |
+| Poland | Supported (`PL`) | Pending |
+| Portugal | Supported (`PT`) | Pending |
+| Romania | Supported (`RO`) | Supported — ANAF taxpayer lookup |
+| Slovakia | Supported (`SK`) | Pending |
+| Slovenia | Supported (`SI`) | Pending |
+| Spain | Supported (`ES`) | Pending |
+| Sweden | Supported (`SE`) | Pending |
+| Northern Ireland (outside EEA) | Supported (`XI`) | Not implemented; outside EEA target |
+
+Greece uses VAT prefix `EL`, mapped to country `GR`. `XI` covers Northern Ireland
+only; general `GB` VAT IDs and OSS/IOSS prefixes `EU` / `IM` are unsupported.
+Romanian ANAF results are not ONRC trade-register extracts. See
+[country coverage and verification](#country-coverage-and-verification) for live
+evidence, known limitations and national-registry priorities.
 
 ## Install
 
 Requires **Rust 1.98.1+** and **Tokio with I/O and time enabled**.
-Add the following dependencies:
 
 ```toml
 [dependencies]
 eu-company-lookup = "2"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+serde_json = "1" # To print the JSON shown below.
 ```
 
-For source builds, use the Git repository and pin a reviewed commit with `rev`.
-Release availability is listed on [crates.io](https://crates.io/crates/eu-company-lookup).
+[crates.io](https://crates.io/crates/eu-company-lookup) ·
+[API documentation](https://docs.rs/eu-company-lookup) ·
+[Migration from 1.x](docs/reference/api-stability.md#migrating-from-1x)
 
-## Configure only the adapters you need
+## Examples
 
-```no_run
-use eu_company_lookup::{capabilities, ClientBuilder, ClientConfig, LookupError};
+Each network example is a complete Rust program: put it in `src/main.rs` with
+the dependencies above and run `cargo run`. Replace the synthetic identifier
+with one you intend to look up. The JSON shows illustrative successful returns,
+not live observations or guaranteed results for these identifiers. All fields
+are shown, including nulls; available values depend on the provider.
 
-fn setup() -> Result<(), LookupError> {
-    let supported = capabilities(); // No HTTP clients or network requests.
-    let client = ClientBuilder::empty()
-        .vies(ClientConfig::default())
-        .romanian_registry(Default::default())
-        .build()?;
-    let enabled = client.capabilities();
-    assert!(enabled.len() == supported.len()); // Same country metadata; enabled providers differ.
-    Ok(())
-}
-```
-
-`Client::builder()` enables the current adapters by default; named `.vies(...)`,
-`.bulgarian_registry(...)` and `.romanian_registry(...)` methods configure them.
-`ClientBuilder::empty()` opts into only the adapters you select. The existing
-constructors remain available. BG configuration includes both Commercial Register
-and its definitive-miss-only BULSTAT fallback.
-
-The free `capabilities()` reports compiled support. `client.capabilities()` reports
-adapters enabled on that instance. Each provider's `operations` contains typed
-contracts with `operation`, `identifierSchemes`, `execution` and `dateInput`.
-Use `provider.supports(operation, scheme)` to check a particular pairing. An
-explicit ANAF fiscal date is available through `LookupRoCompanyAt`; this does not
-claim historical company-record support.
-
-A disabled adapter returns `OperationDisabled` locally, before parsing the lookup
-input or sending requests. Unsupported national country/scheme pairs return
-`UnsupportedIdentifierScheme`; malformed values under supported schemes return
-`InvalidInput`. Neither error is a negative registration observation.
+The `rust,no_run` code-fence annotation tells rustdoc to compile these Rust
+examples without executing live requests during documentation tests.
 
 ## Look up VAT details
 
-```no_run
-use eu_company_lookup::{Client, LookupError, validate_vat_syntax};
+**Call** — create a client once, then reuse or clone it across requests:
+
+```rust,no_run
+use eu_company_lookup::Client;
 
 #[tokio::main]
-async fn main() -> Result<(), LookupError> {
-    // Synthetic example: format acceptance is not a registration claim.
-    let vat = validate_vat_syntax("bg 123456789")?;
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::new()?;
-    let result = client.lookup_vat(vat.as_str()).await?;
-    println!("{}: valid={}", result.vat_id, result.valid);
-    println!("Company: {:?}; address: {:?}", result.company, result.address);
+    let result = client.lookup_vat("BG123456789").await?;
+    println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())
 }
 ```
 
-`lookup_vat` returns a `VatLookupResult` containing validity and available company
-identity/address details. `lookup_bg_company` returns a `BgCompanyLookupResult`
-containing registered identity and source-specific registry details. The original
-`VatCheck` and `CompanyRecord` names remain compatibility aliases to `VatLookupResult` and
-`BgCompanyLookupResult`, respectively.
+**Returns** `Result<VatLookupResult, LookupError>`. This is an illustrative
+successful response with synthetic data, not a live result for the example ID:
 
-Reuse and clone one client across application requests. Calling both `lookup_vat`
-and `is_vat_valid` performs two requests; use the returned `valid` field when you
-already have the full result.
+```json
+{
+  "vatId": "BG123456789",
+  "valid": true,
+  "source": "Vies",
+  "company": "Synthetic Company",
+  "address": {
+    "fullAddressByVies": "ул. ПРИМЕР 1 обл.РУСЕ, гр.РУСЕ 7000",
+    "address": "ул. ПРИМЕР 1",
+    "address2": null,
+    "city": "Русе",
+    "postcode": "7000",
+    "region": "Русе",
+    "country": "България",
+    "countryISO2": "BG"
+  }
+}
+```
 
-VIES prefixes: **AT BE BG CY CZ DE DK EE EL ES FI FR HR HU IE IT LT LU LV MT NL PL PT RO SE SI SK XI**.
-Greece uses **EL**, mapped to ISO country **GR**. **XI** maps to **GB / GB-NIR** for
-Northern Ireland; general GB coverage is not included. OSS/IOSS prefixes **EU** and
-**IM** are unsupported. VIES has no language-selection parameter.
+Company details may be withheld or missing. Unknown address components remain
+null; the original decoded address is retained. `valid: false` requires a matched
+negative VIES response. A timeout or provider failure returns an error.
 
-See the [VIES guide](https://github.com/medentic/eu-company-lookup/blob/main/docs/reference/vies.md) for input rules, JSON output and address semantics.
+Only need a boolean? `client.is_vat_valid("BG123456789").await` returns
+`Result<bool, LookupError>`. It makes its own request; use `result.valid` if you
+already have the full result. [VIES input rules and field meanings](docs/reference/vies.md).
 
 ## Look up a company across supported countries
 
-`BusinessId` combines country, national identifier
-scheme and validated value. It does not derive a company ID by stripping a VAT
-prefix, and a Bulgarian business code alone does not distinguish ЕИК from BULSTAT.
+Use the common result when your application handles both Bulgaria and Romania.
+Pass a national business code without its VAT prefix; leading zeroes are preserved.
 
-```no_run
-use eu_company_lookup::{BusinessId, Client, IdentifierScheme, LookupError};
+**Call:**
 
-async fn lookup() -> Result<(), LookupError> {
+```rust,no_run
+use eu_company_lookup::{BusinessId, Client, IdentifierScheme};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::new()?;
     let id = BusinessId::parse("RO", IdentifierScheme::RoBusinessId, "001234")?;
     let company = client.lookup_company(&id).await?;
-    println!("{}: {}", company.identifier.country(), company.company_name);
+    println!("{}", serde_json::to_string_pretty(&company)?);
     Ok(())
 }
 ```
 
-`CompanyLookupResult` provides `identifier`, `source`, `companyName`, `legalForm`,
-`registeredOffice`, `fiscalAddress`, `status`, `nativeRegistryStatus` and typed
-`details`. Original source address text and source-specific facts remain available.
-ANAF structured address components are mapped directly; missing fields stay null.
-Its tax flags never substitute for a VIES check. The country-specific lookup
-methods retain their source-specific JSON output, and their results convert into
-the common view using `Into<CompanyLookupResult>`.
+**Returns** `Result<CompanyLookupResult, LookupError>`. Complete serialized example:
 
-Capabilities enumerate EEA countries plus the existing Northern Ireland scope.
-An empty provider list means no lookup implementation. `vat_prefix: None` means
-no VIES mapping; it does not invent national VAT support. Languages expose known
-`available` codes, the adapter's `default`, and `selectable`; BG/RO adapters do
-not currently accept caller-selected languages. The catalog is not a health check
-or a claim that every address format has been reviewed.
+```json
+{
+  "identifier": {
+    "country": "RO",
+    "scheme": "RoBusinessId",
+    "value": "001234"
+  },
+  "source": "RomanianAnaf",
+  "companyName": "Synthetic Company SRL",
+  "legalForm": null,
+  "registeredOffice": {
+    "fullAddressByRegistry": null,
+    "address": "Strada Exemplului 1",
+    "address2": null,
+    "city": "București",
+    "postcode": "010101",
+    "region": "București",
+    "municipality": null,
+    "country": "ROMANIA",
+    "countryISO2": "RO"
+  },
+  "fiscalAddress": {
+    "fullAddressByRegistry": "Strada Exemplului 1, București, 010101",
+    "address": "Strada Exemplului 1",
+    "address2": null,
+    "city": "București",
+    "postcode": "010101",
+    "region": "București",
+    "municipality": null,
+    "country": "ROMANIA",
+    "countryISO2": "RO"
+  },
+  "status": "unknown",
+  "nativeRegistryStatus": "INREGISTRAT",
+  "details": {
+    "provider": "RomanianAnaf",
+    "data": {
+      "requestDate": "2026-11-14",
+      "checkedAt": "2026-11-14T10:00:00Z",
+      "tradeRegisterNumber": null,
+      "registrationDate": null,
+      "registrationStatus": "INREGISTRAT",
+      "activityCode": null,
+      "registeredOffice": {
+        "street": "Strada Exemplului",
+        "streetNumber": "1",
+        "locality": "București",
+        "county": "București",
+        "country": "ROMANIA",
+        "postcode": "010101",
+        "details": null
+      },
+      "fiscalAddress": {
+        "street": "Strada Exemplului",
+        "streetNumber": "1",
+        "locality": "București",
+        "county": "București",
+        "country": "ROMANIA",
+        "postcode": "010101",
+        "details": null
+      },
+      "taxStatus": {
+        "vatRegistered": true,
+        "vatOnCollection": false,
+        "inactive": false,
+        "splitVat": null,
+        "eInvoiceRegistered": null
+      }
+    }
+  }
+}
+```
+
+The common view keeps `registeredOffice` and `fiscalAddress` separate and retains
+ANAF-specific fields under `details`. Unavailable optional fields remain null.
+For Bulgaria, use country `"BG"` and
+`IdentifierScheme::BgBusinessId`. [Shared result contract](docs/reference/api-stability.md).
 
 ## Look up a Bulgarian business
 
-```no_run
-use eu_company_lookup::{Client, LookupError};
+**Call:**
 
-# async fn example() -> Result<(), LookupError> {
-let client = Client::new()?;
-// Synthetic business code, without a BG VAT prefix.
-match client.lookup_bg_company("123456789").await {
-    Ok(result) => println!("{}: {} ({:?})", result.tax_id, result.company_name, result.source),
-    Err(LookupError::NotFound) => println!("No matching record in either register"),
-    Err(error) if error.is_service_unavailable() => {
-        println!("Verification unavailable; the identifier may still be correct");
-    }
-    Err(error) => return Err(error),
+```rust,no_run
+use eu_company_lookup::Client;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::new()?;
+    let company = client.lookup_bg_company("123456789").await?;
+    println!("{}", serde_json::to_string_pretty(&company)?);
+    Ok(())
 }
-# Ok(())
-# }
 ```
 
-ЕИК and BULSTAT formats overlap; callers do not select a register by pattern.
-The complete nine- or thirteen-digit code and leading zeroes are preserved.
-Prefixed VAT IDs and ten-digit personal identifiers are rejected before any request.
+**Returns** `Result<BgCompanyLookupResult, LookupError>`. Complete serialized example:
 
-The result includes company names, source, official record URL, legal form,
-a shared typed lifecycle status, address and registry details. Status is limited to `Active`, `Closed`, or `Unknown` (null when absent);
-original provider status values remain in `nativeRegistryStatus` and
-source-specific fields. Commercial Register details
-can include managers, sole capital owners, capital and constitutive-document links.
-Unavailable details remain null. The registered foreign-script name is not a
-translation, and the UIC field entry date is not necessarily incorporation date.
+```json
+{
+  "taxId": "123456789",
+  "source": "BulgarianCommercialRegister",
+  "registryUrl": "https://portal.registryagency.bg/CR/Reports/ActiveConditionTabResult?uic=123456789",
+  "companyName": "Пример ЕООД",
+  "companyEnglishName": null,
+  "legalForm": "ЕООД",
+  "address": {
+    "fullAddressByRegistry": "БЪЛГАРИЯ, гр. СОФИЯ 1000, ул. Примерна 1",
+    "address": "ул. Примерна 1",
+    "address2": null,
+    "city": "София",
+    "postcode": "1000",
+    "region": null,
+    "municipality": null,
+    "country": "България",
+    "countryISO2": "BG"
+  },
+  "status": "active",
+  "nativeRegistryStatus": "1",
+  "registryDetails": {
+    "statusCode": 1,
+    "registeredName": "Пример",
+    "identifierEntryDate": "2020-01-15",
+    "identifierEntryYear": 2020,
+    "managers": [
+      {
+        "name": "Примерен Управител",
+        "role": "manager",
+        "country": "България",
+        "countryISO2": "BG",
+        "sourceText": "Примерен Управител, Държава: БЪЛГАРИЯ"
+      }
+    ],
+    "owners": null,
+    "capital": {
+      "registered": {
+        "amount": "100.00",
+        "currency": "EUR",
+        "sourceText": "100.00 EUR"
+      },
+      "paidIn": null
+    },
+    "businessActivity": null,
+    "documents": null,
+    "hasInstructions": false
+  }
+}
+```
 
-`BgRegistryClient::lookup` is available when only Bulgarian lookup is needed.
-See the [Bulgarian registry guide](https://github.com/medentic/eu-company-lookup/blob/main/docs/reference/bulgarian-registry.md) for fallback rules,
-field meanings and coverage limitations.
+`companyEnglishName` is a separately registered foreign-script name, not a
+translation. `identifierEntryDate` dates the UIC field entry, not necessarily
+incorporation. Null `owners` or `documents` means unavailable, not proof of absence.
+Capital values use exact decimal strings; currencies are retained from the source.
+
+For BULSTAT, the top-level fields are the same, `source` becomes `"Bulstat"`, and
+`registryDetails` contains `subjectText` and `statusText` instead of Commercial
+Register fields. Only nine- or thirteen-digit business codes are accepted;
+BG-prefixed VAT IDs and ten-digit personal identifiers are rejected. Fallback to
+BULSTAT happens only after a definitive Commercial Register miss, never after a
+provider failure.
+[Bulgarian fields and coverage limitations](docs/reference/bulgarian-registry.md).
 
 ## Look up a Romanian taxpayer
 
-```no_run
-use eu_company_lookup::{Client, LookupError};
+**Call:**
 
-# async fn example() -> Result<(), LookupError> {
-let client = Client::new()?;
-// Synthetic CUI without the RO VAT prefix.
-let record = client.lookup_ro_company("1234").await?;
-println!("{}: {}", record.tax_id, record.company_name);
-println!("Domestic VAT registration: {:?}", record.tax_status.vat_registered);
-# Ok(())
-# }
+```rust,no_run
+use eu_company_lookup::Client;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::new()?;
+    let company = client.lookup_ro_company("1234").await?;
+    println!("{}", serde_json::to_string_pretty(&company)?);
+    Ok(())
+}
 ```
 
-ANAF taxpayer details and domestic VAT status are separate from VIES validity.
-The Romanian result preserves source address text and distinct registered-office
-and fiscal-address fields. It is not an ONRC extract. See the
-[Romanian registry guide](https://github.com/medentic/eu-company-lookup/blob/main/docs/reference/romanian-registry.md)
-for dates, fields, limits and verification scope.
+**Returns** `Result<RoCompanyLookupResult, LookupError>`. Complete serialized example:
+
+```json
+{
+  "taxId": "1234",
+  "source": "RomanianAnaf",
+  "requestDate": "2026-11-14",
+  "checkedAt": "2026-11-14T10:00:00Z",
+  "companyName": "Synthetic Company SRL",
+  "tradeRegisterNumber": null,
+  "status": "unknown",
+  "nativeRegistryStatus": "INREGISTRAT",
+  "registrationStatus": "INREGISTRAT",
+  "registrationDate": null,
+  "legalForm": null,
+  "activityCode": null,
+  "fullFiscalAddress": "Strada Exemplului 1, București, 010101",
+  "registeredOffice": {
+    "street": "Strada Exemplului",
+    "streetNumber": "1",
+    "locality": "București",
+    "county": "București",
+    "country": "ROMANIA",
+    "postcode": "010101",
+    "details": null
+  },
+  "fiscalAddress": {
+    "street": "Strada Exemplului",
+    "streetNumber": "1",
+    "locality": "București",
+    "county": "București",
+    "country": "ROMANIA",
+    "postcode": "010101",
+    "details": null
+  },
+  "taxStatus": {
+    "vatRegistered": true,
+    "vatOnCollection": false,
+    "inactive": false,
+    "splitVat": null,
+    "eInvoiceRegistered": null
+  }
+}
+```
+
+`lookup_ro_company` requests today's fiscal status in Europe/Bucharest;
+`requestDate` and `checkedAt` above are illustrative. `lookup_ro_company_at`
+accepts an explicit fiscal date. ANAF structured addresses retain street numbers
+separately. A supplied registration description currently maps to `"unknown"`;
+missing status remains null. Domestic tax flags do not establish company lifecycle.
+ANAF domestic VAT status is separate from VIES validity. This is taxpayer
+information, not an ONRC extract. [Romanian fields and dated lookups](docs/reference/romanian-registry.md).
 
 ## Handle failures and configure limits
 
-`valid: false` means an identifier-matched negative VIES response.
-`LookupError::NotFound` means definitive misses from both Bulgarian registers.
-`LookupError::RegistryNotFound` identifies a definitive miss from ANAF only.
-Timeouts, throttling, access errors, changed schemas and identity mismatches remain
-errors; they never establish that an identifier is invalid.
+| Outcome | Meaning |
+| --- | --- |
+| `Ok(result)` with VIES `valid: false` | Matched negative VAT response |
+| `Err(LookupError::NotFound)` | Definitive misses from both Bulgarian registers |
+| `Err(LookupError::RegistryNotFound { .. })` | Definitive ANAF miss only |
+| Invalid input, timeout, rate limit, service or schema error | Lookup failed; registration status remains unproven |
 
-`error.is_service_unavailable()` identifies availability failures. `Busy`, rate
-limits, cooldowns and unexpected responses remain separate error categories.
-Error messages omit submitted identifiers, owner details and arbitrary response bodies.
+There are no automatic retries or persistent caching. Clones share admission
+limits and cooldowns; separate clients and processes need their own coordination.
+
+<details>
+<summary>Client defaults and configuration</summary>
 
 | Default | VIES | Bulgarian lookup | Romanian ANAF |
 | --- | --- | --- | --- |
@@ -238,52 +439,68 @@ received by a provider.
 use eu_company_lookup::{Client, ClientConfig, BgRegistryConfig};
 use std::time::Duration;
 
-let mut vies = ClientConfig::default();
-vies.timeout = Duration::from_secs(20);
-let mut registry = BgRegistryConfig::default();
-registry.timeout = Duration::from_secs(45);
-let client = Client::with_configs(vies, registry)?;
-# Ok::<(), eu_company_lookup::LookupError>(())
+fn main() -> Result<(), eu_company_lookup::LookupError> {
+    let mut vies = ClientConfig::default();
+    vies.timeout = Duration::from_secs(20);
+    let mut registry = BgRegistryConfig::default();
+    registry.timeout = Duration::from_secs(45);
+    let _client = Client::with_configs(vies, registry)?;
+    Ok(())
+}
 ```
 
-## Address utilities and API stability
+`Client::builder()` enables all current adapters. To select only the ones you need:
 
 ```rust
-use eu_company_lookup::locations::{parse_address, Country};
+use eu_company_lookup::{ClientBuilder, LookupError};
 
-let address = parse_address("ул. Примерна 1, гр. СОФИЯ 1000", "bg");
-assert_eq!(address.city.as_deref(), Some("София"));
-assert_eq!(Country::BG.native_name(), "България");
+fn main() -> Result<(), LookupError> {
+    let _client = ClientBuilder::empty()
+        .vies(Default::default())
+        .romanian_registry(Default::default())
+        .build()?;
+    Ok(())
+}
 ```
 
-A country hint selects parsing rules; it does not establish the physical country.
-Country metadata coverage is broader than registry and address-parser coverage.
+Disabled operations return `OperationDisabled` before parsing or sending a request.
+`capabilities()` reports compiled support; `client.capabilities()` reports enabled
+providers. Discovery is local and does not indicate provider health.
 
-Result and configuration structs and extensible enums are non-exhaustive. Construct
-configurations through `Default`, read public result fields and use fallback match
-arms. See the [API compatibility contract](https://github.com/medentic/eu-company-lookup/blob/main/docs/reference/api-stability.md) for JSON guarantees,
-address corrections and Rust-version policy.
+</details>
 
-## Development
+## Offline utilities
 
-New maintainers and AI agents can start with the
-[agent handoff guide](https://github.com/medentic/eu-company-lookup/blob/main/docs/maintainers/agent-handoff.md),
-which links domain ownership, registry field mappings and verification workflows.
+```rust
+use eu_company_lookup::{validate_vat_syntax, locations::parse_address};
 
-The [documentation index](https://github.com/medentic/eu-company-lookup/blob/main/docs/README.md)
-groups consumer references, development workflows and release maintenance.
+fn main() -> Result<(), eu_company_lookup::LookupError> {
+    let vat = validate_vat_syntax("bg 123456789")?;
+    assert_eq!(vat.as_str(), "BG123456789");
 
-Normal tests are offline and use synthetic fixtures. Run `cargo test --locked --all-targets` and
-`cargo test --locked --doc`; CI is Linux-only. The
-[contributor guide](https://github.com/medentic/eu-company-lookup/blob/main/CONTRIBUTING.md)
-covers the complete check suite, module layout and opt-in provider testing.
+    let address = parse_address("ул. Примерна 1, гр. СОФИЯ 1000", "bg");
+    assert_eq!(address.city.as_deref(), Some("София"));
+    Ok(())
+}
+```
 
-The runnable `check_vat`, `lookup_bg_company` and `lookup_ro_company` examples contact live providers
-and print returned company data. Development queues, collected responses, local
-reports are local-only and excluded from public Git history and the published
-crate. Agent/release instructions are repository-only.
+Syntax helpers also exist for BG and RO business codes. They preserve leading
+zeroes and check format only. Address parsing is conservative; a country hint
+selects parsing rules without proving the physical country.
 
 ## Country coverage and verification
+
+VIES supports EU VAT jurisdictions and Northern Ireland (`XI`). Greece uses `EL`.
+General GB, OSS/IOSS (`EU` / `IM`), Iceland, Liechtenstein and Norway are outside
+VIES coverage. National company lookup currently supports Bulgaria and Romania;
+other national registries are planned.
+
+Implementation and live verification are separate. BULSTAT has limited reviewed
+coverage; XI has no retained live corpus. Known source/address limitations remain
+for BG, MT and PT, and a French provider rate-limit observation remains unresolved.
+
+<details>
+<summary>Country-by-country evidence, limitations and priorities</summary>
 
 The target scope is all 30 European Economic Area (EEA) countries. Northern
 Ireland is listed separately for the existing XI VIES scope; it is not an EEA
@@ -390,6 +607,15 @@ Country completion requires at least 200 distinct VAT IDs and 200 distinct
 company/tax IDs, source-bound expectation review and passing offline replay;
 counts alone do not establish completion. Provider failures and unresolved
 ambiguities remain separate in the local evidence.
+
+</details>
+
+## Development
+
+Start with the [contributor guide](https://github.com/medentic/eu-company-lookup/blob/main/CONTRIBUTING.md)
+for offline tests and checks, or the [documentation index](https://github.com/medentic/eu-company-lookup/blob/main/docs/README.md)
+for provider and maintainer guides. Live examples contact providers; collected
+records and development evidence stay local-only and outside the published crate.
 
 ## License
 
