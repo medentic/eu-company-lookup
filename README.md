@@ -421,7 +421,7 @@ common nullable fields: BG supplies a record link and, when present, a registere
 foreign-script name; the current ANAF adapter supplies neither. The name is not a
 translation. Unavailable optional fields remain null.
 Country codes are case-insensitive and surrounding whitespace is ignored.
-Unsupported countries return `UnsupportedIdentifierScheme`.
+Unsupported countries return error ID `unsupported_identifier`.
 [Complete shared field reference](docs/reference/company-result.md) ·
 [Compatibility and migration](docs/reference/api-stability.md).
 
@@ -493,7 +493,7 @@ fn main() -> Result<(), LookupError> {
 }
 ```
 
-Disabled operations return `OperationDisabled` before parsing or sending a request.
+Disabled operations return error ID `operation_disabled` before parsing or sending a request.
 `capabilities()` reports compiled support; `client.capabilities()` reports enabled
 providers. Discovery is local and does not indicate provider health.
 

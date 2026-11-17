@@ -128,8 +128,8 @@ reference before interpreting these extensions.
 | Optional field is null | That fact is unavailable in this observation. |
 | `vatRegistered: false` | The source reports no standard domestic registration in the checked scope/date; special registrations and VIES remain separate. |
 | `status: "unknown"` | A source status exists without a supported lifecycle mapping. |
-| `NotFound` | Both BG registries definitively missed. |
-| `RegistryNotFound { provider: RomanianAnaf }` | ANAF definitively missed; not proof of an ONRC miss. |
+| `not_found`, reason `both_bulgarian_registers_missed` | Both BG registries definitively missed. |
+| `not_found`, provider `RomanianAnaf` | ANAF definitively missed; not proof of an ONRC miss. |
 | Timeout, service/schema/identity error | The lookup failed. No absence or false registration conclusion follows. |
 
 A new registry must preserve these meanings. Optionality handles unavailable
