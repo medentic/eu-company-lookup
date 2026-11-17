@@ -1,6 +1,6 @@
 //! Explicit bounded Commercial Register observations, never part of default tests.
 use super::{BgBusinessId, BgRegistryClient, commercial};
-use crate::{BgCompanyLookupResult, LookupError, RegistryError};
+use crate::{BgCompanyLookupResult, LookupError, RegistryFailure};
 use serde::Serialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -120,8 +120,12 @@ async fn live_commercial_batch() {
             }
             Err(error) => {
                 row.error_kind = Some(error_kind(&error));
-                if let LookupError::Registry {
-                    error: RegistryError::ServiceUnavailable { reason, .. },
+                if let LookupError {
+                    kind:
+                        crate::model::LookupFailure::Registry {
+                            error: RegistryFailure::ServiceUnavailable { reason, .. },
+                            ..
+                        },
                     ..
                 } = &error
                 {
@@ -135,10 +139,14 @@ async fn live_commercial_batch() {
                 let now = chrono::Utc::now();
                 let minimum = now + chrono::Duration::seconds(60);
                 let retry_after = match &error {
-                    crate::LookupError::Registry {
-                        error:
-                            crate::RegistryError::RateLimited { retry_after }
-                            | crate::RegistryError::ServiceUnavailable { retry_after, .. },
+                    LookupError {
+                        kind:
+                            crate::model::LookupFailure::Registry {
+                                error:
+                                    crate::RegistryFailure::RateLimited { retry_after }
+                                    | crate::RegistryFailure::ServiceUnavailable { retry_after, .. },
+                                ..
+                            },
                         ..
                     } => retry_after.as_ref(),
                     _ => None,
@@ -242,18 +250,27 @@ pub(super) fn write_json(path: &std::path::Path, value: &Value) {
 }
 pub(super) fn error_kind(error: &LookupError) -> &'static str {
     match error {
-        LookupError::Registry { error, .. } => match error {
-            RegistryError::RateLimited { .. } => "rateLimited",
-            RegistryError::ServiceUnavailable { .. } => "serviceUnavailable",
-            RegistryError::CoolingDown { .. } => "coolingDown",
-            RegistryError::AccessDenied => "accessDenied",
-            RegistryError::Http { .. } => "httpError",
-            RegistryError::UnexpectedResponse => "unexpectedResponse",
-            RegistryError::MismatchedResponse => "mismatchedResponse",
-            RegistryError::ResponseTooLarge => "responseTooLarge",
+        LookupError {
+            kind: crate::model::LookupFailure::Registry { error, .. },
+            ..
+        } => match error {
+            RegistryFailure::RateLimited { .. } => "rateLimited",
+            RegistryFailure::ServiceUnavailable { .. } => "serviceUnavailable",
+            RegistryFailure::CoolingDown { .. } => "coolingDown",
+            RegistryFailure::AccessDenied => "accessDenied",
+            RegistryFailure::Http { .. } => "httpError",
+            RegistryFailure::UnexpectedResponse => "unexpectedResponse",
+            RegistryFailure::MismatchedResponse => "mismatchedResponse",
+            RegistryFailure::ResponseTooLarge => "responseTooLarge",
         },
-        LookupError::Busy => "busy",
-        LookupError::InvalidInput => "invalidInput",
+        LookupError {
+            kind: crate::model::LookupFailure::Busy,
+            ..
+        } => "busy",
+        LookupError {
+            kind: crate::model::LookupFailure::InvalidInput,
+            ..
+        } => "invalidInput",
         _ => "lookupError",
     }
 }

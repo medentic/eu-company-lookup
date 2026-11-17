@@ -1,5 +1,5 @@
 use super::*;
-use crate::{CompanyLookupResult, LookupError, Provider, RegistryError};
+use crate::{CompanyLookupResult, LookupError, Provider, RegistryFailure};
 use serde_json::{Value, json};
 fn source() -> Value {
     json!({"total_results":1,"results":[{"siren":"001234567","nom_complet":"Synthetic SAS","nature_juridique":"5710","etat_administratif":"A","siege":{"est_siege":true,"siret":"00123456700001","adresse":" 1 RUE EXEMPLE\n00100 VILLE ","numero_voie":"1","type_voie":"RUE","libelle_voie":"EXEMPLE","code_postal":"00100","libelle_commune":"VILLE","region":"11"}}]})
@@ -82,11 +82,17 @@ async fn invalid_configuration_and_identifier_fail_locally() {
     };
     assert!(matches!(
         FrRegistryClient::with_config(config),
-        Err(LookupError::InvalidConfiguration(_))
+        Err(LookupError {
+            kind: crate::model::LookupFailure::InvalidConfiguration(_),
+            ..
+        })
     ));
     assert!(matches!(
         FrRegistryClient::new().unwrap().lookup("invalid").await,
-        Err(LookupError::InvalidInput)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::InvalidInput,
+            ..
+        })
     ));
 }
 
@@ -107,9 +113,12 @@ async fn endpoint_404_is_an_operational_error_not_registry_absence() {
         .await;
     assert!(matches!(
         result,
-        Err(LookupError::Registry {
-            provider: Provider::FrenchRechercheEntreprises,
-            error: RegistryError::Http { status: 404 }
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                provider: Provider::FrenchRechercheEntreprises,
+                error: RegistryFailure::Http { status: 404 }
+            },
+            ..
         })
     ));
     server.await.unwrap();

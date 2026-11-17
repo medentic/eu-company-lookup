@@ -1,5 +1,5 @@
 use super::*;
-use crate::{CompanyLookupResult, LookupError, Provider, RegistryError};
+use crate::{CompanyLookupResult, LookupError, Provider, RegistryFailure};
 use serde_json::{Value, json};
 fn source() -> Value {
     json!({"success":true,"result":{"resource_id":decode::RESOURCE,"total":1,"records":[{"company_num":"0123456","company_name":"Synthetic Limited","company_type":"Private limited by shares","company_status":"Dissolved","company_address_1":" Original line ","eircode":"A00 A000"}]}})
@@ -82,11 +82,17 @@ async fn invalid_configuration_and_identifier_fail_locally() {
     };
     assert!(matches!(
         IeRegistryClient::with_config(config),
-        Err(LookupError::InvalidConfiguration(_))
+        Err(LookupError {
+            kind: crate::model::LookupFailure::InvalidConfiguration(_),
+            ..
+        })
     ));
     assert!(matches!(
         IeRegistryClient::new().unwrap().lookup("invalid").await,
-        Err(LookupError::InvalidInput)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::InvalidInput,
+            ..
+        })
     ));
 }
 
@@ -107,10 +113,44 @@ async fn endpoint_404_is_an_operational_error_not_registry_absence() {
         .await;
     assert!(matches!(
         result,
-        Err(LookupError::Registry {
-            provider: Provider::IrishCro,
-            error: RegistryError::Http { status: 404 }
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                provider: Provider::IrishCro,
+                error: RegistryFailure::Http { status: 404 }
+            },
+            ..
         })
     ));
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn shared_transport_config_enables_raw_error_capture() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+    let server = tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.unwrap();
+        let mut buf = [0; 4096];
+        assert!(socket.read(&mut buf).await.unwrap() > 0);
+        socket.write_all(b"HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 11\r\n\r\nexact error").await.unwrap();
+    });
+    let config = IeRegistryConfig {
+        raw_debug: true,
+        ..Default::default()
+    };
+    let error = IeRegistryClient::for_test(url, config)
+        .lookup("0123456")
+        .await
+        .unwrap_err();
+    assert_eq!(error.id, crate::ErrorId::AccessDenied);
+    assert_eq!(error.details.country.as_deref(), Some("IE"));
+    assert_eq!(error.details.upstream_http_status, Some(403));
+    let debug = error.details.debug.unwrap();
+    assert_eq!(
+        debug.exchanges[0].response.as_ref().unwrap().body.data,
+        "exact error"
+    );
+    assert!(debug.exchanges[0].request.url.contains("0123456"));
     server.await.unwrap();
 }

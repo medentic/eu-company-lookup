@@ -13,11 +13,11 @@ impl IeBusinessId {
     /// VAT-prefixed and personal tax identifiers are rejected.
     pub fn parse(value: &str) -> Result<Self, LookupError> {
         if value.len() > 64 || !value.is_ascii() {
-            return Err(LookupError::InvalidInput);
+            return Err(LookupError::from(crate::model::LookupFailure::InvalidInput));
         }
         let value: String = value.chars().filter(|c| !c.is_ascii_whitespace()).collect();
         if value.is_empty() || value.len() > 7 || !value.bytes().all(|b| b.is_ascii_digit()) {
-            return Err(LookupError::InvalidInput);
+            return Err(LookupError::from(crate::model::LookupFailure::InvalidInput));
         }
         Ok(Self(value))
     }

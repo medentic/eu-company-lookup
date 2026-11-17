@@ -1,5 +1,5 @@
 use super::{FiBusinessId, FiCompanyLookupResult, FiPrhDetails};
-use crate::RegistryError;
+use crate::RegistryFailure;
 use serde::Deserialize;
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -10,15 +10,15 @@ struct Wire {
 pub(super) fn decode(
     bytes: &[u8],
     id: &FiBusinessId,
-) -> Result<FiCompanyLookupResult, RegistryError> {
+) -> Result<FiCompanyLookupResult, RegistryFailure> {
     let mut wire: Wire =
-        serde_json::from_slice(bytes).map_err(|_| RegistryError::UnexpectedResponse)?;
+        serde_json::from_slice(bytes).map_err(|_| RegistryFailure::UnexpectedResponse)?;
     if wire.total_results != 1 || wire.companies.len() != 1 {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let details = wire.companies.remove(0);
     if details.business_id.value != id.as_str() {
-        return Err(RegistryError::MismatchedResponse);
+        return Err(RegistryFailure::MismatchedResponse);
     }
     let names: Vec<_> = details
         .names
@@ -26,7 +26,7 @@ pub(super) fn decode(
         .filter(|n| n.r#type == "1" && n.version == 1)
         .collect();
     if names.len() != 1 || names[0].name.trim().is_empty() {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let company_name = names[0].name.clone();
     let forms: Vec<_> = details

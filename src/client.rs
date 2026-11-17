@@ -352,10 +352,10 @@ impl ClientBuilder {
 }
 
 fn disabled(operation: Operation, identifier_scheme: IdentifierScheme) -> LookupError {
-    LookupError::OperationDisabled {
+    LookupError::from(crate::model::LookupFailure::OperationDisabled {
         operation,
         identifier_scheme,
-    }
+    })
 }
 
 impl Client {
@@ -463,7 +463,9 @@ impl Client {
     ) -> Result<CompanyLookupResult, LookupError> {
         let country = country.trim().to_ascii_uppercase();
         if !Self::SUPPORTED_COMPANY_COUNTRIES.contains(&country.as_str()) {
-            return Err(LookupError::UnsupportedIdentifierScheme);
+            return Err(LookupError::from(
+                crate::model::LookupFailure::UnsupportedIdentifierScheme,
+            ));
         }
         match country.as_str() {
             "BG" => {
@@ -531,7 +533,9 @@ impl Client {
                 .lookup(value)
                 .await
                 .map(Into::into),
-            _ => Err(LookupError::UnsupportedIdentifierScheme),
+            _ => Err(LookupError::from(
+                crate::model::LookupFailure::UnsupportedIdentifierScheme,
+            )),
         }
     }
 }

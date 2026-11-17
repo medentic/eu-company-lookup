@@ -27,10 +27,7 @@ async fn disabled_greek_lookup_fails_before_validation() {
     let client = ClientBuilder::empty().build().unwrap();
     assert!(matches!(
         client.lookup_company("not-an-id", " gr ").await,
-        Err(LookupError::OperationDisabled {
-            operation: Operation::LookupCompany,
-            identifier_scheme: IdentifierScheme::GrBusinessId
-        })
+        Err(error @ LookupError { id: eu_company_lookup::ErrorId::OperationDisabled, .. }) if error.details.operation == Some(Operation::LookupCompany) && error.details.identifier_scheme == Some(IdentifierScheme::GrBusinessId)
     ));
     assert!(
         !client

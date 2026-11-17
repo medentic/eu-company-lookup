@@ -65,3 +65,7 @@ in [tests](../tests); provider unit tests remain beside the implementation.
 
 For the maintenance workflow and verification matrix, see the
 [agent handoff guide](../docs/maintainers/agent-handoff.md).
+
+[HTTP capture](http_capture.rs) supplies request-scoped raw diagnostics to the common
+[error contract](../docs/reference/errors.md). Capture defaults off and does not
+replace provider admission, response interpretation or definitive-miss policy.

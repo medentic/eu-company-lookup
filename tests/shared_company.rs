@@ -103,7 +103,10 @@ async fn company_support_list_matches_discovery_and_dispatch() {
         // Empty IDs fail locally; a missing dispatch branch would instead report unsupported.
         assert!(matches!(
             client.lookup_company("", country).await,
-            Err(LookupError::InvalidInput)
+            Err(LookupError {
+                id: eu_company_lookup::ErrorId::InvalidInput,
+                ..
+            })
         ));
     }
 }

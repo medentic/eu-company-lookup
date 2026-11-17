@@ -3,7 +3,7 @@ use super::{
     BgBusinessId, BgRegistryClient, bulstat,
     probe::{source_sha, write_json},
 };
-use crate::{LookupError, Provider, RegistryError, RetryAfter};
+use crate::{LookupError, Provider, RegistryFailure, RetryAfter};
 use serde_json::{Value, json};
 use std::{fs, path::PathBuf, time::Instant};
 
@@ -56,21 +56,35 @@ async fn live_bulstat_batch() {
                 serde_json::to_value(record).unwrap(),
                 Value::Null,
             ),
-            Err(LookupError::NotFound) => ("notFound", Value::Null, Value::Null),
+            Err(LookupError {
+                kind: crate::model::LookupFailure::NotFound,
+                ..
+            }) => ("notFound", Value::Null, Value::Null),
             Err(error) => (
                 super::probe::error_kind(error),
                 Value::Null,
                 json!(error.to_string()),
             ),
         };
-        let failed = result.is_err() && !matches!(result, Err(LookupError::NotFound));
+        let failed = result.is_err()
+            && !matches!(
+                result,
+                Err(LookupError {
+                    kind: crate::model::LookupFailure::NotFound,
+                    ..
+                })
+            );
         let cooldown = if failed {
             let minimum = chrono::Utc::now() + chrono::Duration::seconds(60);
             let retry = match &result {
-                Err(LookupError::Registry {
-                    error:
-                        RegistryError::RateLimited { retry_after }
-                        | RegistryError::ServiceUnavailable { retry_after, .. },
+                Err(LookupError {
+                    kind:
+                        crate::model::LookupFailure::Registry {
+                            error:
+                                RegistryFailure::RateLimited { retry_after }
+                                | RegistryFailure::ServiceUnavailable { retry_after, .. },
+                            ..
+                        },
                     ..
                 }) => retry_after.as_ref(),
                 _ => None,

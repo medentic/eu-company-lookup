@@ -95,7 +95,7 @@ when upgrading an existing integration.
 
 ```toml
 [dependencies]
-eu-company-lookup = "3"
+eu-company-lookup = "4"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 serde_json = "1" # To print the JSON shown below.
 ```
@@ -439,8 +439,8 @@ date, use the lower-level `RoRegistryClient::lookup_at`.
 | Outcome | Meaning |
 | --- | --- |
 | `Ok(result)` with VIES `valid: false` | Matched negative VAT response |
-| `Err(LookupError::NotFound)` | Definitive misses from both Bulgarian registers |
-| `Err(LookupError::RegistryNotFound { .. })` | Definitive ANAF miss only |
+| `not_found`, reason `both_bulgarian_registers_missed` | Definitive misses from both Bulgarian registers |
+| `not_found`, provider `RomanianAnaf` | Definitive ANAF miss only |
 | Invalid input, timeout, rate limit, service or schema error | Lookup failed; registration status remains unproven |
 
 There are no automatic retries or persistent caching. Clones share admission
@@ -684,3 +684,5 @@ and unknown number types remain in the details.
 Czech HTTP 404 is a definitive ARES miss only with the documented `NENALEZENO`
 error envelope; other failures remain errors. Wider verification remains in progress.
 The implementation does not establish the requested live coverage milestone.
+
+Errors use one [common error object and catalog](docs/reference/errors.md), with optional raw HTTP diagnostics and a 3.x → 4.0 migration guide.

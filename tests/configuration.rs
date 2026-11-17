@@ -18,17 +18,26 @@ fn invalid_bounds_are_rejected_before_any_lookup() {
     vies.max_concurrent_requests = 0;
     assert!(matches!(
         Client::with_config(vies),
-        Err(LookupError::InvalidConfiguration(_))
+        Err(LookupError {
+            id: eu_company_lookup::ErrorId::InvalidConfiguration,
+            ..
+        })
     ));
     let mut registry = BgRegistryConfig::default();
     registry.connect_timeout = registry.timeout + Duration::from_secs(1);
     assert!(matches!(
         BgRegistryClient::with_config(registry.clone()),
-        Err(LookupError::InvalidConfiguration(_))
+        Err(LookupError {
+            id: eu_company_lookup::ErrorId::InvalidConfiguration,
+            ..
+        })
     ));
     assert!(matches!(
         Client::with_configs(ClientConfig::default(), registry),
-        Err(LookupError::InvalidConfiguration(_))
+        Err(LookupError {
+            id: eu_company_lookup::ErrorId::InvalidConfiguration,
+            ..
+        })
     ));
 }
 

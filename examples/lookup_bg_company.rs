@@ -11,7 +11,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for id in ids {
         match client.lookup_company(&id, "BG").await {
             Ok(result) => println!("{}", serde_json::to_string_pretty(&result)?),
-            Err(LookupError::NotFound) => {
+            Err(LookupError {
+                id: eu_company_lookup::ErrorId::NotFound,
+                ..
+            }) => {
                 println!("NotFound: neither Bulgarian register returned a matching record")
             }
             Err(error) => {

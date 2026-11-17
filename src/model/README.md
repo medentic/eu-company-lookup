@@ -10,7 +10,7 @@
 | [company.rs](company.rs) | BG result, original registry address, Commercial Register/BULSTAT details. |
 | [company_types.rs](company_types.rs) | Shared lifecycle and BG legal forms, registry roles and document categories. |
 | [capabilities.rs](capabilities.rs) | Provider, identifier and operation contracts; catalog values live outside the model. |
-| [error.rs](error.rs), [registry_error.rs](registry_error.rs) | Caller-visible failure classification and source-specific failures. |
+| [error.rs](error.rs), [error_catalog.rs](error_catalog.rs), [diagnostics.rs](diagnostics.rs) | One public error object, stable IDs/messages and optional raw HTTP diagnostics. |
 
 Provider projections live in [BG mapping](../bg/mapping.rs) and
 [ANAF mapping](../ro/mapping.rs), alongside the source rules they interpret.
@@ -70,3 +70,7 @@ RO derives it only from a matched positive ANAF article-316 registration, withou
 caller-supplied numeric padding. BG checks nine-digit candidates but populates fields only from valid, name-matched
 VIES responses retained in details; branch IDs are skipped.
 Keep the original source VAT flag in ANAF details for inspection.
+
+Private `failure.rs` and `registry_failure.rs` preserve provider policy classifications.
+They are not public error types. [HTTP capture](../http_capture.rs) owns per-lookup
+capture; [error reference](../../docs/reference/errors.md) defines the consumer contract.

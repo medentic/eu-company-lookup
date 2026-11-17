@@ -1,5 +1,5 @@
 use super::*;
-use crate::{LookupError, RegistryError};
+use crate::{LookupError, RegistryFailure};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[test]
@@ -32,7 +32,7 @@ fn syntax_and_exact_identity_preserve_leading_zeroes() {
     assert_eq!(v.details.legal_situation_code.as_deref(), Some("000"));
     assert!(matches!(
         decode::decode(raw, &BeBusinessId::parse("0012345679").unwrap()),
-        Err(RegistryError::MismatchedResponse)
+        Err(RegistryFailure::MismatchedResponse)
     ));
     for raw in [
         br#"{"cbe":"0012345678","name":" "}"#.as_slice(),
@@ -77,8 +77,11 @@ async fn anonymous_get_captures_source_and_404_remains_an_error() {
         BeRegistryClient::for_test(url, Default::default())
             .lookup("0012345678")
             .await,
-        Err(LookupError::Registry {
-            error: RegistryError::Http { status: 404 },
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::Http { status: 404 },
+                ..
+            },
             ..
         })
     ));
@@ -103,9 +106,12 @@ async fn throttle_cooldown_is_shared_by_clones() {
     let clone = client.clone();
     assert!(matches!(
         client.lookup("0012345678").await,
-        Err(LookupError::Registry {
-            error: RegistryError::RateLimited {
-                retry_after: Some(crate::RetryAfter::Seconds(120))
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::RateLimited {
+                    retry_after: Some(crate::RetryAfter::Seconds(120))
+                },
+                ..
             },
             ..
         })
@@ -113,9 +119,12 @@ async fn throttle_cooldown_is_shared_by_clones() {
     task.await.unwrap();
     assert!(matches!(
         clone.lookup("0012345678").await,
-        Err(LookupError::Registry {
-            error: RegistryError::CoolingDown {
-                retry_after_seconds: 119..=120
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::CoolingDown {
+                    retry_after_seconds: 119..=120
+                },
+                ..
             },
             ..
         })
@@ -127,14 +136,18 @@ async fn body_limits_and_non_json_never_become_records() {
     let (url, task) = raw_endpoint(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 1024\r\nConnection: close\r\n\r\n").await;
     let config = BeRegistryConfig {
         max_response_bytes: 32,
+        raw_debug: false,
         ..Default::default()
     };
     assert!(matches!(
         BeRegistryClient::for_test(url, config)
             .lookup("0012345678")
             .await,
-        Err(LookupError::Registry {
-            error: RegistryError::ResponseTooLarge,
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::ResponseTooLarge,
+                ..
+            },
             ..
         })
     ));
@@ -144,8 +157,11 @@ async fn body_limits_and_non_json_never_become_records() {
         BeRegistryClient::for_test(url, Default::default())
             .lookup("0012345678")
             .await,
-        Err(LookupError::Registry {
-            error: RegistryError::UnexpectedResponse,
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::UnexpectedResponse,
+                ..
+            },
             ..
         })
     ));

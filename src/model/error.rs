@@ -20,143 +20,238 @@ pub enum RetryAfter {
     Date(DateTime<Utc>),
 }
 
-/// Failure of a lookup. Error text never contains a VAT ID, owner or response body.
-#[derive(Debug, thiserror::Error)]
+/// Provider-independent failure object returned by every public lookup.
+/// Display and Debug omit raw diagnostics; explicit serialization includes them when enabled.
+///
+/// Version 4.0 removes the legacy public registry error type:
+/// ```compile_fail
+/// use eu_company_lookup::RegistryError;
+/// ```
+/// Match `error.id` instead of the old enum variants:
+/// ```compile_fail
+/// use eu_company_lookup::LookupError;
+/// let error = LookupError::InvalidInput;
+/// ```
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 #[non_exhaustive]
-pub enum LookupError {
-    /// Malformed input or unsupported national syntax.
-    #[error("identifier has invalid syntax")]
-    InvalidInput,
-    /// Well-formed prefix is not supported by this version's VIES adapter.
-    #[error("VAT jurisdiction is not supported; Greece uses EL, not GR")]
-    UnsupportedJurisdiction,
-    /// This national country/scheme pair has no supported identifier parser.
-    #[error("unsupported national identifier country/scheme pair")]
-    UnsupportedIdentifierScheme,
-    /// The relevant adapter was disabled when this client was constructed.
-    #[error("operation {operation:?} is disabled for {identifier_scheme:?}")]
-    OperationDisabled {
-        /// Requested operation; this is a local configuration error, not an outage.
-        operation: super::Operation,
-        /// Identifier scheme selecting the disabled adapter.
-        identifier_scheme: super::IdentifierScheme,
-    },
-    /// Invalid client configuration.
-    #[error("invalid client configuration: {0}")]
-    InvalidConfiguration(&'static str),
-    /// HTTP client could not be initialized.
-    #[error("could not initialize the HTTP client")]
-    ClientInitialization,
-    /// Shared global capacity or the country's active slot is occupied.
-    #[error("client capacity is occupied; try later")]
-    Busy,
-    /// Network/response deadline expired. Local spacing that cannot fit the
-    /// configured lookup deadline returns Busy before a request is sent.
-    #[error("lookup deadline exceeded")]
-    DeadlineExceeded,
-    /// HTTP/network/TLS failure, with no provider payload in the error.
-    #[error("VIES transport failed")]
-    Transport,
-    /// Provider rejected the supplied input; distinct from a negative VAT check.
-    #[error("VIES rejected the input")]
-    ProviderRejectedInput,
-    /// Provider asked for reduced traffic.
-    #[error("VIES rate limit ({scope:?})")]
-    RateLimited {
-        /// Scope of the reported limit.
-        scope: LimitScope,
-        /// Provider's Retry-After header, if valid.
-        retry_after: Option<RetryAfter>,
-    },
-    /// A previous request established a shared cooldown; no request was sent.
-    #[error("VIES client is cooling down ({scope:?})")]
-    CoolingDown {
-        /// Scope of the cooldown.
-        scope: LimitScope,
-        /// Remaining delay, rounded up to seconds.
-        retry_after_seconds: u64,
-    },
-    /// The central VIES service is unavailable.
-    #[error("VIES service unavailable")]
-    ServiceUnavailable {
-        /// Provider Retry-After header, when available.
-        retry_after: Option<RetryAfter>,
-    },
-    /// The requested national service is unavailable.
-    #[error("VIES member-state service unavailable")]
-    MemberStateUnavailable {
-        /// Provider Retry-After header, when available.
-        retry_after: Option<RetryAfter>,
-    },
-    /// VIES reported its own upstream timeout.
-    #[error("VIES member-state request timed out")]
-    ProviderTimeout {
-        /// Provider Retry-After header, when available.
-        retry_after: Option<RetryAfter>,
-    },
-    /// An unrecognized SOAP fault; its arbitrary text is intentionally not exposed.
-    #[error("unrecognized VIES SOAP fault")]
-    UnknownSoapFault,
-    /// Non-success HTTP response without a recognized SOAP fault.
-    #[error("VIES HTTP status {status}")]
-    Http {
-        /// HTTP status code.
-        status: u16,
-        /// Provider's Retry-After header, if valid.
-        retry_after: Option<RetryAfter>,
-    },
-    /// Response exceeds the configured byte limit.
-    #[error("VIES response exceeds the size limit")]
-    ResponseTooLarge,
-    /// Invalid XML, SOAP structure, field or date.
-    #[error("malformed VIES response")]
-    MalformedResponse,
-    /// Country or number differs from the exact requested identifier.
-    #[error("VIES response does not match the requested identifier")]
-    MismatchedResponse,
-    /// Both Bulgarian registers definitively returned no matching business record.
-    /// Does not describe a VIES negative result or any service failure.
-    #[error("business identifier was not found in either Bulgarian register")]
-    NotFound,
-    /// Identifier-matched negative observation from a specific registry.
-    /// Does not prove absence from other sources or VAT invalidity.
-    #[error("business identifier was not found by {provider:?}")]
-    RegistryNotFound {
-        /// Source that explicitly reported the miss.
-        provider: super::Provider,
-    },
-    /// Source-specific registry failure; no conclusion about business existence.
-    #[error("{provider:?}: {error}")]
-    Registry {
-        /// Register that failed; fallback is not attempted after this failure.
-        provider: super::Provider,
-        /// Sanitized operational or response error.
-        #[source]
-        error: super::RegistryError,
-    },
+pub struct LookupError {
+    /// Stable machine-readable classification.
+    pub id: super::ErrorId,
+    /// English title suitable for user interfaces.
+    pub title: &'static str,
+    /// English explanation intended for administrators.
+    pub description: &'static str,
+    /// Service or network availability prevented verification; validity is unknown.
+    pub is_service_unavailable: bool,
+    /// Optional context and explicitly enabled raw HTTP diagnostics.
+    pub details: Box<ErrorDetails>,
+    #[serde(skip)]
+    pub(crate) kind: super::LookupFailure,
 }
 
+/// Structured context. Missing facts remain null; raw diagnostics are opt-in.
+#[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[non_exhaustive]
+pub struct ErrorDetails {
+    /// Provider responsible for the failed observation, when known.
+    pub provider: Option<super::Provider>,
+    /// ISO country, when established by the lookup context.
+    pub country: Option<String>,
+    /// Specific sanitized reason within the common error category.
+    pub reason: Option<&'static str>,
+    /// Recognized upstream protocol fault code; arbitrary body text is never copied here.
+    pub upstream_code: Option<&'static str>,
+    /// Actual upstream HTTP status, never an application HTTP response recommendation.
+    pub upstream_http_status: Option<u16>,
+    /// Actual response Content-Type value when valid text.
+    pub response_content_type: Option<String>,
+    /// Provider retry instruction, if supplied.
+    pub retry_after: Option<RetryAfter>,
+    /// Remaining local cooldown in seconds, if applicable.
+    pub retry_after_seconds: Option<u64>,
+    /// Admission/rate-limit scope, when supplied.
+    pub scope: Option<LimitScope>,
+    /// Disabled operation, when applicable.
+    pub operation: Option<super::Operation>,
+    /// Identifier scheme for a disabled operation.
+    pub identifier_scheme: Option<super::IdentifierScheme>,
+    /// Raw exchanges in request order; absent unless explicitly enabled.
+    pub debug: Option<super::HttpDiagnostics>,
+}
 impl LookupError {
-    /// Whether service/network availability prevented verification. Such failures
-    /// must never be presented as an invalid VAT/business ID. A transport failure
-    /// may be local connectivity rather than a confirmed outage at the provider.
-    /// Local admission limits and rate limits remain separately typed errors.
+    /// Whether service/network availability prevented verification.
     pub fn is_service_unavailable(&self) -> bool {
-        matches!(
-            self,
-            Self::ServiceUnavailable { .. }
-                | Self::MemberStateUnavailable { .. }
-                | Self::ProviderTimeout { .. }
-                | Self::DeadlineExceeded
-                | Self::Transport
-                | Self::Registry {
-                    error: super::RegistryError::ServiceUnavailable { .. },
-                    ..
+        self.is_service_unavailable
+    }
+}
+impl std::fmt::Display for LookupError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.title)
+    }
+}
+impl std::fmt::Debug for LookupError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LookupError")
+            .field("id", &self.id)
+            .field("title", &self.title)
+            .field("provider", &self.details.provider)
+            .field("reason", &self.details.reason)
+            .finish_non_exhaustive()
+    }
+}
+impl std::error::Error for LookupError {}
+impl From<super::LookupFailure> for LookupError {
+    fn from(kind: super::LookupFailure) -> Self {
+        use super::{ErrorId as I, LookupFailure as F, RegistryFailure as R};
+        let mut details = ErrorDetails::default();
+        let id = match &kind {
+            F::Unknown => I::UnknownError,
+            F::InvalidInput => I::InvalidInput,
+            F::UnsupportedJurisdiction => {
+                details.reason = Some("unsupported_vat_jurisdiction");
+                I::UnsupportedIdentifier
+            }
+            F::UnsupportedIdentifierScheme => {
+                details.reason = Some("unsupported_identifier_scheme");
+                I::UnsupportedIdentifier
+            }
+            F::OperationDisabled {
+                operation,
+                identifier_scheme,
+            } => {
+                details.operation = Some(*operation);
+                details.identifier_scheme = Some(*identifier_scheme);
+                I::OperationDisabled
+            }
+            F::InvalidConfiguration(reason) => {
+                details.reason = Some(reason);
+                I::InvalidConfiguration
+            }
+            F::ClientInitialization => I::InitializationFailed,
+            F::Busy => I::Busy,
+            F::DeadlineExceeded => {
+                details.reason = Some("timeout");
+                I::ServiceUnavailable
+            }
+            F::Transport => {
+                details.reason = Some("connection");
+                I::ServiceUnavailable
+            }
+            F::ProviderRejectedInput => {
+                details.upstream_code = Some("INVALID_INPUT");
+                I::ProviderRejectedInput
+            }
+            F::RateLimited { scope, retry_after } => {
+                details.scope = Some(*scope);
+                details.retry_after = retry_after.clone();
+                I::RateLimited
+            }
+            F::CoolingDown {
+                scope,
+                retry_after_seconds,
+            } => {
+                details.scope = Some(*scope);
+                details.retry_after_seconds = Some(*retry_after_seconds);
+                I::CoolingDown
+            }
+            F::ServiceUnavailable { retry_after }
+            | F::MemberStateUnavailable { retry_after }
+            | F::ProviderTimeout { retry_after } => {
+                details.retry_after = retry_after.clone();
+                details.reason = Some(match kind {
+                    F::MemberStateUnavailable { .. } => "member_state_unavailable",
+                    F::ProviderTimeout { .. } => "upstream_timeout",
+                    _ => "service_unavailable",
+                });
+                details.upstream_code = match kind {
+                    F::MemberStateUnavailable { .. } => Some("MS_UNAVAILABLE"),
+                    F::ProviderTimeout { .. } => None,
+                    _ => None,
+                };
+                I::ServiceUnavailable
+            }
+            F::UnknownSoapFault => {
+                details.reason = Some("unrecognized_soap_fault");
+                I::UnexpectedResponse
+            }
+            F::Http {
+                status,
+                retry_after,
+            } => {
+                details.upstream_http_status = Some(*status);
+                details.retry_after = retry_after.clone();
+                if (500..=599).contains(status) || *status == 408 {
+                    I::ServiceUnavailable
+                } else {
+                    I::UnexpectedResponse
                 }
-                | Self::Http {
-                    status: 500..=599 | 408,
-                    ..
+            }
+            F::ResponseTooLarge => I::ResponseTooLarge,
+            F::MalformedResponse => {
+                details.reason = Some("malformed_response");
+                I::UnexpectedResponse
+            }
+            F::MismatchedResponse => I::ResponseMismatch,
+            F::NotFound => {
+                details.reason = Some("both_bulgarian_registers_missed");
+                details.country = Some("BG".into());
+                I::NotFound
+            }
+            F::RegistryNotFound { provider } => {
+                details.provider = Some(*provider);
+                I::NotFound
+            }
+            F::Registry { provider, error } => {
+                details.provider = Some(*provider);
+                match error {
+                    R::ServiceUnavailable {
+                        reason,
+                        retry_after,
+                    } => {
+                        details.reason = Some(match reason {
+                            super::UnavailabilityReason::ServerError => "server_error",
+                            super::UnavailabilityReason::Timeout => "timeout",
+                            super::UnavailabilityReason::Connection => "connection",
+                        });
+                        details.retry_after = retry_after.clone();
+                        I::ServiceUnavailable
+                    }
+                    R::RateLimited { retry_after } => {
+                        details.retry_after = retry_after.clone();
+                        I::RateLimited
+                    }
+                    R::CoolingDown {
+                        retry_after_seconds,
+                    } => {
+                        details.retry_after_seconds = Some(*retry_after_seconds);
+                        I::CoolingDown
+                    }
+                    R::AccessDenied => I::AccessDenied,
+                    R::Http { status } => {
+                        details.upstream_http_status = Some(*status);
+                        I::UnexpectedResponse
+                    }
+                    R::UnexpectedResponse => I::UnexpectedResponse,
+                    R::MismatchedResponse => I::ResponseMismatch,
+                    R::ResponseTooLarge => I::ResponseTooLarge,
                 }
-        )
+            }
+        };
+        Self {
+            id,
+            title: id.title(),
+            description: id.description(),
+            is_service_unavailable: id == I::ServiceUnavailable,
+            details: Box::new(details),
+            kind,
+        }
+    }
+}
+
+impl Default for LookupError {
+    fn default() -> Self {
+        super::LookupFailure::Unknown.into()
     }
 }

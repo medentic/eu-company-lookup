@@ -27,10 +27,7 @@ async fn disabled_irish_lookup_fails_before_validation() {
     let client = ClientBuilder::empty().build().unwrap();
     assert!(matches!(
         client.lookup_company("not-an-id", " ie ").await,
-        Err(LookupError::OperationDisabled {
-            operation: Operation::LookupCompany,
-            identifier_scheme: IdentifierScheme::IeBusinessId
-        })
+        Err(error @ LookupError { id: eu_company_lookup::ErrorId::OperationDisabled, .. }) if error.details.operation == Some(Operation::LookupCompany) && error.details.identifier_scheme == Some(IdentifierScheme::IeBusinessId)
     ));
     assert!(
         !client

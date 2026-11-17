@@ -1,7 +1,12 @@
 # Changelog
 
-## 3.1.0 (Unreleased)
+## 4.0.0 (Unreleased)
 
+- Replace public error enums with one serializable `LookupError` object: stable
+  IDs, English titles and administrator descriptions, availability flag and
+  structured details. See the [error contract and migration](docs/reference/errors.md).
+- Add opt-in raw HTTP diagnostics with request/response header arrays, lossless
+  bodies, cURL reproduction and explicit incomplete-capture reasons.
 - Add keyless national company lookup adapters for Austria, Belgium, Czechia,
   Estonia, Finland, France, Greece, Iceland, Ireland, Latvia, Lithuania, Norway,
   Poland and Slovakia. Native identifiers, typed provider details and explicit

@@ -1,5 +1,5 @@
 use super::*;
-use crate::{CompanyLookupResult, LookupError, Provider, RegistryError};
+use crate::{CompanyLookupResult, LookupError, Provider, RegistryFailure};
 use serde_json::{Value, json};
 
 fn source() -> Value {
@@ -42,7 +42,7 @@ fn ambiguous_names_wrong_ids_and_empty_results_are_not_records() {
     value["companies"][0]["businessId"]["value"] = json!("0012345-7");
     assert!(matches!(
         decode::decode(&serde_json::to_vec(&value).unwrap(), &id),
-        Err(RegistryError::MismatchedResponse)
+        Err(RegistryFailure::MismatchedResponse)
     ));
     value = source();
     let duplicate = value["companies"][0]["names"][0].clone();
@@ -53,7 +53,7 @@ fn ambiguous_names_wrong_ids_and_empty_results_are_not_records() {
     assert!(decode::decode(&serde_json::to_vec(&value).unwrap(), &id).is_err());
     assert!(matches!(
         decode::decode(br#"{"totalResults":0,"companies":[]}"#, &id),
-        Err(RegistryError::UnexpectedResponse)
+        Err(RegistryFailure::UnexpectedResponse)
     ));
     for bad in [
         "FI00123456",
@@ -96,11 +96,17 @@ async fn invalid_configuration_and_identifier_fail_locally() {
     };
     assert!(matches!(
         FiRegistryClient::with_config(config),
-        Err(LookupError::InvalidConfiguration(_))
+        Err(LookupError {
+            kind: crate::model::LookupFailure::InvalidConfiguration(_),
+            ..
+        })
     ));
     assert!(matches!(
         FiRegistryClient::new().unwrap().lookup("invalid").await,
-        Err(LookupError::InvalidInput)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::InvalidInput,
+            ..
+        })
     ));
 }
 
@@ -121,9 +127,12 @@ async fn endpoint_404_is_an_operational_error_not_registry_absence() {
         .await;
     assert!(matches!(
         result,
-        Err(LookupError::Registry {
-            provider: Provider::FinnishPrh,
-            error: RegistryError::Http { status: 404 }
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                provider: Provider::FinnishPrh,
+                error: RegistryFailure::Http { status: 404 }
+            },
+            ..
         })
     ));
     server.await.unwrap();

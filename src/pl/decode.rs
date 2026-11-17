@@ -1,5 +1,5 @@
 use super::*;
-use crate::RegistryError;
+use crate::RegistryFailure;
 #[derive(serde::Deserialize)]
 struct Wire {
     odpis: Extract,
@@ -29,14 +29,14 @@ struct Section {
 pub(super) fn decode(
     bytes: &[u8],
     id: &PlBusinessId,
-) -> Result<PlCompanyLookupResult, RegistryError> {
-    let v: Wire = serde_json::from_slice(bytes).map_err(|_| RegistryError::UnexpectedResponse)?;
+) -> Result<PlCompanyLookupResult, RegistryFailure> {
+    let v: Wire = serde_json::from_slice(bytes).map_err(|_| RegistryFailure::UnexpectedResponse)?;
     let e = v.odpis;
     if e.rodzaj != "Aktualny" || e.header.rejestr != "RejP" {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     if e.header.numer_krs != id.as_str() {
-        return Err(RegistryError::MismatchedResponse);
+        return Err(RegistryFailure::MismatchedResponse);
     }
     let section = e.dane.dzial1;
     let (subject, office, foreign_branch) = match (section.subject, section.foreign_subject) {
@@ -46,10 +46,10 @@ pub(super) fn decode(
         (None, Some(subject)) if section.office.is_none() => {
             (subject, section.foreign_office, true)
         }
-        _ => return Err(RegistryError::UnexpectedResponse),
+        _ => return Err(RegistryFailure::UnexpectedResponse),
     };
     if subject.nazwa.trim().is_empty() {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     Ok(PlCompanyLookupResult {
         tax_id: id.clone(),

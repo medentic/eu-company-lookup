@@ -1,5 +1,5 @@
 use super::*;
-use crate::{LookupError, RegistryError};
+use crate::{LookupError, RegistryFailure};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[test]
@@ -110,9 +110,12 @@ async fn throttle_cooldown_is_shared_by_clones() {
     let clone = client.clone();
     assert!(matches!(
         client.lookup("001234567890").await,
-        Err(LookupError::Registry {
-            error: RegistryError::RateLimited {
-                retry_after: Some(crate::RetryAfter::Seconds(120))
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::RateLimited {
+                    retry_after: Some(crate::RetryAfter::Seconds(120))
+                },
+                ..
             },
             ..
         })
@@ -120,9 +123,12 @@ async fn throttle_cooldown_is_shared_by_clones() {
     task.await.unwrap();
     assert!(matches!(
         clone.lookup("001234567890").await,
-        Err(LookupError::Registry {
-            error: RegistryError::CoolingDown {
-                retry_after_seconds: 119..=120
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::CoolingDown {
+                    retry_after_seconds: 119..=120
+                },
+                ..
             },
             ..
         })
@@ -134,14 +140,18 @@ async fn body_limits_and_non_json_never_become_records() {
     let (url, task) = raw_endpoint(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 1024\r\nConnection: close\r\n\r\n").await;
     let config = GrRegistryConfig {
         max_response_bytes: 32,
+        raw_debug: false,
         ..Default::default()
     };
     assert!(matches!(
         GrRegistryClient::for_test(url, config)
             .lookup("001234567890")
             .await,
-        Err(LookupError::Registry {
-            error: RegistryError::ResponseTooLarge,
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::ResponseTooLarge,
+                ..
+            },
             ..
         })
     ));
@@ -151,8 +161,11 @@ async fn body_limits_and_non_json_never_become_records() {
         GrRegistryClient::for_test(url, Default::default())
             .lookup("001234567890")
             .await,
-        Err(LookupError::Registry {
-            error: RegistryError::UnexpectedResponse,
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::UnexpectedResponse,
+                ..
+            },
             ..
         })
     ));

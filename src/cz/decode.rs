@@ -1,17 +1,17 @@
 use super::{CzBusinessId, CzCompanyLookupResult};
-use crate::RegistryError;
+use crate::RegistryFailure;
 pub(super) fn decode(
     bytes: &[u8],
     id: &CzBusinessId,
-) -> Result<Option<CzCompanyLookupResult>, RegistryError> {
+) -> Result<Option<CzCompanyLookupResult>, RegistryFailure> {
     let result: CzCompanyLookupResult = serde_json::from_slice::<super::model::Wire>(bytes)
-        .map_err(|_| RegistryError::UnexpectedResponse)?
+        .map_err(|_| RegistryFailure::UnexpectedResponse)?
         .into();
     if result.tax_id != *id {
-        return Err(RegistryError::MismatchedResponse);
+        return Err(RegistryFailure::MismatchedResponse);
     }
     if result.company_name.trim().is_empty() {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     Ok(Some(result))
 }

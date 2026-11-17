@@ -1,6 +1,7 @@
 use super::{AtBusinessId, AtCompanyLookupResult, decode};
+use crate::http_capture::SendTraced;
 use crate::registry_transport::{self, Admission, Bounds, Spacing, network};
-use crate::{LookupError, Provider, RegistryError};
+use crate::{LookupError, Provider, RegistryFailure};
 use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 
@@ -20,6 +21,8 @@ pub struct AtRegistryConfig {
     pub failure_cooldown: Duration,
     /// Maximum response size. Default: 1 MiB; maximum: 4 MiB.
     pub max_response_bytes: usize,
+    /// Capture raw HTTP requests/responses in errors. Default: false; may expose sensitive data.
+    pub raw_debug: bool,
 }
 impl Default for AtRegistryConfig {
     fn default() -> Self {
@@ -29,6 +32,7 @@ impl Default for AtRegistryConfig {
             start_interval: Duration::from_secs(2),
             failure_cooldown: Duration::from_secs(60),
             max_response_bytes: 1_048_576,
+            raw_debug: false,
         }
     }
 }
@@ -40,6 +44,7 @@ impl AtRegistryConfig {
             start_interval: self.start_interval,
             failure_cooldown: self.failure_cooldown,
             max_response_bytes: self.max_response_bytes,
+            raw_debug: self.raw_debug,
         }
     }
 }
@@ -91,7 +96,7 @@ impl AtRegistryClient {
         )
         .await
     }
-    async fn send(&self, id: &AtBusinessId) -> Result<AtCompanyLookupResult, RegistryError> {
+    async fn send(&self, id: &AtBusinessId) -> Result<AtCompanyLookupResult, RegistryFailure> {
         let search_url = format!(
             "{}/search?term={}&size=5&page=0",
             self.endpoint,
@@ -105,12 +110,12 @@ impl AtRegistryClient {
             .await?;
         decode::detail(&detail, id, &record)
     }
-    async fn get_json(&self, url: &str) -> Result<Vec<u8>, RegistryError> {
+    async fn get_json(&self, url: &str) -> Result<Vec<u8>, RegistryFailure> {
         let response = self
             .http
             .get(url)
             .header("Accept", "application/json")
-            .send()
+            .send_traced()
             .await
             .map_err(network)?;
         #[cfg(test)]

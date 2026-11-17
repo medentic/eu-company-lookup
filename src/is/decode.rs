@@ -1,5 +1,5 @@
 use super::*;
-use crate::RegistryError;
+use crate::RegistryFailure;
 use scraper::{Html, Selector};
 fn selector(s: &str) -> Selector {
     Selector::parse(s).expect("static selector")
@@ -7,27 +7,27 @@ fn selector(s: &str) -> Selector {
 pub(super) fn decode(
     bytes: &[u8],
     id: &IsBusinessId,
-) -> Result<IsCompanyLookupResult, RegistryError> {
-    let raw = std::str::from_utf8(bytes).map_err(|_| RegistryError::UnexpectedResponse)?;
+) -> Result<IsCompanyLookupResult, RegistryFailure> {
+    let raw = std::str::from_utf8(bytes).map_err(|_| RegistryFailure::UnexpectedResponse)?;
     let html = Html::parse_document(raw);
     let boxes: Vec<_> = html.select(&selector("div.company")).collect();
     if boxes.len() != 1 {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let page = boxes[0];
     let headings: Vec<_> = page.select(&selector("h1")).collect();
     if headings.len() != 1 {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let heading = headings[0].text().collect::<String>();
     let suffix = format!(" ({})", id.as_str());
     let name = heading
         .trim()
         .strip_suffix(&suffix)
-        .ok_or(RegistryError::MismatchedResponse)?
+        .ok_or(RegistryFailure::MismatchedResponse)?
         .trim();
     if name.is_empty() {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let mut matches = Vec::new();
     for table in page.select(&selector("table")) {
@@ -40,15 +40,15 @@ pub(super) fn decode(
         }
     }
     if matches.len() != 1 {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let rows: Vec<_> = matches[0].select(&selector("tbody tr")).collect();
     if rows.len() != 1 {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let cells: Vec<_> = rows[0].select(&selector("td")).collect();
     if cells.len() != 4 {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let form: Vec<_> = cells[3]
         .text()
@@ -65,7 +65,7 @@ pub(super) fn decode(
         })
         .collect();
     if subtitles.len() > 1 {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let registration_text = subtitles.first().map(|e| e.text().collect::<String>());
     let details = IsCompanyDetails {

@@ -1,6 +1,6 @@
 # Public API compatibility
 
-The 3.x contract covers exported Rust types and methods and documented JSON field
+The 4.x contract covers exported Rust types and methods and documented JSON field
 names, value types and null semantics. Provider data remains an observation that
 can change between requests.
 
@@ -43,6 +43,14 @@ The minimum Rust version is 1.98.1. Increases require a documented minor release
 never a patch release. Network lookups require Tokio with I/O and time enabled.
 CI covers Linux; no broader platform verification is claimed. See
 [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/semver.html).
+
+## Migrating from 3.x
+
+Version 4.0 replaces the public `LookupError` enum and removes `RegistryError`.
+Every public operation returns the common `LookupError` struct, with stable
+`ErrorId`, English title/description, an availability flag and structured details.
+See the [complete error catalog, raw diagnostics and migration](errors.md).
+Do not match removed enum variants or parse human-readable error messages.
 
 ## Migrating from 2.x
 
@@ -151,8 +159,8 @@ should tolerate unknown fields and values. Missing information stays null rather
 than becoming an invented fact or an assertion of absence.
 
 VAT and company results are separate contracts. `valid: false` is a matched
-negative VIES observation. `NotFound` requires definitive misses from both
-Bulgarian registers. `RegistryNotFound { provider: RomanianAnaf }` is an
+negative VIES observation. `not_found` with reason `both_bulgarian_registers_missed` requires definitive misses from both
+Bulgarian registers. `not_found` with provider `RomanianAnaf` is an
 ANAF-specific miss. Operational failures never become negative observations.
 
 For native Bulgarian results, `taxId` is a business code, `companyEnglishName` is

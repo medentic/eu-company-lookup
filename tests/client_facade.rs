@@ -40,7 +40,10 @@ fn named_configuration_validates_only_enabled_adapters() {
     invalid.timeout = std::time::Duration::ZERO;
     assert!(matches!(
         ClientBuilder::empty().vies(invalid.clone()).build(),
-        Err(LookupError::InvalidConfiguration(_))
+        Err(LookupError {
+            id: eu_company_lookup::ErrorId::InvalidConfiguration,
+            ..
+        })
     ));
     assert!(
         ClientBuilder::empty()
@@ -90,23 +93,17 @@ async fn disabled_operations_are_local_errors_never_negative_observations() {
             .await
             .unwrap_err();
         assert!(
-            matches!(error, LookupError::OperationDisabled { operation: Operation::LookupCompany, identifier_scheme } if identifier_scheme == scheme)
+            matches!(&error, error @ LookupError { id: eu_company_lookup::ErrorId::OperationDisabled, .. } if error.details.operation == Some(Operation::LookupCompany) && error.details.identifier_scheme == Some(scheme))
         );
         assert!(!error.is_service_unavailable());
     }
     assert!(matches!(
         client.lookup_vat("BG123456789").await,
-        Err(LookupError::OperationDisabled {
-            operation: Operation::LookupVat,
-            ..
-        })
+        Err(error @ LookupError { id: eu_company_lookup::ErrorId::OperationDisabled, .. }) if error.details.operation == Some(Operation::LookupVat)
     ));
     assert!(matches!(
         client.is_vat_valid("BG123456789").await,
-        Err(LookupError::OperationDisabled {
-            operation: Operation::IsVatValid,
-            ..
-        })
+        Err(error @ LookupError { id: eu_company_lookup::ErrorId::OperationDisabled, .. }) if error.details.operation == Some(Operation::IsVatValid)
     ));
 }
 
@@ -162,11 +159,17 @@ fn operation_contracts_describe_real_input_and_execution_behavior() {
 fn unsupported_scheme_is_distinct_from_malformed_national_value() {
     assert!(matches!(
         BusinessId::parse("NO", IdentifierScheme::BgBusinessId, "123456789"),
-        Err(LookupError::UnsupportedIdentifierScheme)
+        Err(LookupError {
+            id: eu_company_lookup::ErrorId::UnsupportedIdentifier,
+            ..
+        })
     ));
     assert!(matches!(
         BusinessId::parse("BG", IdentifierScheme::BgBusinessId, "bad"),
-        Err(LookupError::InvalidInput)
+        Err(LookupError {
+            id: eu_company_lookup::ErrorId::InvalidInput,
+            ..
+        })
     ));
 }
 
@@ -178,7 +181,10 @@ async fn company_country_and_value_errors_are_local() {
         for client in [&enabled, &disabled] {
             assert!(matches!(
                 client.lookup_company("123456789", country).await,
-                Err(LookupError::UnsupportedIdentifierScheme)
+                Err(LookupError {
+                    id: eu_company_lookup::ErrorId::UnsupportedIdentifier,
+                    ..
+                })
             ));
         }
     }
@@ -188,14 +194,14 @@ async fn company_country_and_value_errors_are_local() {
     ] {
         assert!(matches!(
             disabled.lookup_company("invalid", country).await,
-            Err(LookupError::OperationDisabled {
-                operation: Operation::LookupCompany,
-                identifier_scheme,
-            }) if identifier_scheme == scheme
+            Err(error @ LookupError { id: eu_company_lookup::ErrorId::OperationDisabled, .. }) if error.details.operation == Some(Operation::LookupCompany) && error.details.identifier_scheme == Some(scheme)
         ));
         assert!(matches!(
             enabled.lookup_company("invalid", country).await,
-            Err(LookupError::InvalidInput)
+            Err(LookupError {
+                id: eu_company_lookup::ErrorId::InvalidInput,
+                ..
+            })
         ));
     }
 }

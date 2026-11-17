@@ -74,7 +74,13 @@ fn malformed_ambiguous_and_wrong_namespace_responses_cannot_validate() {
     ];
     for xml in malformed {
         assert!(
-            matches!(decode(&xml), Err(LookupError::MalformedResponse)),
+            matches!(
+                decode(&xml),
+                Err(LookupError {
+                    kind: crate::model::LookupFailure::MalformedResponse,
+                    ..
+                })
+            ),
             "{xml}"
         );
     }
@@ -83,7 +89,13 @@ fn malformed_ambiguous_and_wrong_namespace_responses_cannot_validate() {
             "</checkVatResponse>",
             &format!("<{name}>duplicate</{name}></checkVatResponse>"),
         );
-        assert!(matches!(decode(&xml), Err(LookupError::MalformedResponse)));
+        assert!(matches!(
+            decode(&xml),
+            Err(LookupError {
+                kind: crate::model::LookupFailure::MalformedResponse,
+                ..
+            })
+        ));
     }
 }
 
@@ -94,10 +106,19 @@ fn exact_requested_identity_is_required_even_for_negative_results() {
         VALID.replace("123456789", "987654321"),
         VALID.replace("123456789", " 123456789 "),
     ] {
-        assert!(matches!(decode(&xml), Err(LookupError::MismatchedResponse)));
+        assert!(matches!(
+            decode(&xml),
+            Err(LookupError {
+                kind: crate::model::LookupFailure::MismatchedResponse,
+                ..
+            })
+        ));
         assert!(matches!(
             decode(&xml.replace("<valid>true", "<valid>false")),
-            Err(LookupError::MismatchedResponse)
+            Err(LookupError {
+                kind: crate::model::LookupFailure::MismatchedResponse,
+                ..
+            })
         ));
     }
 }
@@ -127,7 +148,10 @@ fn source_dates_are_real_calendar_dates_with_valid_optional_offsets() {
         assert!(
             matches!(
                 decode(&VALID.replace("2026-11-13+02:00", date)),
-                Err(LookupError::MalformedResponse)
+                Err(LookupError {
+                    kind: crate::model::LookupFailure::MalformedResponse,
+                    ..
+                })
             ),
             "{date}"
         );
@@ -138,38 +162,62 @@ fn source_dates_are_real_calendar_dates_with_valid_optional_offsets() {
 fn every_documented_fault_is_a_failure_not_false() {
     assert!(matches!(
         decode(&fault("INVALID_INPUT")),
-        Err(LookupError::ProviderRejectedInput)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::ProviderRejectedInput,
+            ..
+        })
     ));
     assert!(matches!(
         decode(&fault("SERVICE_UNAVAILABLE")),
-        Err(LookupError::ServiceUnavailable { .. })
+        Err(LookupError {
+            kind: crate::model::LookupFailure::ServiceUnavailable { .. },
+            ..
+        })
     ));
     assert!(matches!(
         decode(&fault("MS_UNAVAILABLE")),
-        Err(LookupError::MemberStateUnavailable { .. })
+        Err(LookupError {
+            kind: crate::model::LookupFailure::MemberStateUnavailable { .. },
+            ..
+        })
     ));
     assert!(matches!(
         decode(&fault("TIMEOUT")),
-        Err(LookupError::ProviderTimeout { .. })
+        Err(LookupError {
+            kind: crate::model::LookupFailure::ProviderTimeout { .. },
+            ..
+        })
     ));
     assert!(matches!(
         decode(&fault("GLOBAL_MAX_CONCURRENT_REQ")),
-        Err(LookupError::RateLimited {
-            scope: LimitScope::Global,
+        Err(LookupError {
+            kind: crate::model::LookupFailure::RateLimited {
+                scope: LimitScope::Global,
+                ..
+            },
             ..
         })
     ));
     assert!(matches!(
         decode(&fault("MS_MAX_CONCURRENT_REQ")),
-        Err(LookupError::RateLimited {
-            scope: LimitScope::MemberState,
+        Err(LookupError {
+            kind: crate::model::LookupFailure::RateLimited {
+                scope: LimitScope::MemberState,
+                ..
+            },
             ..
         })
     ));
     let unknown = decode(&fault("private arbitrary upstream message"))
         .err()
         .unwrap();
-    assert!(matches!(unknown, LookupError::UnknownSoapFault));
+    assert!(matches!(
+        unknown,
+        LookupError {
+            kind: crate::model::LookupFailure::UnknownSoapFault,
+            ..
+        }
+    ));
     assert!(!format!("{unknown:?} {unknown}").contains("private"));
 }
 
@@ -209,7 +257,10 @@ fn every_jurisdiction_round_trips_identity_and_explicit_validity() {
             assert!(
                 matches!(
                     soap::decode(&wrong, &vat),
-                    Err(LookupError::MismatchedResponse)
+                    Err(LookupError {
+                        kind: crate::model::LookupFailure::MismatchedResponse,
+                        ..
+                    })
                 ),
                 "{raw}"
             );

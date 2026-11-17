@@ -27,10 +27,7 @@ async fn disabled_czech_lookup_fails_before_validation() {
     let client = ClientBuilder::empty().build().unwrap();
     assert!(matches!(
         client.lookup_company("not-an-id", " cz ").await,
-        Err(LookupError::OperationDisabled {
-            operation: Operation::LookupCompany,
-            identifier_scheme: IdentifierScheme::CzBusinessId
-        })
+        Err(error @ LookupError { id: eu_company_lookup::ErrorId::OperationDisabled, .. }) if error.details.operation == Some(Operation::LookupCompany) && error.details.identifier_scheme == Some(IdentifierScheme::CzBusinessId)
     ));
     assert!(
         !client

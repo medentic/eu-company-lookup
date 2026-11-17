@@ -1,5 +1,5 @@
 use super::*;
-use crate::{CompanyLookupResult, LookupError, Provider, RegistryError};
+use crate::{CompanyLookupResult, LookupError, Provider, RegistryFailure};
 use serde_json::{Value, json};
 fn source() -> Value {
     json!({"_data":[{"_type":decode::SOURCE_TYPE,"_id":"synthetic-source-id","ja_kodas":"001234567","ja_pavadinimas":"Synthetic UAB","pilnas_adresas":" Source address ","statusas":{"_id":"opaque-status"},"isreg_data":"2020-01-01"}]})
@@ -81,11 +81,17 @@ async fn invalid_configuration_and_identifier_fail_locally() {
     };
     assert!(matches!(
         LtRegistryClient::with_config(config),
-        Err(LookupError::InvalidConfiguration(_))
+        Err(LookupError {
+            kind: crate::model::LookupFailure::InvalidConfiguration(_),
+            ..
+        })
     ));
     assert!(matches!(
         LtRegistryClient::new().unwrap().lookup("invalid").await,
-        Err(LookupError::InvalidInput)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::InvalidInput,
+            ..
+        })
     ));
 }
 
@@ -106,9 +112,12 @@ async fn endpoint_404_is_an_operational_error_not_registry_absence() {
         .await;
     assert!(matches!(
         result,
-        Err(LookupError::Registry {
-            provider: Provider::LithuanianJar,
-            error: RegistryError::Http { status: 404 }
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                provider: Provider::LithuanianJar,
+                error: RegistryFailure::Http { status: 404 }
+            },
+            ..
         })
     ));
     server.await.unwrap();

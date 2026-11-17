@@ -1,5 +1,6 @@
 use super::{RoBusinessId, RoCompanyLookupResult, decode};
-use crate::{LookupError, Provider, RegistryError, RetryAfter, UnavailabilityReason};
+use crate::http_capture::SendTraced;
+use crate::{LookupError, Provider, RegistryFailure, RetryAfter, UnavailabilityReason};
 use chrono::{NaiveDate, Utc};
 use std::{
     sync::Arc,
@@ -23,6 +24,8 @@ pub struct RoRegistryConfig {
     pub failure_cooldown: Duration,
     /// Maximum response size. Default: 1 MiB; maximum: 4 MiB.
     pub max_response_bytes: usize,
+    /// Capture raw HTTP requests/responses in errors. Default: false; may expose sensitive data.
+    pub raw_debug: bool,
 }
 impl Default for RoRegistryConfig {
     fn default() -> Self {
@@ -32,6 +35,7 @@ impl Default for RoRegistryConfig {
             start_interval: Duration::from_secs(2),
             failure_cooldown: Duration::from_secs(60),
             max_response_bytes: 1_048_576,
+            raw_debug: false,
         }
     }
 }
@@ -75,8 +79,10 @@ impl RoRegistryClient {
             || config.failure_cooldown > Duration::from_secs(86400)
             || !(1..=4_194_304).contains(&config.max_response_bytes)
         {
-            return Err(LookupError::InvalidConfiguration(
-                "invalid Romanian registry bounds",
+            return Err(LookupError::from(
+                crate::model::LookupFailure::InvalidConfiguration(
+                    "invalid Romanian registry bounds",
+                ),
             ));
         }
         let http = reqwest::Client::builder()
@@ -87,7 +93,7 @@ impl RoRegistryClient {
             .timeout(config.timeout)
             .user_agent(concat!("eu-company-lookup/", env!("CARGO_PKG_VERSION")))
             .build()
-            .map_err(|_| LookupError::ClientInitialization)?;
+            .map_err(|_| LookupError::from(crate::model::LookupFailure::ClientInitialization))?;
         Ok(Self {
             http,
             config,
@@ -118,61 +124,75 @@ impl RoRegistryClient {
         value: &str,
         date: NaiveDate,
     ) -> Result<RoCompanyLookupResult, LookupError> {
-        let id = RoBusinessId::parse(value)?;
-        if date
-            > Utc::now()
-                .with_timezone(&chrono_tz::Europe::Bucharest)
-                .date_naive()
-            || date.format("%Y-%m-%d").to_string().len() != 10
-        {
-            return Err(LookupError::InvalidInput);
-        }
-        let deadline = Instant::now() + self.config.timeout;
-        let mut state = self.admission.try_lock().map_err(|_| LookupError::Busy)?;
-        if let Some(end) = state.cooldown.filter(|end| *end > Instant::now()) {
-            let left = end.saturating_duration_since(Instant::now());
-            return Err(wrap(RegistryError::CoolingDown {
-                retry_after_seconds: left.as_secs() + u64::from(left.subsec_nanos() > 0),
-            }));
-        }
-        if state.next >= deadline {
-            return Err(LookupError::Busy);
-        }
-        tokio::time::sleep_until(state.next).await;
-        if Instant::now() >= deadline {
-            return Err(LookupError::Busy);
-        }
-        state.next = Instant::now() + self.config.start_interval;
-        let result = tokio::time::timeout_at(deadline, self.send(&id, date))
-            .await
-            .unwrap_or_else(|_| Err(unavailable(UnavailabilityReason::Timeout, None)));
-        if let Err(
-            RegistryError::ServiceUnavailable { retry_after, .. }
-            | RegistryError::RateLimited { retry_after },
-        ) = &result
-        {
-            let delay = retry_after
-                .as_ref()
-                .map(|retry| match retry {
-                    RetryAfter::Seconds(s) => Duration::from_secs(*s),
-                    RetryAfter::Date(d) => SystemTime::from(*d)
-                        .duration_since(SystemTime::now())
-                        .unwrap_or_default(),
-                })
-                .unwrap_or_default()
-                .max(self.config.failure_cooldown)
-                .min(Duration::from_secs(315_360_000));
-            state.cooldown = Some(Instant::now() + delay);
-        }
-        result.map_err(wrap)?.ok_or(LookupError::RegistryNotFound {
-            provider: Provider::RomanianAnaf,
-        })
+        crate::http_capture::scope(
+            self.config.raw_debug,
+            self.config.max_response_bytes,
+            self.config.timeout,
+            Provider::RomanianAnaf,
+            async {
+                let id = RoBusinessId::parse(value)?;
+                if date
+                    > Utc::now()
+                        .with_timezone(&chrono_tz::Europe::Bucharest)
+                        .date_naive()
+                    || date.format("%Y-%m-%d").to_string().len() != 10
+                {
+                    return Err(LookupError::from(crate::model::LookupFailure::InvalidInput));
+                }
+                let deadline = Instant::now() + self.config.timeout;
+                let mut state = self
+                    .admission
+                    .try_lock()
+                    .map_err(|_| LookupError::from(crate::model::LookupFailure::Busy))?;
+                if let Some(end) = state.cooldown.filter(|end| *end > Instant::now()) {
+                    let left = end.saturating_duration_since(Instant::now());
+                    return Err(wrap(RegistryFailure::CoolingDown {
+                        retry_after_seconds: left.as_secs() + u64::from(left.subsec_nanos() > 0),
+                    }));
+                }
+                if state.next >= deadline {
+                    return Err(LookupError::from(crate::model::LookupFailure::Busy));
+                }
+                tokio::time::sleep_until(state.next).await;
+                if Instant::now() >= deadline {
+                    return Err(LookupError::from(crate::model::LookupFailure::Busy));
+                }
+                state.next = Instant::now() + self.config.start_interval;
+                let result = tokio::time::timeout_at(deadline, self.send(&id, date))
+                    .await
+                    .unwrap_or_else(|_| Err(unavailable(UnavailabilityReason::Timeout, None)));
+                if let Err(
+                    RegistryFailure::ServiceUnavailable { retry_after, .. }
+                    | RegistryFailure::RateLimited { retry_after },
+                ) = &result
+                {
+                    let delay = retry_after
+                        .as_ref()
+                        .map(|retry| match retry {
+                            RetryAfter::Seconds(s) => Duration::from_secs(*s),
+                            RetryAfter::Date(d) => SystemTime::from(*d)
+                                .duration_since(SystemTime::now())
+                                .unwrap_or_default(),
+                        })
+                        .unwrap_or_default()
+                        .max(self.config.failure_cooldown)
+                        .min(Duration::from_secs(315_360_000));
+                    state.cooldown = Some(Instant::now() + delay);
+                }
+                result.map_err(wrap)?.ok_or(LookupError::from(
+                    crate::model::LookupFailure::RegistryNotFound {
+                        provider: Provider::RomanianAnaf,
+                    },
+                ))
+            },
+        )
+        .await
     }
     async fn send(
         &self,
         id: &RoBusinessId,
         date: NaiveDate,
-    ) -> Result<Option<RoCompanyLookupResult>, RegistryError> {
+    ) -> Result<Option<RoCompanyLookupResult>, RegistryFailure> {
         let body = serde_json::json!([{"cui": id.as_str().parse::<u64>().expect("validated CUI"), "data": date.to_string()}]).to_string();
         let mut response = self
             .http
@@ -180,7 +200,7 @@ impl RoRegistryClient {
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
             .body(body)
-            .send()
+            .send_traced()
             .await
             .map_err(network)?;
         #[cfg(test)]
@@ -202,12 +222,12 @@ impl RoRegistryClient {
                 }
             });
         match response.status().as_u16() {
-            429 => return Err(RegistryError::RateLimited { retry_after: retry }),
+            429 => return Err(RegistryFailure::RateLimited { retry_after: retry }),
             408 => return Err(unavailable(UnavailabilityReason::Timeout, retry)),
             500..=599 => return Err(unavailable(UnavailabilityReason::ServerError, retry)),
-            401 | 403 => return Err(RegistryError::AccessDenied),
+            401 | 403 => return Err(RegistryFailure::AccessDenied),
             200 => {}
-            status => return Err(RegistryError::Http { status }),
+            status => return Err(RegistryFailure::Http { status }),
         }
         let content_type = response
             .headers()
@@ -216,18 +236,18 @@ impl RoRegistryClient {
             .and_then(|v| v.split(';').next())
             .map(str::trim);
         if !content_type.is_some_and(|v| v.eq_ignore_ascii_case("application/json")) {
-            return Err(RegistryError::UnexpectedResponse);
+            return Err(RegistryFailure::UnexpectedResponse);
         }
         if response
             .content_length()
             .is_some_and(|n| n > self.config.max_response_bytes as u64)
         {
-            return Err(RegistryError::ResponseTooLarge);
+            return Err(RegistryFailure::ResponseTooLarge);
         }
         let mut bytes = Vec::new();
         while let Some(chunk) = response.chunk().await.map_err(network)? {
             if chunk.len() > self.config.max_response_bytes.saturating_sub(bytes.len()) {
-                return Err(RegistryError::ResponseTooLarge);
+                return Err(RegistryFailure::ResponseTooLarge);
             }
             bytes.extend_from_slice(&chunk);
         }
@@ -245,19 +265,19 @@ impl RoRegistryClient {
         client
     }
 }
-fn wrap(error: RegistryError) -> LookupError {
-    LookupError::Registry {
+fn wrap(error: RegistryFailure) -> LookupError {
+    LookupError::from(crate::model::LookupFailure::Registry {
         provider: Provider::RomanianAnaf,
         error,
-    }
+    })
 }
-fn unavailable(reason: UnavailabilityReason, retry_after: Option<RetryAfter>) -> RegistryError {
-    RegistryError::ServiceUnavailable {
+fn unavailable(reason: UnavailabilityReason, retry_after: Option<RetryAfter>) -> RegistryFailure {
+    RegistryFailure::ServiceUnavailable {
         reason,
         retry_after,
     }
 }
-fn network(error: reqwest::Error) -> RegistryError {
+fn network(error: reqwest::Error) -> RegistryFailure {
     unavailable(
         if error.is_timeout() {
             UnavailabilityReason::Timeout

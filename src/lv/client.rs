@@ -1,6 +1,7 @@
 use super::{LvBusinessId, LvCompanyLookupResult, decode};
+use crate::http_capture::SendTraced;
 use crate::registry_transport::{self, Admission, Bounds, Spacing, network};
-use crate::{LookupError, Provider, RegistryError};
+use crate::{LookupError, Provider, RegistryFailure};
 use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 
@@ -20,6 +21,8 @@ pub struct LvRegistryConfig {
     pub failure_cooldown: Duration,
     /// Maximum response size. Default: 1 MiB; maximum: 4 MiB.
     pub max_response_bytes: usize,
+    /// Capture raw HTTP requests/responses in errors. Default: false; may expose sensitive data.
+    pub raw_debug: bool,
 }
 impl Default for LvRegistryConfig {
     fn default() -> Self {
@@ -29,6 +32,7 @@ impl Default for LvRegistryConfig {
             start_interval: Duration::from_secs(2),
             failure_cooldown: Duration::from_secs(60),
             max_response_bytes: 1_048_576,
+            raw_debug: false,
         }
     }
 }
@@ -40,6 +44,7 @@ impl LvRegistryConfig {
             start_interval: self.start_interval,
             failure_cooldown: self.failure_cooldown,
             max_response_bytes: self.max_response_bytes,
+            raw_debug: self.raw_debug,
         }
     }
 }
@@ -91,7 +96,7 @@ impl LvRegistryClient {
         )
         .await
     }
-    async fn send(&self, id: &LvBusinessId) -> Result<LvCompanyLookupResult, RegistryError> {
+    async fn send(&self, id: &LvBusinessId) -> Result<LvCompanyLookupResult, RegistryFailure> {
         let url = registry_transport::ckan::query(
             &self.endpoint,
             decode::RESOURCE,
@@ -102,7 +107,7 @@ impl LvRegistryClient {
             .http
             .get(url)
             .header("Accept", "application/json")
-            .send()
+            .send_traced()
             .await
             .map_err(network)?;
         #[cfg(test)]

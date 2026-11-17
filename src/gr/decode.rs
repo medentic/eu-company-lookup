@@ -1,5 +1,5 @@
 use super::{GrBusinessId, GrCompanyLookupResult, GrGemiDetails};
-use crate::RegistryError;
+use crate::RegistryFailure;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -51,22 +51,22 @@ struct Company {
 pub(super) fn decode(
     bytes: &[u8],
     id: &GrBusinessId,
-) -> Result<GrCompanyLookupResult, RegistryError> {
+) -> Result<GrCompanyLookupResult, RegistryFailure> {
     let e: Envelope =
-        serde_json::from_slice(bytes).map_err(|_| RegistryError::UnexpectedResponse)?;
+        serde_json::from_slice(bytes).map_err(|_| RegistryFailure::UnexpectedResponse)?;
     if e.info.error_code.is_some() || e.info.error_message.is_some() {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let v = e
         .info
         .payload
-        .ok_or(RegistryError::UnexpectedResponse)?
+        .ok_or(RegistryFailure::UnexpectedResponse)?
         .company;
     if GrBusinessId::parse(&v.id).ok().as_ref() != Some(id) {
-        return Err(RegistryError::MismatchedResponse);
+        return Err(RegistryFailure::MismatchedResponse);
     }
     if v.name.trim().is_empty() {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     Ok(GrCompanyLookupResult {
         tax_id: id.clone(),

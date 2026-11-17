@@ -1,5 +1,5 @@
 use super::*;
-use crate::{CompanyLookupResult, LookupError, Provider, RegistryError};
+use crate::{CompanyLookupResult, LookupError, Provider, RegistryFailure};
 use serde_json::{Value, json};
 fn source() -> Value {
     json!({"id":42,"ico":"00123456","nazovUJ":"Synthetic s.r.o.","dic":"0012345678","pravnaForma":"112","ulica":" Source street ","mesto":"Town","psc":"00100"})
@@ -106,14 +106,20 @@ async fn source_failure_never_proves_absence() {
         SkRegistryClient::for_test(endpoint, Default::default())
             .lookup("00123456")
             .await,
-        Err(LookupError::Registry {
-            provider: Provider::SlovakRuz,
-            error: RegistryError::Http { status: 404 }
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                provider: Provider::SlovakRuz,
+                error: RegistryFailure::Http { status: 404 }
+            },
+            ..
         })
     ));
     server.await.unwrap();
     assert!(matches!(
         SkRegistryClient::new().unwrap().lookup("invalid").await,
-        Err(LookupError::InvalidInput)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::InvalidInput,
+            ..
+        })
     ));
 }

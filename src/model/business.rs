@@ -24,7 +24,9 @@ impl BusinessId {
     ) -> Result<Self, LookupError> {
         let country = country.to_ascii_uppercase();
         if !crate::Client::SUPPORTED_COMPANY_COUNTRIES.contains(&country.as_str()) {
-            return Err(LookupError::UnsupportedIdentifierScheme);
+            return Err(LookupError::from(
+                crate::model::LookupFailure::UnsupportedIdentifierScheme,
+            ));
         }
         match (country.as_str(), scheme) {
             ("BG", IdentifierScheme::BgBusinessId) => Ok(BgBusinessId::parse(value)?.into()),
@@ -43,7 +45,9 @@ impl BusinessId {
             ("AT", IdentifierScheme::AtBusinessId) => Ok(crate::AtBusinessId::parse(value)?.into()),
             ("CZ", IdentifierScheme::CzBusinessId) => Ok(crate::CzBusinessId::parse(value)?.into()),
             ("RO", IdentifierScheme::RoBusinessId) => Ok(RoBusinessId::parse(value)?.into()),
-            _ => Err(LookupError::UnsupportedIdentifierScheme),
+            _ => Err(LookupError::from(
+                crate::model::LookupFailure::UnsupportedIdentifierScheme,
+            )),
         }
     }
     /// ISO country owning this identifier scheme, not the physical address country.

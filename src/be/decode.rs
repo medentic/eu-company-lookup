@@ -1,5 +1,5 @@
 use super::{BeBusinessId, BeCompanyLookupResult, BeNbbDetails, BeRegistryAddress};
-use crate::RegistryError;
+use crate::RegistryFailure;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -18,13 +18,13 @@ struct Wire {
 pub(super) fn decode(
     bytes: &[u8],
     id: &BeBusinessId,
-) -> Result<BeCompanyLookupResult, RegistryError> {
-    let v: Wire = serde_json::from_slice(bytes).map_err(|_| RegistryError::UnexpectedResponse)?;
+) -> Result<BeCompanyLookupResult, RegistryFailure> {
+    let v: Wire = serde_json::from_slice(bytes).map_err(|_| RegistryFailure::UnexpectedResponse)?;
     if BeBusinessId::parse(&v.cbe).ok().as_ref() != Some(id) {
-        return Err(RegistryError::MismatchedResponse);
+        return Err(RegistryFailure::MismatchedResponse);
     }
     if v.name.trim().is_empty() {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     Ok(BeCompanyLookupResult {
         tax_id: id.clone(),

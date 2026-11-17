@@ -1,5 +1,6 @@
 //! Bounded local-only evidence, explicitly selected outside ordinary tests.
 use super::*;
+use crate::LookupError;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{collections::HashSet, io::Write, path::PathBuf, time::Duration};
@@ -36,8 +37,11 @@ async fn live_registry_batch() {
         let failed = result.is_err();
         let outside_current_scope = matches!(
             &result,
-            Err(crate::LookupError::Registry {
-                error: crate::RegistryError::Http { status: 404 | 204 },
+            Err(LookupError {
+                kind: crate::model::LookupFailure::Registry {
+                    error: crate::RegistryFailure::Http { status: 404 | 204 },
+                    ..
+                },
                 ..
             })
         );

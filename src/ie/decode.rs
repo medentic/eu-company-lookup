@@ -1,16 +1,16 @@
 use super::*;
-use crate::RegistryError;
+use crate::RegistryFailure;
 pub(super) const RESOURCE: &str = "3fef41bc-b8f4-4b10-8434-ce51c29b1bba";
 pub(super) fn decode(
     bytes: &[u8],
     id: &IeBusinessId,
-) -> Result<IeCompanyLookupResult, RegistryError> {
+) -> Result<IeCompanyLookupResult, RegistryFailure> {
     let d: IeCompanyDetails = crate::registry_transport::ckan::single_record(bytes, RESOURCE)?;
     if d.company_num != id.as_str() {
-        return Err(RegistryError::MismatchedResponse);
+        return Err(RegistryFailure::MismatchedResponse);
     }
     if d.company_name.trim().is_empty() {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     Ok(IeCompanyLookupResult {
         tax_id: id.clone(),

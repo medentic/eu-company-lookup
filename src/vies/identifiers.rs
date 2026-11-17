@@ -53,7 +53,7 @@ pub struct VatId(String);
 /// Raw input is bounded at 64 bytes. Punctuation is not stripped.
 pub fn validate_vat_syntax(raw: &str) -> Result<VatId, LookupError> {
     if raw.len() > 64 || !raw.is_ascii() {
-        return Err(LookupError::InvalidInput);
+        return Err(LookupError::from(crate::model::LookupFailure::InvalidInput));
     }
     let value: String = raw
         .bytes()
@@ -66,14 +66,16 @@ pub fn validate_vat_syntax(raw: &str) -> Result<VatId, LookupError> {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'*' | b'+'))
         || !value.as_bytes()[..2].iter().all(u8::is_ascii_uppercase)
     {
-        return Err(LookupError::InvalidInput);
+        return Err(LookupError::from(crate::model::LookupFailure::InvalidInput));
     }
     let index = FORMATS
         .iter()
         .position(|(prefix, _)| *prefix == &value[..2])
-        .ok_or(LookupError::UnsupportedJurisdiction)?;
+        .ok_or(LookupError::from(
+            crate::model::LookupFailure::UnsupportedJurisdiction,
+        ))?;
     if !PATTERNS[index].is_match(&value[2..]) {
-        return Err(LookupError::InvalidInput);
+        return Err(LookupError::from(crate::model::LookupFailure::InvalidInput));
     }
     Ok(VatId(value))
 }

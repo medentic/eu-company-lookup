@@ -80,7 +80,7 @@ fn replay_firmenbuch_batch() {
             assert_eq!(search["state"], "ACTIVE");
             assert!(matches!(
                 decode::select(raw.as_bytes(), &id),
-                Err(crate::RegistryError::UnexpectedResponse)
+                Err(crate::RegistryFailure::UnexpectedResponse)
             ));
             assert!(row.get("error").is_some() && row.get("result").is_none());
             replay.push(json!({"id":id.as_str(),"outcome":"ambiguousEmptyActiveSearch"}));

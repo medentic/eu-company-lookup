@@ -7,6 +7,7 @@ fn bounds() -> Bounds {
         start_interval: Duration::from_secs(2),
         failure_cooldown: Duration::from_secs(60),
         max_response_bytes: 1024,
+        raw_debug: false,
     }
 }
 
@@ -28,12 +29,15 @@ async fn timeout_cools_only_the_owning_provider() {
     .await;
     assert!(matches!(
         result,
-        Err(LookupError::Registry {
-            provider: Provider::BelgianNbb,
-            error: RegistryError::ServiceUnavailable {
-                reason: UnavailabilityReason::Timeout,
-                ..
-            }
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                provider: Provider::BelgianNbb,
+                error: RegistryFailure::ServiceUnavailable {
+                    reason: UnavailabilityReason::Timeout,
+                    ..
+                }
+            },
+            ..
         })
     ));
     let result = execute(
@@ -50,8 +54,11 @@ async fn timeout_cools_only_the_owning_provider() {
     .await;
     assert!(matches!(
         result,
-        Err(LookupError::Registry {
-            error: RegistryError::CoolingDown { .. },
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::CoolingDown { .. },
+                ..
+            },
             ..
         })
     ));
@@ -121,7 +128,13 @@ async fn occupied_slot_and_insufficient_admission_budget_do_not_send() {
         },
     )
     .await;
-    assert!(matches!(result, Err(LookupError::Busy)));
+    assert!(matches!(
+        result,
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Busy,
+            ..
+        })
+    ));
     guard.next = Instant::now() + Duration::from_secs(11);
     drop(guard);
     let result = execute(
@@ -136,33 +149,39 @@ async fn occupied_slot_and_insufficient_admission_budget_do_not_send() {
         },
     )
     .await;
-    assert!(matches!(result, Err(LookupError::Busy)));
+    assert!(matches!(
+        result,
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Busy,
+            ..
+        })
+    ));
 }
 
 #[test]
 fn status_policy_preserves_provider_owned_misses_and_operational_failures() {
     assert!(matches!(
         check_status(404, None, &[200]),
-        Err(RegistryError::Http { status: 404 })
+        Err(RegistryFailure::Http { status: 404 })
     ));
     assert!(check_status(404, None, &[200, 404]).is_ok());
     // Even an erroneous accepted-status list must not bypass throttle/access policy.
     assert!(matches!(
         check_status(429, Some(RetryAfter::Seconds(17)), &[200, 429]),
-        Err(RegistryError::RateLimited {
+        Err(RegistryFailure::RateLimited {
             retry_after: Some(RetryAfter::Seconds(17))
         })
     ));
     assert!(matches!(
         check_status(503, Some(RetryAfter::Seconds(23)), &[200]),
-        Err(RegistryError::ServiceUnavailable {
+        Err(RegistryFailure::ServiceUnavailable {
             reason: UnavailabilityReason::ServerError,
             retry_after: Some(RetryAfter::Seconds(23))
         })
     ));
     assert!(matches!(
         check_status(408, None, &[200]),
-        Err(RegistryError::ServiceUnavailable {
+        Err(RegistryFailure::ServiceUnavailable {
             reason: UnavailabilityReason::Timeout,
             ..
         })
@@ -170,12 +189,12 @@ fn status_policy_preserves_provider_owned_misses_and_operational_failures() {
     for status in [401, 403] {
         assert!(matches!(
             check_status(status, None, &[200, status]),
-            Err(RegistryError::AccessDenied)
+            Err(RegistryFailure::AccessDenied)
         ));
     }
     for status in [201, 204, 302] {
         assert!(
-            matches!(check_status(status, None, &[200]), Err(RegistryError::Http { status: actual }) if actual == status)
+            matches!(check_status(status, None, &[200]), Err(RegistryFailure::Http { status: actual }) if actual == status)
         );
     }
 }

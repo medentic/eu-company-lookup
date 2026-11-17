@@ -18,6 +18,7 @@ mod pl;
 mod sk;
 pub use capabilities::capabilities;
 pub use client::{Client, ClientBuilder};
+mod http_capture;
 pub mod locations;
 mod model;
 mod registry_transport;
@@ -31,7 +32,7 @@ pub use model::{
     CompanyStatus, DateInput, Execution, IdentifierScheme, JurisdictionCapabilities,
     LanguageSupport, LegalForm, LimitScope, LookupError, Operation, OperationCapabilities,
     Provider, ProviderCapabilities, RegistryCapital, RegistryDetails, RegistryDocument,
-    RegistryDocumentType, RegistryError, RegistryMoney, RegistryPerson, RegistryRole, RetryAfter,
+    RegistryDocumentType, RegistryMoney, RegistryPerson, RegistryRole, RetryAfter,
     UnavailabilityReason, VatAddress, VatCheck, VatLookupResult,
 };
 pub use vies::{ClientConfig, VatId, validate_vat_syntax};
@@ -119,4 +120,11 @@ pub use ie::{
 pub use is::{
     IsBusinessId, IsCompanyDetails, IsCompanyLookupResult, IsRegistryClient, IsRegistryConfig,
     validate_is_business_id_syntax,
+};
+
+pub(crate) use model::RegistryFailure;
+
+pub use model::{
+    CapturedBytes, CapturedHeader, CapturedRequest, CapturedResponse, ErrorDetails, ErrorId,
+    HttpDiagnostics, HttpExchange,
 };

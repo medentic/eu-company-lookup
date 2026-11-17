@@ -1,5 +1,5 @@
 use super::*;
-use crate::{CompanyLookupResult, LookupError, Provider, RegistryError};
+use crate::{CompanyLookupResult, LookupError, Provider, RegistryFailure};
 fn source() -> String {
     r#"<html><div class="company box"><h1>Synthetic ehf. (4101000000)</h1><h2 class="subtitle">Stofnað/Skráð: 01.01.2000</h2><table><thead><tr><th>Póstfang</th><th>Lögheimili</th><th>Sveitarfélag</th><th>Rekstrarform</th></tr></thead><tbody><tr><td> Postal <br> 100 City </td><td> Legal &amp; road <br> 200 Town </td><td>1000<br>Town</td><td>E1 <br>Einkahlutafélag (ehf)</td></tr></tbody></table><h2 class="subtitle">b.t. aðili: Do not expose contact</h2><h3>Forráðamaður</h3><ul><li>Do not expose officer</li></ul></div></html>"#.into()
 }
@@ -78,11 +78,17 @@ async fn invalid_configuration_and_identifier_fail_locally() {
     };
     assert!(matches!(
         IsRegistryClient::with_config(config),
-        Err(LookupError::InvalidConfiguration(_))
+        Err(LookupError {
+            kind: crate::model::LookupFailure::InvalidConfiguration(_),
+            ..
+        })
     ));
     assert!(matches!(
         IsRegistryClient::new().unwrap().lookup("invalid").await,
-        Err(LookupError::InvalidInput)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::InvalidInput,
+            ..
+        })
     ));
 }
 
@@ -103,9 +109,12 @@ async fn endpoint_404_is_an_operational_error_not_registry_absence() {
         .await;
     assert!(matches!(
         result,
-        Err(LookupError::Registry {
-            provider: Provider::IcelandicSkatturinn,
-            error: RegistryError::Http { status: 404 }
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                provider: Provider::IcelandicSkatturinn,
+                error: RegistryFailure::Http { status: 404 }
+            },
+            ..
         })
     ));
     server.await.unwrap();

@@ -3,8 +3,11 @@
 mod capabilities;
 mod company;
 mod company_types;
+mod diagnostics;
 mod error;
-mod registry_error;
+mod error_catalog;
+mod failure;
+mod registry_failure;
 mod vat;
 
 pub use capabilities::{
@@ -17,8 +20,14 @@ pub use company::{
     RegistryPerson,
 };
 pub use company_types::{CompanyStatus, LegalForm, RegistryDocumentType, RegistryRole};
-pub use error::{LimitScope, LookupError, RetryAfter};
-pub use registry_error::{RegistryError, UnavailabilityReason};
+pub use diagnostics::{
+    CapturedBytes, CapturedHeader, CapturedRequest, CapturedResponse, HttpDiagnostics, HttpExchange,
+};
+pub use error::{ErrorDetails, LimitScope, LookupError, RetryAfter};
+pub use error_catalog::ErrorId;
+pub(crate) use failure::LookupFailure;
+pub(crate) use registry_failure::RegistryFailure;
+pub use registry_failure::UnavailabilityReason;
 pub use vat::{VatAddress, VatCheck, VatLookupResult};
 
 mod business;

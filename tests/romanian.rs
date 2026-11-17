@@ -40,11 +40,20 @@ async fn invalid_input_fails_before_network() {
     let client = Client::new().unwrap();
     assert!(matches!(
         client.lookup_company("RO1234", "RO").await,
-        Err(LookupError::InvalidInput)
+        Err(LookupError {
+            id: eu_company_lookup::ErrorId::InvalidInput,
+            ..
+        })
     ));
     let registry = RoRegistryClient::new().unwrap();
     let future = registry.lookup_at("1234", chrono::NaiveDate::from_ymd_opt(9999, 1, 1).unwrap());
     fn send<T: Send>(_: &T) {}
     send(&future);
-    assert!(matches!(future.await, Err(LookupError::InvalidInput)));
+    assert!(matches!(
+        future.await,
+        Err(LookupError {
+            id: eu_company_lookup::ErrorId::InvalidInput,
+            ..
+        })
+    ));
 }

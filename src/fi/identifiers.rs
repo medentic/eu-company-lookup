@@ -13,7 +13,7 @@ impl FiBusinessId {
     /// VAT-prefixed and personal tax identifiers are rejected.
     pub fn parse(value: &str) -> Result<Self, LookupError> {
         if value.len() > 64 || !value.is_ascii() {
-            return Err(LookupError::InvalidInput);
+            return Err(LookupError::from(crate::model::LookupFailure::InvalidInput));
         }
         let value: String = value.chars().filter(|c| !c.is_ascii_whitespace()).collect();
         if value.len() != 9
@@ -21,7 +21,7 @@ impl FiBusinessId {
             || !value[..7].bytes().all(|b| b.is_ascii_digit())
             || !value.as_bytes()[8].is_ascii_digit()
         {
-            return Err(LookupError::InvalidInput);
+            return Err(LookupError::from(crate::model::LookupFailure::InvalidInput));
         }
         Ok(Self(value))
     }

@@ -1,5 +1,5 @@
 use super::*;
-use crate::RegistryError;
+use crate::RegistryFailure;
 pub(super) const SOURCE_TYPE: &str = "datasets/gov/rc/jar/iregistruoti/JuridinisAsmuo";
 #[derive(serde::Deserialize)]
 struct Wire {
@@ -9,20 +9,20 @@ struct Wire {
 pub(super) fn decode(
     bytes: &[u8],
     id: &LtBusinessId,
-) -> Result<LtCompanyLookupResult, RegistryError> {
-    let v: Wire = serde_json::from_slice(bytes).map_err(|_| RegistryError::UnexpectedResponse)?;
+) -> Result<LtCompanyLookupResult, RegistryFailure> {
+    let v: Wire = serde_json::from_slice(bytes).map_err(|_| RegistryFailure::UnexpectedResponse)?;
     if v.data.len() != 1 {
-        return Err(RegistryError::MismatchedResponse);
+        return Err(RegistryFailure::MismatchedResponse);
     }
     let d = v.data.into_iter().next().unwrap();
     if d.source_type != SOURCE_TYPE {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     if d.ja_kodas != id.as_str() {
-        return Err(RegistryError::MismatchedResponse);
+        return Err(RegistryFailure::MismatchedResponse);
     }
     if d.ja_pavadinimas.trim().is_empty() || d.source_id.trim().is_empty() {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     Ok(LtCompanyLookupResult {
         tax_id: id.clone(),

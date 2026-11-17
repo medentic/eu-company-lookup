@@ -1,6 +1,7 @@
 use super::{BgBusinessId, bulstat, commercial};
+use crate::http_capture::SendTraced;
 use crate::{
-    BgCompanyLookupResult, LookupError, Provider, RegistryError, RetryAfter, UnavailabilityReason,
+    BgCompanyLookupResult, LookupError, Provider, RegistryFailure, RetryAfter, UnavailabilityReason,
 };
 use chrono::{DateTime, TimeZone, Utc};
 use chrono_tz::Europe::Sofia;
@@ -35,6 +36,8 @@ pub struct BgRegistryConfig {
     pub failure_cooldown: Duration,
     /// Maximum bytes per response. Default: 1 MiB; maximum: 4 MiB.
     pub max_response_bytes: usize,
+    /// Capture raw HTTP requests/responses in errors. Default: false; may expose sensitive data.
+    pub raw_debug: bool,
 }
 impl Default for BgRegistryConfig {
     fn default() -> Self {
@@ -44,6 +47,7 @@ impl Default for BgRegistryConfig {
             start_interval: Duration::ZERO,
             failure_cooldown: Duration::from_secs(60),
             max_response_bytes: 1_048_576,
+            raw_debug: false,
         }
     }
 }
@@ -112,8 +116,10 @@ impl BgRegistryClient {
             || config.failure_cooldown > Duration::from_secs(86400)
             || !(1..=4_194_304).contains(&config.max_response_bytes)
         {
-            return Err(LookupError::InvalidConfiguration(
-                "invalid Bulgarian registry bounds",
+            return Err(LookupError::from(
+                crate::model::LookupFailure::InvalidConfiguration(
+                    "invalid Bulgarian registry bounds",
+                ),
             ));
         }
         let http = reqwest::Client::builder()
@@ -124,7 +130,7 @@ impl BgRegistryClient {
             .timeout(config.timeout)
             .user_agent(concat!("eu-company-lookup/", env!("CARGO_PKG_VERSION")))
             .build()
-            .map_err(|_| LookupError::ClientInitialization)?;
+            .map_err(|_| LookupError::from(crate::model::LookupFailure::ClientInitialization))?;
         Ok(Self {
             http,
             config,
@@ -146,56 +152,75 @@ impl BgRegistryClient {
     /// Look up one complete nine- or thirteen-digit ЕИК/BULSTAT code.
     /// `NotFound` means both sources definitively missed; outages never mean absence.
     pub async fn lookup(&self, value: &str) -> Result<BgCompanyLookupResult, LookupError> {
-        let id = BgBusinessId::parse(value)?;
-        let deadline = Instant::now() + self.config.timeout;
-        let mut state = self.state.try_lock().map_err(|_| LookupError::Busy)?;
-        let provider = Provider::BulgarianCommercialRegister;
-        let mut url = reqwest::Url::parse(&format!("{}{}", self.commercial_endpoint, id))
-            .map_err(|_| LookupError::InvalidConfiguration("invalid registry endpoint"))?;
-        url.query_pairs_mut()
-            .append_pair("entryDate", &end_of_day(Utc::now()))
-            .append_pair("loadFieldsFromAllLegalForms", "false");
-        let response = self
-            .fetch(provider, url, &mut state.providers[0], deadline)
-            .await?;
-        if !response.body.is_empty() {
-            if response.content_type != "application/json" {
-                return Err(wrap(provider, RegistryError::UnexpectedResponse));
-            }
-            return commercial::decode(&response.body, &id).map_err(|e| wrap(provider, e));
-        }
-        // The portal's getDeed UI treats an empty HTTP 200 response as no result.
-        // Whitespace, JSON null, 404, HTML, and all operational failures are not misses.
-        if !response.content_type.is_empty() && response.content_type != "application/json" {
-            return Err(wrap(provider, RegistryError::UnexpectedResponse));
-        }
-        let provider = Provider::Bulstat;
-        let search = self
-            .fetch(
-                provider,
-                self.report_url(&id, false),
-                &mut state.providers[1],
-                deadline,
-            )
-            .await?;
-        if search.content_type != "text/html" {
-            return Err(wrap(provider, RegistryError::UnexpectedResponse));
-        }
-        let Some(name) = bulstat::search(&search.body, &id).map_err(|e| wrap(provider, e))? else {
-            return Err(LookupError::NotFound);
-        };
-        let detail = self
-            .fetch(
-                provider,
-                self.report_url(&id, true),
-                &mut state.providers[1],
-                deadline,
-            )
-            .await?;
-        if detail.content_type != "text/html" {
-            return Err(wrap(provider, RegistryError::UnexpectedResponse));
-        }
-        bulstat::detail(&detail.body, &id, name).map_err(|e| wrap(provider, e))
+        crate::http_capture::scope(
+            self.config.raw_debug,
+            self.config.max_response_bytes,
+            self.config.timeout,
+            Provider::BulgarianCommercialRegister,
+            async {
+                let id = BgBusinessId::parse(value)?;
+                let deadline = Instant::now() + self.config.timeout;
+                let mut state = self
+                    .state
+                    .try_lock()
+                    .map_err(|_| LookupError::from(crate::model::LookupFailure::Busy))?;
+                let provider = Provider::BulgarianCommercialRegister;
+                let mut url = reqwest::Url::parse(&format!("{}{}", self.commercial_endpoint, id))
+                    .map_err(|_| {
+                    LookupError::from(crate::model::LookupFailure::InvalidConfiguration(
+                        "invalid registry endpoint",
+                    ))
+                })?;
+                url.query_pairs_mut()
+                    .append_pair("entryDate", &end_of_day(Utc::now()))
+                    .append_pair("loadFieldsFromAllLegalForms", "false");
+                let response = self
+                    .fetch(provider, url, &mut state.providers[0], deadline)
+                    .await?;
+                if !response.body.is_empty() {
+                    if response.content_type != "application/json" {
+                        return Err(wrap(provider, RegistryFailure::UnexpectedResponse));
+                    }
+                    return commercial::decode(&response.body, &id).map_err(|e| wrap(provider, e));
+                }
+                // The portal's getDeed UI treats an empty HTTP 200 response as no result.
+                // Whitespace, JSON null, 404, HTML, and all operational failures are not misses.
+                if !response.content_type.is_empty() && response.content_type != "application/json"
+                {
+                    return Err(wrap(provider, RegistryFailure::UnexpectedResponse));
+                }
+                let provider = Provider::Bulstat;
+                let search = self
+                    .fetch(
+                        provider,
+                        self.report_url(&id, false),
+                        &mut state.providers[1],
+                        deadline,
+                    )
+                    .await?;
+                if search.content_type != "text/html" {
+                    return Err(wrap(provider, RegistryFailure::UnexpectedResponse));
+                }
+                let Some(name) =
+                    bulstat::search(&search.body, &id).map_err(|e| wrap(provider, e))?
+                else {
+                    return Err(LookupError::from(crate::model::LookupFailure::NotFound));
+                };
+                let detail = self
+                    .fetch(
+                        provider,
+                        self.report_url(&id, true),
+                        &mut state.providers[1],
+                        deadline,
+                    )
+                    .await?;
+                if detail.content_type != "text/html" {
+                    return Err(wrap(provider, RegistryFailure::UnexpectedResponse));
+                }
+                bulstat::detail(&detail.body, &id, name).map_err(|e| wrap(provider, e))
+            },
+        )
+        .await
     }
 
     fn report_url(&self, id: &BgBusinessId, detail: bool) -> reqwest::Url {
@@ -228,14 +253,14 @@ impl BgRegistryClient {
             let left = end - Instant::now();
             return Err(wrap(
                 provider,
-                RegistryError::CoolingDown {
+                RegistryFailure::CoolingDown {
                     retry_after_seconds: left.as_secs() + u64::from(left.subsec_nanos() > 0),
                 },
             ));
         }
         // A locally exhausted admission budget is not evidence of an upstream outage.
         if admission.next >= deadline || Instant::now() >= deadline {
-            return Err(LookupError::Busy);
+            return Err(LookupError::from(crate::model::LookupFailure::Busy));
         }
         #[cfg(test)]
         let waiting = Instant::now();
@@ -269,8 +294,8 @@ impl BgRegistryClient {
             }
         }
         if let Err(
-            RegistryError::ServiceUnavailable { retry_after, .. }
-            | RegistryError::RateLimited { retry_after },
+            RegistryFailure::ServiceUnavailable { retry_after, .. }
+            | RegistryFailure::RateLimited { retry_after },
         ) = &result
         {
             let delay = retry_after
@@ -284,13 +309,13 @@ impl BgRegistryClient {
         result.map_err(|e| wrap(provider, e))
     }
 
-    async fn send(&self, url: reqwest::Url) -> Result<Response, RegistryError> {
+    async fn send(&self, url: reqwest::Url) -> Result<Response, RegistryFailure> {
         let mut response = self
             .http
             .get(url)
             .header("Accept-Language", "bg")
             .header("Accept", "application/json, text/html")
-            .send()
+            .send_traced()
             .await
             .map_err(transport)?;
         let status = response.status().as_u16();
@@ -307,17 +332,17 @@ impl BgRegistryClient {
         }
         match status {
             200 => (),
-            429 => return Err(RegistryError::RateLimited { retry_after }),
-            401 | 403 => return Err(RegistryError::AccessDenied),
+            429 => return Err(RegistryFailure::RateLimited { retry_after }),
+            401 | 403 => return Err(RegistryFailure::AccessDenied),
             408 | 504 => return Err(unavailable(UnavailabilityReason::Timeout, retry_after)),
             500..=599 => return Err(unavailable(UnavailabilityReason::ServerError, retry_after)),
-            _ => return Err(RegistryError::Http { status }),
+            _ => return Err(RegistryFailure::Http { status }),
         }
         if response
             .content_length()
             .is_some_and(|n| n > self.config.max_response_bytes as u64)
         {
-            return Err(RegistryError::ResponseTooLarge);
+            return Err(RegistryFailure::ResponseTooLarge);
         }
         let content_type = response
             .headers()
@@ -332,7 +357,7 @@ impl BgRegistryClient {
         let mut body = Vec::new();
         while let Some(chunk) = response.chunk().await.map_err(transport)? {
             if chunk.len() > self.config.max_response_bytes.saturating_sub(body.len()) {
-                return Err(RegistryError::ResponseTooLarge);
+                return Err(RegistryFailure::ResponseTooLarge);
             }
             body.extend_from_slice(&chunk);
         }
@@ -340,16 +365,16 @@ impl BgRegistryClient {
     }
 }
 
-fn wrap(provider: Provider, error: RegistryError) -> LookupError {
-    LookupError::Registry { provider, error }
+fn wrap(provider: Provider, error: RegistryFailure) -> LookupError {
+    LookupError::from(crate::model::LookupFailure::Registry { provider, error })
 }
-fn unavailable(reason: UnavailabilityReason, retry_after: Option<RetryAfter>) -> RegistryError {
-    RegistryError::ServiceUnavailable {
+fn unavailable(reason: UnavailabilityReason, retry_after: Option<RetryAfter>) -> RegistryFailure {
+    RegistryFailure::ServiceUnavailable {
         reason,
         retry_after,
     }
 }
-fn transport(error: reqwest::Error) -> RegistryError {
+fn transport(error: reqwest::Error) -> RegistryFailure {
     unavailable(
         if error.is_timeout() {
             UnavailabilityReason::Timeout
@@ -409,10 +434,17 @@ impl BgRegistryClient {
         *self.trace.lock().unwrap() = RequestTrace::default();
         let id = BgBusinessId::parse(value)?;
         let deadline = Instant::now() + self.config.timeout;
-        let mut state = self.state.try_lock().map_err(|_| LookupError::Busy)?;
+        let mut state = self
+            .state
+            .try_lock()
+            .map_err(|_| LookupError::from(crate::model::LookupFailure::Busy))?;
         let provider = Provider::BulgarianCommercialRegister;
-        let mut url = reqwest::Url::parse(&format!("{}{}", self.commercial_endpoint, id))
-            .map_err(|_| LookupError::InvalidConfiguration("invalid registry endpoint"))?;
+        let mut url =
+            reqwest::Url::parse(&format!("{}{}", self.commercial_endpoint, id)).map_err(|_| {
+                LookupError::from(crate::model::LookupFailure::InvalidConfiguration(
+                    "invalid registry endpoint",
+                ))
+            })?;
         url.query_pairs_mut()
             .append_pair("entryDate", &end_of_day(Utc::now()))
             .append_pair("loadFieldsFromAllLegalForms", "false");
@@ -422,7 +454,7 @@ impl BgRegistryClient {
         if response.content_type != "application/json"
             && !(response.body.is_empty() && response.content_type.is_empty())
         {
-            return Err(wrap(provider, RegistryError::UnexpectedResponse));
+            return Err(wrap(provider, RegistryFailure::UnexpectedResponse));
         }
         Ok(response.body)
     }
