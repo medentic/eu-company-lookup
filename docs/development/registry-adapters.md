@@ -35,7 +35,7 @@ miss validation; the shared helper never decides that a company is absent.
 Multi-request adapters retain completion-based spacing.
 
 The private CKAN helper shares exact-filter URL encoding and the single-record
-response envelope used by Ireland. Each adapter supplies its resource
+response envelope used by Ireland and Latvia. Each adapter supplies its resource
 and identifier field, then verifies the native identifier and required name and
 maps fields locally. Sharing a wire protocol does not establish shared legal,
 address, lifecycle or VAT meanings.

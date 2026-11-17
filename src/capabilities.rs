@@ -53,7 +53,78 @@ pub fn capabilities() -> Vec<JurisdictionCapabilities> {
                     },
                     false,
                 )),
-
+                "CZ" => entry.providers.push(registry(
+                    Provider::CzechAres,
+                    IdentifierScheme::CzBusinessId,
+                    Operation::ValidateCzBusinessIdSyntax,
+                    Operation::LookupCzCompany,
+                    LanguageSupport {
+                        available: vec!["cs"],
+                        default: None,
+                        selectable: false,
+                    },
+                    false,
+                )),
+                "AT" => entry.providers.push(registry(
+                    Provider::AustrianFirmenbuch,
+                    IdentifierScheme::AtBusinessId,
+                    Operation::ValidateAtBusinessIdSyntax,
+                    Operation::LookupAtCompany,
+                    LanguageSupport {
+                        available: vec!["de"],
+                        default: None,
+                        selectable: false,
+                    },
+                    false,
+                )),
+                "BE" => entry.providers.push(registry(
+                    Provider::BelgianNbb,
+                    IdentifierScheme::BeBusinessId,
+                    Operation::ValidateBeBusinessIdSyntax,
+                    Operation::LookupBeCompany,
+                    LanguageSupport {
+                        available: vec!["en"],
+                        default: Some("en"),
+                        selectable: false,
+                    },
+                    false,
+                )),
+                "FI" => entry.providers.push(registry(
+                    Provider::FinnishPrh,
+                    IdentifierScheme::FiBusinessId,
+                    Operation::ValidateFiBusinessIdSyntax,
+                    Operation::LookupFiCompany,
+                    LanguageSupport {
+                        available: vec!["fi", "sv", "en"],
+                        default: None,
+                        selectable: false,
+                    },
+                    false,
+                )),
+                "FR" => entry.providers.push(registry(
+                    Provider::FrenchRechercheEntreprises,
+                    IdentifierScheme::FrBusinessId,
+                    Operation::ValidateFrBusinessIdSyntax,
+                    Operation::LookupFrCompany,
+                    LanguageSupport {
+                        available: vec!["fr"],
+                        default: Some("fr"),
+                        selectable: false,
+                    },
+                    false,
+                )),
+                "IS" => entry.providers.push(registry(
+                    Provider::IcelandicSkatturinn,
+                    IdentifierScheme::IsBusinessId,
+                    Operation::ValidateIsBusinessIdSyntax,
+                    Operation::LookupIsCompany,
+                    LanguageSupport {
+                        available: vec!["is"],
+                        default: Some("is"),
+                        selectable: false,
+                    },
+                    false,
+                )),
                 "IE" => entry.providers.push(registry(
                     Provider::IrishCro,
                     IdentifierScheme::IeBusinessId,
@@ -66,7 +137,54 @@ pub fn capabilities() -> Vec<JurisdictionCapabilities> {
                     },
                     false,
                 )),
-
+                "LT" => entry.providers.push(registry(
+                    Provider::LithuanianJar,
+                    IdentifierScheme::LtBusinessId,
+                    Operation::ValidateLtBusinessIdSyntax,
+                    Operation::LookupLtCompany,
+                    LanguageSupport {
+                        available: vec!["lt"],
+                        default: Some("lt"),
+                        selectable: false,
+                    },
+                    false,
+                )),
+                "LV" => entry.providers.push(registry(
+                    Provider::LatvianOpenData,
+                    IdentifierScheme::LvBusinessId,
+                    Operation::ValidateLvBusinessIdSyntax,
+                    Operation::LookupLvCompany,
+                    LanguageSupport {
+                        available: vec!["lv"],
+                        default: Some("lv"),
+                        selectable: false,
+                    },
+                    false,
+                )),
+                "SK" => entry.providers.push(registry(
+                    Provider::SlovakRuz,
+                    IdentifierScheme::SkBusinessId,
+                    Operation::ValidateSkBusinessIdSyntax,
+                    Operation::LookupSkCompany,
+                    LanguageSupport {
+                        available: vec!["sk"],
+                        default: Some("sk"),
+                        selectable: false,
+                    },
+                    false,
+                )),
+                "PL" => entry.providers.push(registry(
+                    Provider::PolishKrs,
+                    IdentifierScheme::PlBusinessId,
+                    Operation::ValidatePlBusinessIdSyntax,
+                    Operation::LookupPlCompany,
+                    LanguageSupport {
+                        available: vec!["pl"],
+                        default: Some("pl"),
+                        selectable: false,
+                    },
+                    false,
+                )),
                 "NO" => entry.providers.push(registry(
                     Provider::NorwegianBrreg,
                     IdentifierScheme::NoBusinessId,
@@ -79,7 +197,30 @@ pub fn capabilities() -> Vec<JurisdictionCapabilities> {
                     },
                     false,
                 )),
-
+                "EE" => entry.providers.push(registry(
+                    Provider::EstonianRik,
+                    IdentifierScheme::EeBusinessId,
+                    Operation::ValidateEeBusinessIdSyntax,
+                    Operation::LookupEeCompany,
+                    LanguageSupport {
+                        available: vec!["en"],
+                        default: Some("en"),
+                        selectable: false,
+                    },
+                    false,
+                )),
+                "GR" => entry.providers.push(registry(
+                    Provider::GreekGemi,
+                    IdentifierScheme::GrBusinessId,
+                    Operation::ValidateGrBusinessIdSyntax,
+                    Operation::LookupGrCompany,
+                    LanguageSupport {
+                        available: vec!["el"],
+                        default: Some("el"),
+                        selectable: false,
+                    },
+                    false,
+                )),
                 _ => {}
             }
             entry

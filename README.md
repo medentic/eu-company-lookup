@@ -1,8 +1,8 @@
 # eu-company-lookup
 
 Async Rust lookups for **EU VAT numbers (VIES)** and national company or taxpayer
-information in **Bulgaria (Commercial Register / BULSTAT), Ireland (CRO open data),
-Norway (Enhetsregisteret) and Romania (ANAF)**.
+information in **Austria (Firmenbuch), Belgium (NBB Consult), Bulgaria
+(Commercial Register / BULSTAT), Czechia (ARES), Estonia (RIK), Finland (PRH YTJ), France (API Recherche Entreprises), Greece (GEMI), Iceland (Skatturinn), Ireland (CRO open data), Latvia (registry open data), Lithuania (JAR open data), Norway (Enhetsregisteret), Poland (KRS), Romania (ANAF) and Slovakia (RÚZ)**.
 Returns typed company details, source-preserving addresses and explicit errors.
 No account, database or full-registry download is required for the current providers.
 
@@ -42,38 +42,38 @@ checksum validity or registration.
 ## Country support
 
 “Supported” means an implemented adapter, not guaranteed provider availability
-or complete live verification. “Pending” means no national lookup is included in this release.
+or complete live verification. “Pending” means no national lookup is implemented.
 The table covers all 30 EEA countries, plus the separate Northern Ireland scope.
 
 | Country | VIES VAT lookup | National business / taxpayer lookup |
 | --- | --- | --- |
-| Austria | Supported (`AT`) | Pending |
-| Belgium | Supported (`BE`) | Pending |
+| Austria | Supported (`AT`) | Supported — anonymous Firmenbuch active-record lookup; verification in progress |
+| Belgium | Supported (`BE`) | Supported — anonymous NBB Consult company data; verification in progress |
 | Bulgaria | Supported (`BG`) | Supported — Commercial Register, BULSTAT fallback |
 | Croatia | Supported (`HR`) | Pending |
 | Cyprus | Supported (`CY`) | Pending |
-| Czechia | Supported (`CZ`) | Pending |
+| Czechia | Supported (`CZ`) | Supported — ARES economic subjects; verification in progress |
 | Denmark | Supported (`DK`) | Pending |
-| Estonia | Supported (`EE`) | Pending |
-| Finland | Supported (`FI`) | Pending |
-| France | Supported (`FR`) | Pending |
+| Estonia | Supported (`EE`) | Supported — anonymous RIK public search; verification in progress |
+| Finland | Supported (`FI`) | Supported — anonymous PRH YTJ company data; verification in progress |
+| France | Supported (`FR`) | Supported — anonymous public SIREN search; verification in progress |
 | Germany | Supported (`DE`) | Pending |
-| Greece | Supported (`EL`) | Pending |
+| Greece | Supported (`EL`) | Supported — anonymous GEMI by registration number; verification in progress |
 | Hungary | Supported (`HU`) | Pending |
-| Iceland | Not supported by VIES | Pending |
-| Ireland | Supported (`IE`) | Supported — anonymous CRO dataset lookup |
+| Iceland | Not supported by VIES | Supported — anonymous Skatturinn company pages; verification in progress |
+| Ireland | Supported (`IE`) | Supported — anonymous CRO dataset lookup; verification in progress |
 | Italy | Supported (`IT`) | Pending |
-| Latvia | Supported (`LV`) | Pending |
+| Latvia | Supported (`LV`) | Supported — anonymous official registry open data; verification in progress |
 | Liechtenstein | Not supported by VIES | Pending |
-| Lithuania | Supported (`LT`) | Pending |
+| Lithuania | Supported (`LT`) | Supported — anonymous JAR dataset lookup; verification in progress |
 | Luxembourg | Supported (`LU`) | Pending |
 | Malta | Supported (`MT`) | Pending |
 | Netherlands | Supported (`NL`) | Pending |
-| Norway | Not supported by VIES | Supported — anonymous Enhetsregisteret entity lookup |
-| Poland | Supported (`PL`) | Pending |
+| Norway | Not supported by VIES | Supported — anonymous Enhetsregisteret entity lookup; verification in progress |
+| Poland | Supported (`PL`) | Supported — anonymous current KRS business extracts; verification in progress |
 | Portugal | Supported (`PT`) | Pending |
 | Romania | Supported (`RO`) | Supported — ANAF taxpayer lookup |
-| Slovakia | Supported (`SK`) | Pending |
+| Slovakia | Supported (`SK`) | Supported — anonymous RÚZ public accounting entities; verification in progress |
 | Slovenia | Supported (`SI`) | Pending |
 | Spain | Supported (`ES`) | Pending |
 | Sweden | Supported (`SE`) | Pending |
@@ -551,34 +551,34 @@ Test counts for unreleased adapters remain in local verification evidence.
 
 | EEA country | Implemented register / source | Distinct company / tax IDs tested | Delivery status | Next priority |
 | --- | --- | ---: | --- | --- |
-| Austria | Not included | — | Planned | 1 |
-| Belgium | Not included | — | Planned | 1 |
+| Austria | Public Firmenbuch | — | Implemented locally; not released | 1 |
+| Belgium | NBB Consult (CBE-derived identity) | — | Implemented locally; not released | 1 |
 | Bulgaria | Commercial Register | 278 | Released in 2.0.0 | — |
 | Bulgaria | BULSTAT | 10 | Released; broader verification pending | — |
 | Croatia | Not implemented | 0 | Planned | — |
 | Cyprus | Not implemented | 0 | Planned | — |
-| Czechia | Not included | — | Planned | 1 |
+| Czechia | ARES economic subjects | — | Implemented locally; not released | 1 |
 | Denmark | Not implemented | 0 | Planned | — |
-| Estonia | Not included | — | Planned | — |
-| Finland | Not included | — | Planned | — |
-| France | Not included | — | Planned | — |
+| Estonia | RIK public search | — | Implemented locally; not released | — |
+| Finland | PRH YTJ open data | — | Implemented locally; not released | — |
+| France | API Recherche Entreprises | — | Implemented locally; not released | — |
 | Germany | Not implemented | 0 | Planned | — |
-| Greece | Not included | — | Planned | 2 |
+| Greece | GEMI public company details | — | Implemented locally; not released | 2 |
 | Hungary | Not implemented | 0 | Planned | — |
-| Iceland | Not included | — | Planned | — |
-| Ireland | CRO open company records | — | Included in 4.0 | — |
+| Iceland | Skatturinn public company pages | — | Implemented locally; not released | — |
+| Ireland | CRO open company records | — | Implemented locally; not released | — |
 | Italy | Not implemented | 0 | Planned | — |
-| Latvia | Not included | — | Planned | — |
+| Latvia | official registry open data | — | Implemented locally; not released | — |
 | Liechtenstein | Not implemented | 0 | Planned | — |
-| Lithuania | Not included | — | Planned | — |
+| Lithuania | JAR open data | — | Implemented locally; not released | — |
 | Luxembourg | Not implemented | 0 | Planned | — |
 | Malta | Not implemented | 0 | Planned | — |
 | Netherlands | Not implemented | 0 | Planned | — |
-| Norway | Enhetsregisteret | — | Included in 4.0 | — |
-| Poland | Not included | — | Planned | — |
+| Norway | Enhetsregisteret | — | Implemented locally; not released | — |
+| Poland | KRS current business extracts | — | Implemented locally; not released | — |
 | Portugal | Not implemented | 0 | Planned | — |
 | Romania | ANAF | 200 | Released in 2.0.0; further registry coverage planned | 3 |
-| Slovakia | Not included | — | Planned | — |
+| Slovakia | RÚZ public accounting entities | — | Implemented locally; not released | — |
 | Slovenia | Not implemented | 0 | Planned | — |
 | Spain | Not implemented | 0 | Planned | 1 |
 | Sweden | Not implemented | 0 | Planned | — |
@@ -600,33 +600,33 @@ in this library.
 
 | Country | VIES prefix | Distinct VAT IDs tested | Valid / invalid observations | Verification status |
 | --- | --- | ---: | --- | --- |
-| Austria | Not included | — | Planned | Reviewed; offline replay passed |
-| Belgium | Not included | — | Planned | Reviewed; offline replay passed |
+| Austria | AT | 10 | 10 / 0 | Reviewed; offline replay passed |
+| Belgium | BE | 10 | 10 / 0 | Reviewed; offline replay passed |
 | Bulgaria | BG | 961 | 960 / 1 | Offline replay matched; 82 address ambiguities |
 | Croatia | HR | 10 | 10 / 0 | Reviewed; offline replay passed |
 | Cyprus | CY | 10 | 10 / 0 | Reviewed; offline replay passed |
-| Czechia | Not included | — | Planned | Reviewed; offline replay passed |
+| Czechia | CZ | 10 | 10 / 0 | Reviewed; offline replay passed |
 | Denmark | DK | 10 | 10 / 0 | Reviewed; offline replay passed |
-| Estonia | Not included | — | Planned | Reviewed; offline replay passed |
-| Finland | Not included | — | Planned | Reviewed; offline replay passed |
-| France | Not included | — | Planned | Offline replay passed; one additional ID rate-limited |
+| Estonia | EE | 10 | 10 / 0 | Reviewed; offline replay passed |
+| Finland | FI | 10 | 10 / 0 | Reviewed; offline replay passed |
+| France | FR | 9 | 9 / 0 | Offline replay passed; one additional ID rate-limited |
 | Germany | DE | 10 | 10 / 0 | Reviewed; offline replay passed |
-| Greece | Not included | — | Planned | Reviewed; offline replay passed |
+| Greece | EL | 10 | 10 / 0 | Reviewed; offline replay passed |
 | Hungary | HU | 10 | 10 / 0 | Reviewed; offline replay passed |
-| Iceland | Not included | — | Planned | Not supported by VIES |
+| Iceland | — | — | — | Not supported by VIES |
 | Ireland | IE | 10 | 10 / 0 | Reviewed; offline replay passed |
 | Italy | IT | 10 | 10 / 0 | Reviewed; offline replay passed |
-| Latvia | Not included | — | Planned | Reviewed; offline replay passed |
+| Latvia | LV | 10 | 10 / 0 | Reviewed; offline replay passed |
 | Liechtenstein | — | — | — | Not supported by VIES |
-| Lithuania | Not included | — | Planned | Reviewed; offline replay passed |
+| Lithuania | LT | 10 | 9 / 1 | Reviewed; offline replay passed |
 | Luxembourg | LU | 10 | 10 / 0 | Reviewed; offline replay passed |
 | Malta | MT | 10 | 10 / 0 | Offline replay matched; one known address limitation |
 | Netherlands | NL | 10 | 10 / 0 | Reviewed; offline replay passed |
 | Norway | — | — | — | Not supported by VIES |
-| Poland | Not included | — | Planned | Reviewed; offline replay passed |
+| Poland | PL | 10 | 10 / 0 | Reviewed; offline replay passed |
 | Portugal | PT | 10 | 10 / 0 | Offline replay matched; one known address limitation |
 | Romania | RO | 200 | 191 / 9 | Reviewed; offline replay passed |
-| Slovakia | Not included | — | Planned | Reviewed; offline replay passed |
+| Slovakia | SK | 10 | 10 / 0 | Reviewed; offline replay passed |
 | Slovenia | SI | 10 | 9 / 1 | Reviewed; offline replay passed |
 | Spain | ES | 10 | 10 / 0 | Reviewed; offline replay passed |
 | Sweden | SE | 10 | 10 / 0 | Reviewed; offline replay passed |
@@ -665,5 +665,24 @@ MIT with BSD-3-Clause address-rule material; the package license expression is
 `MIT AND BSD-3-Clause`. See [LICENSE](https://github.com/medentic/eu-company-lookup/blob/main/LICENSE) and
 [THIRD-PARTY-LICENSE.txt](https://github.com/medentic/eu-company-lookup/blob/main/THIRD-PARTY-LICENSE.txt). These licenses cover the code;
 provider services and data remain subject to their own terms.
+
+## Czech economic subjects (ARES)
+
+`client.lookup_company(ico, "CZ")` accepts eight-digit IČO values and preserves
+leading zeroes. ARES aggregates economic-subject data; results are not certified
+commercial-register extracts. Configure it with `ClientBuilder::czech_registry`
+or disable it with `without_czech_registry`.
+
+The common result supplies the matched name and registered-office data. Legal-form
+codes, DIČ, group DIČ, source dates and per-register states remain in typed
+`CzechAres` details. Common VAT registration, VAT ID and lifecycle fields currently
+remain null: tax identifiers and source activity flags alone do not establish those
+facts. Fiscal address, foreign name and registry link are unavailable. The original
+address text is preserved; explicit house-number components are rendered according to the source number type,
+and unknown number types remain in the details.
+
+Czech HTTP 404 is a definitive ARES miss only with the documented `NENALEZENO`
+error envelope; other failures remain errors. Wider verification remains in progress.
+The implementation does not establish the requested live coverage milestone.
 
 Errors use one [common error object and catalog](docs/reference/errors.md), with optional raw HTTP diagnostics and a 3.x → 4.0 migration guide.

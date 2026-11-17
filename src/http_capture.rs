@@ -148,10 +148,20 @@ fn country(provider: Provider) -> Option<&'static str> {
         Vies => return None,
         BulgarianCommercialRegister | Bulstat => "BG",
         RomanianAnaf => "RO",
-
+        CzechAres => "CZ",
+        AustrianFirmenbuch => "AT",
+        BelgianNbb => "BE",
+        GreekGemi => "GR",
+        FinnishPrh => "FI",
+        FrenchRechercheEntreprises => "FR",
+        IcelandicSkatturinn => "IS",
         IrishCro => "IE",
-
+        LithuanianJar => "LT",
+        LatvianOpenData => "LV",
+        SlovakRuz => "SK",
+        PolishKrs => "PL",
         NorwegianBrreg => "NO",
+        EstonianRik => "EE",
     })
 }
 fn headers(map: &HeaderMap) -> Vec<CapturedHeader> {

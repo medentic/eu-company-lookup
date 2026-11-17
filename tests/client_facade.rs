@@ -55,8 +55,20 @@ fn named_configuration_validates_only_enabled_adapters() {
     let client = Client::builder()
         .without_bulgarian_registry()
         .without_romanian_registry()
+        .without_czech_registry()
+        .without_austrian_registry()
+        .without_belgian_registry()
+        .without_greek_registry()
+        .without_finnish_registry()
+        .without_french_registry()
+        .without_icelandic_registry()
         .without_irish_registry()
+        .without_lithuanian_registry()
+        .without_latvian_registry()
+        .without_slovak_registry()
+        .without_polish_registry()
         .without_norwegian_registry()
+        .without_estonian_registry()
         .build()
         .unwrap();
     assert!(
@@ -117,8 +129,20 @@ fn operation_contracts_describe_real_input_and_execution_behavior() {
                 Operation::ValidateVatSyntax
                     | Operation::ValidateBgBusinessIdSyntax
                     | Operation::ValidateRoBusinessIdSyntax
+                    | Operation::ValidateCzBusinessIdSyntax
+                    | Operation::ValidateAtBusinessIdSyntax
+                    | Operation::ValidateBeBusinessIdSyntax
+                    | Operation::ValidateEeBusinessIdSyntax
                     | Operation::ValidateNoBusinessIdSyntax
+                    | Operation::ValidatePlBusinessIdSyntax
+                    | Operation::ValidateSkBusinessIdSyntax
+                    | Operation::ValidateLvBusinessIdSyntax
+                    | Operation::ValidateLtBusinessIdSyntax
                     | Operation::ValidateIeBusinessIdSyntax
+                    | Operation::ValidateIsBusinessIdSyntax
+                    | Operation::ValidateFrBusinessIdSyntax
+                    | Operation::ValidateFiBusinessIdSyntax
+                    | Operation::ValidateGrBusinessIdSyntax
             ) {
                 assert_eq!(op.execution, Execution::Local);
             } else {
