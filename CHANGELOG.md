@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.1.0 (Unreleased)
+
+- Add keyless national company lookup adapters for Austria, Belgium, Czechia,
+  Estonia, Finland, France, Greece, Iceland, Ireland, Latvia, Lithuania, Norway,
+  Poland and Slovakia. Native identifiers, typed provider details and explicit
+  capability discovery remain separate from VIES VAT verification.
+- Share bounded registry transport and CKAN wire handling while preserving
+  provider-specific identity checks, absence rules, address roles and VAT scope.
+- Extend conservative address parsing and retain original provider address text.
+- Document VIES national-service availability and capacity failures separately
+  from matched negative VAT responses.
+- Add bounded, resumable multi-country verification tooling; collected identifiers
+  and source observations remain excluded from the public source and package.
+
+The expansion is in release preparation. Country inclusion remains subject to
+source-reviewed verification and the release gates; this entry is not a claim
+that every implemented adapter has completed live verification.
+
 ## 3.0.0
 
 - Automatically enrich nine-digit BG company lookups through a required VIES

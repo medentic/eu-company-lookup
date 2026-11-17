@@ -19,12 +19,31 @@ contracts. The facade owns configuration and dispatch. Address utilities own
 shared formatting, not legal or fiscal inference. Keep provider modules private;
 no plugin trait, public endpoint override or new crate is needed to add a country.
 
-The current pure projections live in `src/bg/mapping.rs` and `src/ro/mapping.rs`.
+Pure projections live in each implemented provider's `mapping.rs` module.
 They consume matched native results, preserve source evidence and make no network
 calls. `CompanyDetails` determines the common result's provider tag. Do not copy a
 redundant mutable source label in a way that can disagree with the typed payload.
 Normal decoder output and library conversion must agree; this does not make
 publicly mutable result structs tamper-proof or general validation boundaries.
+
+## Reuse mechanics without merging provider meanings
+
+`registry_transport` owns admission, deadlines, cooldowns, operational HTTP errors
+and bounded response bodies. Adapters explicitly choose accepted HTTP statuses
+and media types. In particular, only ARES accepts a 404 body for its own typed
+miss validation; the shared helper never decides that a company is absent.
+Multi-request adapters retain completion-based spacing.
+
+The private CKAN helper shares exact-filter URL encoding and the single-record
+response envelope used by Ireland and Latvia. Each adapter supplies its resource
+and identifier field, then verifies the native identifier and required name and
+maps fields locally. Sharing a wire protocol does not establish shared legal,
+address, lifecycle or VAT meanings.
+
+The facade keeps country routing explicit. Its common enabled-adapter check
+preserves disabled-operation errors before identifier parsing. Test clients use
+the empty builder so adding an adapter does not require repeating disabled fields
+in every provider's fixture constructor.
 
 ## Decide where a field belongs
 
@@ -126,3 +145,16 @@ See [testing and evidence](testing.md); preserve raw observations and review his
 Do not publish or tag a release without approval of the exact reviewed candidate.
 Report implementation, local verification, live evidence, CI and publication as
 separate states.
+
+## Keyless delivery requirement
+
+The default country lookup must work without registry API keys or user accounts.
+Implement public registry pages or anonymous service endpoints first. Do not add a
+credential requirement to complete a country's default adapter. If no suitable
+keyless route is available, report the country-specific access blocker and continue
+with other countries without claiming completion.
+
+After the planned keyless country coverage is released, credential-based sources
+may be considered as optional enhancements. Callers must explicitly supply any
+credentials; the existing keyless lookup remains available. Such optional sources
+require their own evidence-backed contracts and are outside the current expansion.

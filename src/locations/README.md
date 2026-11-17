@@ -31,12 +31,14 @@ Use focused offline tests and available reviewed corpus replay; a parser support
 a country format is not proof of complete national address coverage.
 
 Estonian wide-space postal boundaries are normalized before extraction. Explicit
-`linnaosa` district labels go to the second address line; `küla` settlements and
-`vald` municipalities remain separate locality and municipality fields. The original
+`linnaosa` district labels go to the second address line; `küla`, `alevik`, `alev` and `linn` settlements and
+explicit `vald` or `linn` municipalities remain separate locality and municipality fields. The original
 VIES address stays unchanged in its envelope.
 
 Finnish `000xx` postal recipient labels remain secondary delivery text, with the
 city unknown: these labels may identify organizations rather than settlements.
+Finnish postal-only observations retain the supplied postcode and locality while
+leaving a missing delivery line unknown. Foreign layouts remain unparsed.
 
 Croatian comma-delimited observations distinguish the settlement from the final
 postal routing locality. Hungarian observations support a final four-digit

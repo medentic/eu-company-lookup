@@ -13,11 +13,12 @@ and migration rules.
 `VatLookupResult` contains VIES validity and available identity/address details.
 `CompanyLookupResult` is the country-independent result of
 `Client::lookup_company(value, country)`. Lower-level registry clients return
-`BgCompanyLookupResult` or `RoCompanyLookupResult`. `VatCheck` and `CompanyRecord`
-remain aliases to `VatLookupResult` and `BgCompanyLookupResult`, respectively.
+country-specific results such as `BgCompanyLookupResult` and `RoCompanyLookupResult`.
+The crate root exports each implemented adapter's native types. `VatCheck` and
+`CompanyRecord` remain aliases to `VatLookupResult` and `BgCompanyLookupResult`, respectively.
 
 `BusinessId` validates country, scheme and value together, including Serde input.
-It accepts supported BG/RO national schemes and preserves leading zeroes. VAT
+It accepts the national schemes for `Client::SUPPORTED_COMPANY_COUNTRIES` and preserves leading zeroes. VAT
 identifiers remain separate. The shared company view distinguishes registered
 and fiscal addresses, retains native status and exposes typed provider details.
 Converting a native result consumes it without fetching or merging other sources.
@@ -29,7 +30,7 @@ Converting a native result consumes it without fetching or merging other sources
   match arm. Minor releases may add fields or variants.
 - Construct configs using `Default` and assign public fields. Construction validates
   bounds. Endpoint overrides and parser internals are not public APIs.
-- `VatId`, `BgBusinessId` and `RoBusinessId` keep their contents private. Parsing,
+- `VatId`, `BgBusinessId`, `RoBusinessId`, `CzBusinessId`, `AtBusinessId`, `BeBusinessId`, `FiBusinessId`, `FrBusinessId`, `EeBusinessId`, `NoBusinessId`, `PlBusinessId`, `SkBusinessId`, `LvBusinessId`, `LtBusinessId`, `IeBusinessId`, `IsBusinessId` and `GrBusinessId` keep their contents private. Parsing,
   `TryFrom` and Serde input validate syntax. `AsRef<str>` borrows the normalized
   identifier; conversion to `String` consumes it. `BusinessId` additionally validates
   the country/scheme pair. Results support serialization, not general deserialization.
@@ -63,8 +64,8 @@ top level. Rename Rust `details` to `registry_details` and JSON `details` to
 registry-specific fields; `provider` agrees with top-level `source`. RO retains
 its `RomanianAnaf` variant and returns null for both new common fields.
 
-The country argument accepts BG/RO case-insensitively after trimming surrounding
-whitespace. Unsupported countries return `UnsupportedIdentifierScheme` locally.
+The country argument accepts entries in `Client::SUPPORTED_COMPANY_COUNTRIES`
+case-insensitively after trimming surrounding whitespace. Unsupported countries return `UnsupportedIdentifierScheme` locally.
 For a supported country, disabled adapters return `OperationDisabled` before
 identifier validation; malformed codes return `InvalidInput` when enabled.
 VAT-prefixed IDs remain invalid for company lookup.

@@ -1,9 +1,9 @@
 [package]
 name = "eu-company-lookup"
-version = "3.0.0"
+version = "3.1.0"
 edition = "2024"
 rust-version = "1.98.1"
-description = "Typed EU VAT verification and Bulgarian/Romanian company lookup with explicit provider capabilities"
+description = "Typed EU VAT verification and national company/taxpayer lookup with explicit provider capabilities"
 license = "MIT AND BSD-3-Clause"
 repository = "https://github.com/medentic/eu-company-lookup"
 documentation = "https://docs.rs/eu-company-lookup"

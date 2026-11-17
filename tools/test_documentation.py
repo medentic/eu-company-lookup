@@ -11,7 +11,8 @@ class DocumentationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / 'README.md').write_text(
-                '# Start\n[guide](guide.md#usage)\n[remote](https://example.invalid/)\n'
+                '# Start\n[guide](guide.md#usage)\n[remote](https://example.invalid/home/api)\n'
+                'https://example.invalid/Users/public/docs\n'
                 '```text\n[not a link](missing.md)\n```\n')
             (root / 'guide.md').write_text('# Guide\n## Usage\n')
             files = {'README.md', 'guide.md'}

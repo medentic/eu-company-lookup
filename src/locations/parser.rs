@@ -112,12 +112,19 @@ fn estonian_locality(result: &mut Address) {
             result.address2 = Some(format!("{district} linnaosa"));
             result.city = Some(city.to_owned());
         }
-    } else if let Some((village, municipality)) = locality.split_once(" küla ")
-        && !village.is_empty()
-        && municipality.ends_with(" vald")
-    {
-        result.city = Some(format!("{village} küla"));
-        result.municipality = Some(municipality.to_owned());
+    } else {
+        // Explicit settlement labels delimit a following rural or city municipality.
+        // Preserve both labels; never fold the municipality into the settlement.
+        for label in ["küla", "alevik", "alev", "linn"] {
+            if let Some((settlement, municipality)) = locality.split_once(&format!(" {label} "))
+                && !settlement.is_empty()
+                && (municipality.ends_with(" vald") || municipality.ends_with(" linn"))
+            {
+                result.city = Some(format!("{settlement} {label}"));
+                result.municipality = Some(municipality.to_owned());
+                break;
+            }
+        }
     }
 }
 

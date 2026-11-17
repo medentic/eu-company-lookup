@@ -30,8 +30,8 @@ future adapters and fields.
 
 ## Mapping into the common company result
 
-`BusinessId` accepts BG + `BgBusinessId` and RO + `RoBusinessId`. Deserialization
-uses the same validation. Never derive it by stripping a VAT prefix. Leading zeroes
+`BusinessId` accepts the implemented national country/scheme pairs advertised
+by the capability catalog. Deserialization uses the same validation. Never derive it by stripping a VAT prefix. Leading zeroes
 and BG branch suffixes remain in the public identity.
 
 | Common field | Bulgarian source | Romanian source |

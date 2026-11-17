@@ -4,6 +4,33 @@
 `Client::is_vat_valid` performs the same request and returns its validity flag.
 Neither operation checks company registration in a national business register.
 
+## National services and availability
+
+The request path is application → this library → EU VIES → the relevant national
+VAT system. VIES retrieves information from national VAT databases; it does not
+maintain an independent copy of every country's registrations. One country's
+service can therefore be unavailable while other countries continue to respond.
+See the Commission's [VIES explanation](https://europa.eu/youreurope/business/finance-and-tax/vat/check-vat-number-vies/index_en.htm).
+
+Check the official [self-monitoring page](https://ec.europa.eu/taxation_customs/vies/#/self-monitoring)
+or [JSON availability endpoint](https://ec.europa.eu/taxation_customs/vies/rest-api/check-status)
+for the central service and individual countries. Greece appears as `EL`.
+Availability is diagnostic information, not a VAT validation result or a guarantee
+that a particular request will succeed. An available country can still reject
+requests because of capacity limits. The library does not currently fetch this
+status endpoint automatically.
+
+| Observation | Meaning for the caller |
+| --- | --- |
+| `MS_UNAVAILABLE` | The country's VAT service is unavailable through VIES; validity remains unknown. |
+| `MS_MAX_CONCURRENT_REQ` | The country's request-capacity limit was reached; this does not establish an outage or an invalid VAT ID. |
+| Matched response with `valid: false` | VIES returned a negative validation result for that identifier. |
+
+National business-register lookup is a separate operation and can succeed during
+a VIES outage. A company-register record alone does not prove VIES VAT validity.
+The documented [Bulgarian enrichment flow](bulgarian-registry.md#shared-vat-fields)
+also calls VIES and therefore retains that dependency.
+
 ## Identifiers and coverage
 
 `VatId::parse` and `validate_vat_syntax` remove ASCII whitespace, uppercase letters

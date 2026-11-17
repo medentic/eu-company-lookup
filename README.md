@@ -1,9 +1,14 @@
 # eu-company-lookup
 
-Async Rust lookups for **EU VAT numbers (VIES)**, **Bulgarian businesses
-(Commercial Register / BULSTAT)** and **Romanian taxpayers (ANAF)**.
+Async Rust lookups for **EU VAT numbers (VIES)** and national company or taxpayer
+information in **Austria (Firmenbuch), Belgium (NBB Consult), Bulgaria
+(Commercial Register / BULSTAT), Czechia (ARES), Estonia (RIK), Finland (PRH YTJ), France (API Recherche Entreprises), Greece (GEMI), Iceland (Skatturinn), Ireland (CRO open data), Latvia (registry open data), Lithuania (JAR open data), Norway (Enhetsregisteret), Poland (KRS), Romania (ANAF) and Slovakia (RÚZ)**.
 Returns typed company details, source-preserving addresses and explicit errors.
 No account, database or full-registry download is required for the current providers.
+
+VIES queries national VAT systems, so availability and capacity can differ by
+country. See [service availability and status links](docs/reference/vies.md#national-services-and-availability)
+for diagnosing outages separately from invalid VAT results.
 
 ## Why this exists
 
@@ -18,8 +23,8 @@ flows, while checking VAT validity separately. Applications can reuse this work
 instead of building and maintaining each registry integration themselves.
 
 The project started with Bulgaria and is expanding country by country toward
-**EU and EEA business lookup**. Bulgaria and Romania are implemented today;
-most national registry integrations are still pending. It queries supported
+**EU and EEA business lookup**. National adapters are implemented for the countries listed below;
+further national registry integrations are still pending. It queries supported
 sources on demand rather than maintaining a database of all European companies.
 
 ## Choose a lookup
@@ -27,10 +32,11 @@ sources on demand rather than maintaining a database of all European companies.
 | You have | Call | Returns on success |
 | --- | --- | --- |
 | EU VAT number | `client.lookup_vat("BG131129282")` | `VatLookupResult`: validity, company name and address |
-| BG or RO business identifier | `client.lookup_company("131129282", "BG")` | `CompanyLookupResult`: common company view with typed source details |
+| National business identifier | `client.lookup_company("131129282", "BG")` | `CompanyLookupResult`: common company view with typed source details |
 
-National business lookup currently covers **BG and RO only** (ANAF is a taxpayer
-source). VAT verification and company registration are separate checks. Syntax validation does not prove
+Use the country-support table below or `Client::SUPPORTED_COMPANY_COUNTRIES`
+for national lookup coverage. ANAF is a taxpayer source. VAT verification and
+company registration are separate checks; syntax validation does not prove
 checksum validity or registration.
 
 ## Country support
@@ -41,33 +47,33 @@ The table covers all 30 EEA countries, plus the separate Northern Ireland scope.
 
 | Country | VIES VAT lookup | National business / taxpayer lookup |
 | --- | --- | --- |
-| Austria | Supported (`AT`) | Pending |
-| Belgium | Supported (`BE`) | Pending |
+| Austria | Supported (`AT`) | Supported — anonymous Firmenbuch active-record lookup; verification in progress |
+| Belgium | Supported (`BE`) | Supported — anonymous NBB Consult company data; verification in progress |
 | Bulgaria | Supported (`BG`) | Supported — Commercial Register, BULSTAT fallback |
 | Croatia | Supported (`HR`) | Pending |
 | Cyprus | Supported (`CY`) | Pending |
-| Czechia | Supported (`CZ`) | Pending |
+| Czechia | Supported (`CZ`) | Supported — ARES economic subjects; verification in progress |
 | Denmark | Supported (`DK`) | Pending |
-| Estonia | Supported (`EE`) | Pending |
-| Finland | Supported (`FI`) | Pending |
-| France | Supported (`FR`) | Pending |
+| Estonia | Supported (`EE`) | Supported — anonymous RIK public search; verification in progress |
+| Finland | Supported (`FI`) | Supported — anonymous PRH YTJ company data; verification in progress |
+| France | Supported (`FR`) | Supported — anonymous public SIREN search; verification in progress |
 | Germany | Supported (`DE`) | Pending |
-| Greece | Supported (`EL`) | Pending |
+| Greece | Supported (`EL`) | Supported — anonymous GEMI by registration number; verification in progress |
 | Hungary | Supported (`HU`) | Pending |
-| Iceland | Not supported by VIES | Pending |
-| Ireland | Supported (`IE`) | Pending |
+| Iceland | Not supported by VIES | Supported — anonymous Skatturinn company pages; verification in progress |
+| Ireland | Supported (`IE`) | Supported — anonymous CRO dataset lookup; verification in progress |
 | Italy | Supported (`IT`) | Pending |
-| Latvia | Supported (`LV`) | Pending |
+| Latvia | Supported (`LV`) | Supported — anonymous official registry open data; verification in progress |
 | Liechtenstein | Not supported by VIES | Pending |
-| Lithuania | Supported (`LT`) | Pending |
+| Lithuania | Supported (`LT`) | Supported — anonymous JAR dataset lookup; verification in progress |
 | Luxembourg | Supported (`LU`) | Pending |
 | Malta | Supported (`MT`) | Pending |
 | Netherlands | Supported (`NL`) | Pending |
-| Norway | Not supported by VIES | Pending |
-| Poland | Supported (`PL`) | Pending |
+| Norway | Not supported by VIES | Supported — anonymous Enhetsregisteret entity lookup; verification in progress |
+| Poland | Supported (`PL`) | Supported — anonymous current KRS business extracts; verification in progress |
 | Portugal | Supported (`PT`) | Pending |
 | Romania | Supported (`RO`) | Supported — ANAF taxpayer lookup |
-| Slovakia | Supported (`SK`) | Pending |
+| Slovakia | Supported (`SK`) | Supported — anonymous RÚZ public accounting entities; verification in progress |
 | Slovenia | Supported (`SI`) | Pending |
 | Spain | Supported (`ES`) | Pending |
 | Sweden | Supported (`SE`) | Pending |
@@ -196,7 +202,7 @@ header identifier to match a company or populate its `taxId` or `vatId`.
 
 ## Look up a company across supported countries
 
-Use the common result when your application handles both Bulgaria and Romania.
+Use the common result when your application handles multiple supported countries.
 Pass a national business code without its VAT prefix; leading zeroes are preserved.
 
 Both calls return `Result<CompanyLookupResult, LookupError>` with the same
@@ -508,7 +514,7 @@ fn main() -> Result<(), eu_company_lookup::LookupError> {
 }
 ```
 
-Syntax helpers also exist for BG and RO business codes. They preserve leading
+Syntax helpers also exist for AT, BE, BG, CZ, EE, FI, FR, GR, NO, PL and RO business codes. They preserve leading
 zeroes and check format only. Address parsing is conservative; a country hint
 selects parsing rules without proving the physical country.
 
@@ -516,8 +522,8 @@ selects parsing rules without proving the physical country.
 
 VIES supports EU VAT jurisdictions and Northern Ireland (`XI`). Greece uses `EL`.
 General GB, OSS/IOSS (`EU` / `IM`), Iceland, Liechtenstein and Norway are outside
-VIES coverage. National company lookup currently supports Bulgaria and Romania;
-other national registries are planned.
+VIES coverage. National company lookup currently supports AT, BE, BG, CZ, FI, GR and
+RO; other national registries are planned.
 
 Implementation and live verification are separate. BULSTAT has limited reviewed
 coverage; XI has no retained live corpus. Known source/address limitations remain
@@ -541,37 +547,38 @@ registration results and are not counted as reviewed outcomes.
 VIES is listed separately below. ANAF is a taxpayer source, not an ONRC company
 register extract. Priority numbers preserve the existing planning order; a dash
 means no priority has been assigned. Planned integrations have no release date.
+Test counts for unreleased adapters remain in local verification evidence.
 
 | EEA country | Implemented register / source | Distinct company / tax IDs tested | Delivery status | Next priority |
 | --- | --- | ---: | --- | --- |
-| Austria | Not implemented | 0 | Planned | 1 |
-| Belgium | Not implemented | 0 | Planned | 1 |
+| Austria | Public Firmenbuch | — | Implemented locally; not released | 1 |
+| Belgium | NBB Consult (CBE-derived identity) | — | Implemented locally; not released | 1 |
 | Bulgaria | Commercial Register | 278 | Released in 2.0.0 | — |
 | Bulgaria | BULSTAT | 10 | Released; broader verification pending | — |
 | Croatia | Not implemented | 0 | Planned | — |
 | Cyprus | Not implemented | 0 | Planned | — |
-| Czechia | Not implemented | 0 | Planned | 1 |
+| Czechia | ARES economic subjects | — | Implemented locally; not released | 1 |
 | Denmark | Not implemented | 0 | Planned | — |
-| Estonia | Not implemented | 0 | Planned | — |
-| Finland | Not implemented | 0 | Planned | — |
-| France | Not implemented | 0 | Planned | — |
+| Estonia | RIK public search | — | Implemented locally; not released | — |
+| Finland | PRH YTJ open data | — | Implemented locally; not released | — |
+| France | API Recherche Entreprises | — | Implemented locally; not released | — |
 | Germany | Not implemented | 0 | Planned | — |
-| Greece | Not implemented | 0 | Planned | 2 |
+| Greece | GEMI public company details | — | Implemented locally; not released | 2 |
 | Hungary | Not implemented | 0 | Planned | — |
-| Iceland | Not implemented | 0 | Planned | — |
-| Ireland | Not implemented | 0 | Planned | — |
+| Iceland | Skatturinn public company pages | — | Implemented locally; not released | — |
+| Ireland | CRO open company records | — | Implemented locally; not released | — |
 | Italy | Not implemented | 0 | Planned | — |
-| Latvia | Not implemented | 0 | Planned | — |
+| Latvia | official registry open data | — | Implemented locally; not released | — |
 | Liechtenstein | Not implemented | 0 | Planned | — |
-| Lithuania | Not implemented | 0 | Planned | — |
+| Lithuania | JAR open data | — | Implemented locally; not released | — |
 | Luxembourg | Not implemented | 0 | Planned | — |
 | Malta | Not implemented | 0 | Planned | — |
 | Netherlands | Not implemented | 0 | Planned | — |
-| Norway | Not implemented | 0 | Planned | — |
-| Poland | Not implemented | 0 | Planned | — |
+| Norway | Enhetsregisteret | — | Implemented locally; not released | — |
+| Poland | KRS current business extracts | — | Implemented locally; not released | — |
 | Portugal | Not implemented | 0 | Planned | — |
 | Romania | ANAF | 200 | Released in 2.0.0; further registry coverage planned | 3 |
-| Slovakia | Not implemented | 0 | Planned | — |
+| Slovakia | RÚZ public accounting entities | — | Implemented locally; not released | — |
 | Slovenia | Not implemented | 0 | Planned | — |
 | Spain | Not implemented | 0 | Planned | 1 |
 | Sweden | Not implemented | 0 | Planned | — |
@@ -634,6 +641,17 @@ ambiguities remain separate in the local evidence.
 
 </details>
 
+## Access policy and future improvements
+
+Country lookup must work without users supplying registry API keys or accounts.
+New adapters target public registry pages and anonymous endpoints. A country with
+no usable keyless source remains unavailable rather than requiring credentials.
+
+After the planned keyless country coverage is released, optional credential-based
+sources may add coverage or richer data for callers who explicitly configure them.
+These are future improvements: keys must not become necessary for the default
+lookup path, and no such credential-based integration is implemented today.
+
 ## Development
 
 Start with the [contributor guide](https://github.com/medentic/eu-company-lookup/blob/main/CONTRIBUTING.md)
@@ -647,3 +665,22 @@ MIT with BSD-3-Clause address-rule material; the package license expression is
 `MIT AND BSD-3-Clause`. See [LICENSE](https://github.com/medentic/eu-company-lookup/blob/main/LICENSE) and
 [THIRD-PARTY-LICENSE.txt](https://github.com/medentic/eu-company-lookup/blob/main/THIRD-PARTY-LICENSE.txt). These licenses cover the code;
 provider services and data remain subject to their own terms.
+
+## Czech economic subjects (ARES)
+
+`client.lookup_company(ico, "CZ")` accepts eight-digit IČO values and preserves
+leading zeroes. ARES aggregates economic-subject data; results are not certified
+commercial-register extracts. Configure it with `ClientBuilder::czech_registry`
+or disable it with `without_czech_registry`.
+
+The common result supplies the matched name and registered-office data. Legal-form
+codes, DIČ, group DIČ, source dates and per-register states remain in typed
+`CzechAres` details. Common VAT registration, VAT ID and lifecycle fields currently
+remain null: tax identifiers and source activity flags alone do not establish those
+facts. Fiscal address, foreign name and registry link are unavailable. The original
+address text is preserved; explicit house-number components are rendered according to the source number type,
+and unknown number types remain in the details.
+
+Czech HTTP 404 is a definitive ARES miss only with the documented `NENALEZENO`
+error envelope; other failures remain errors. Wider verification remains in progress.
+The implementation does not establish the requested live coverage milestone.

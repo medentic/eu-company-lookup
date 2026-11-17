@@ -74,6 +74,22 @@ fn apply_vat_verification(company: &mut CompanyLookupResult, observation: VatLoo
         } => {
             *vat_verification = Some(Box::new(observation));
         }
-        CompanyDetails::RomanianAnaf { .. } => unreachable!("BG enrichment only"),
+        CompanyDetails::RomanianAnaf { .. }
+        | CompanyDetails::CzechAres { .. }
+        | CompanyDetails::AustrianFirmenbuch { .. }
+        | CompanyDetails::EstonianRik { .. }
+        | CompanyDetails::NorwegianBrreg { .. }
+        | CompanyDetails::PolishKrs { .. }
+        | CompanyDetails::SlovakRuz { .. }
+        | CompanyDetails::LatvianOpenData { .. }
+        | CompanyDetails::LithuanianJar { .. }
+        | CompanyDetails::IrishCro { .. }
+        | CompanyDetails::IcelandicSkatturinn { .. }
+        | CompanyDetails::FrenchRechercheEntreprises { .. }
+        | CompanyDetails::FinnishPrh { .. }
+        | CompanyDetails::BelgianNbb { .. }
+        | CompanyDetails::GreekGemi { .. } => {
+            unreachable!("BG enrichment only")
+        }
     }
 }

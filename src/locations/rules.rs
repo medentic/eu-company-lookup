@@ -14,8 +14,8 @@ pub(crate) fn rule(country: &str) -> Option<String> {
     };
     if !postal.is_empty() {
         // Keep all preceding lines as address lines; don't pretend they are all street names.
-        let delivery = if country == "SE" {
-            // Swedish VIES can return only a postal code and routing locality.
+        let delivery = if matches!(country, "SE" | "FI") {
+            // Swedish and Finnish VIES can omit the delivery line entirely.
             r"(?:(?P<street>[\s\S]*?)\n)?"
         } else {
             r"(?P<street>[\s\S]*?)\n"

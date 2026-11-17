@@ -1,7 +1,7 @@
 //! Shared business lookup contracts; all tests are offline.
 use eu_company_lookup::{
     BgBusinessId, BusinessId, Client, CompanyLookupResult, IdentifierScheme, LookupError,
-    Operation, RoBusinessId,
+    Operation, Provider, RoBusinessId,
 };
 use serde_json::json;
 
@@ -51,12 +51,25 @@ fn one_lookup_signature_accepts_both_countries() {
 }
 
 #[test]
-fn non_vies_eea_countries_are_discoverable_without_claiming_lookup_support() {
+fn non_vies_eea_discovery_distinguishes_implemented_national_lookup() {
     let catalog = Client::new().unwrap().capabilities();
     for code in ["NO", "IS", "LI"] {
         let entry = catalog.iter().find(|c| c.country_code == code).unwrap();
         assert!(entry.vat_prefix.is_none());
-        assert!(entry.providers.is_empty());
+        if code == "NO" || code == "IS" {
+            assert_eq!(entry.providers.len(), 1);
+            assert_eq!(
+                entry.providers[0].provider,
+                if code == "NO" {
+                    Provider::NorwegianBrreg
+                } else {
+                    Provider::IcelandicSkatturinn
+                }
+            );
+            assert!(!entry.providers[0].requires_credentials);
+        } else {
+            assert!(entry.providers.is_empty());
+        }
     }
     for code in Client::SUPPORTED_COMPANY_COUNTRIES {
         let entry = catalog.iter().find(|c| c.country_code == code).unwrap();

@@ -35,6 +35,23 @@ executable copy. No collection is scheduled by these instructions.
 
 ## VIES
 
+### Check availability before repeated recovery
+
+Use the official [self-monitoring page](https://ec.europa.eu/taxation_customs/vies/#/self-monitoring)
+or [JSON status endpoint](https://ec.europa.eu/taxation_customs/vies/rest-api/check-status)
+when repeated country-specific faults interrupt collection. Save the timestamped
+status observation with local run evidence, not as a current-status claim in these
+docs. Status checks are diagnostic and do not count as verified VAT identifiers.
+
+Distinguish national-service unavailability from request-capacity limits; an
+available status does not guarantee admission of an individual request. Preserve
+fault observations, honor cooldowns and Retry-After, and defer a repeatedly failing
+country while working on other authorized queues. Resume the preserved queue
+after recovery; do not turn faults into negative VAT results or generate expected
+company data from them. Address replay needs at least one usable response; an
+error-only journal can be validated as a typed journal but establishes no address
+replay coverage. See [VIES availability semantics](../reference/vies.md#national-services-and-availability).
+
 ### Import a queue
 
 Given a downloaded NRA bulletin and `bsdtar`:
@@ -75,6 +92,46 @@ validation also decodes available saved SOAP bodies and compares their outcomes
 with the original observations. Partial JSONL
 tails are recovery errors, not permission to truncate journals. Growth is bounded
 near 20 MiB per run.
+
+### Multi-country recovery runner
+
+`tools/vies_recovery.py` replaces per-run shell orchestration with a bounded pass.
+Prepare a local JSON plan whose `countries` array contains objects with `country`
+(VIES prefix), `queue` (path from the working directory), `offset` and `count`.
+Each selection must contain 1–100 explicitly authorized IDs. Keep plans, queues
+and provenance outside Git. For example, the shape of one entry is
+`{"country":"BE","queue":"target/authorized-be-ids.json","offset":0,"count":10}`.
+
+```sh
+# Offline report only; no status requests or VAT lookups.
+python3 tools/vies_recovery.py --plan target/recovery-plan.json --run-dir target/recovery
+# Explicit bounded live pass; defer Greece without discarding its selection.
+python3 tools/vies_recovery.py --plan target/recovery-plan.json --run-dir target/recovery \
+  --execute --binary "$TEST_BINARY" --max-requests 20 --skip EL
+```
+
+Use `--docker-image <existing-local-image>` when needed. Repeating the command
+resumes unobserved IDs; the selection, binary hash, image and deadline profile must
+match the saved plan. An observed failure is not silently retried: prepare a new
+authorized recovery selection, retaining the original evidence. Existing larger
+`vies_batch.py` runs remain resumable with that tool; they are not rewritten into
+single-ID batches. Exclude their already observed IDs when preparing a new plan.
+
+Before each country, the runner records official availability locally. An unavailable
+country is deferred; a monitoring failure is recorded as unknown and does not prove
+VAT-service failure. Three consecutive provider errors defer the country for that
+pass. The request cap bounds the whole pass, not each country. Single-ID batches
+retain the existing collector's frozen executables, manifests and append-only
+observations. Pacing carries across batches and restarts, with an initial sixty-second
+gap. Retry-After stops the pass and prevents automatic resumption of that run;
+inspect it and honor the wait before preparing another selection.
+
+Reports separate attempts, valid/negative observations, provider errors and verified
+valid IDs. The latter require reviewed expectations and offline replay through the
+existing reporting rules. The runner does not create expectations or approve source
+observations. Review and replay each response-bearing batch separately, then rerun
+the offline report. No new VAT validity or country-completion claim follows merely
+from finishing the selected queue.
 
 ### Test-only retry policy
 

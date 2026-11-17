@@ -28,6 +28,20 @@ impl BusinessId {
         }
         match (country.as_str(), scheme) {
             ("BG", IdentifierScheme::BgBusinessId) => Ok(BgBusinessId::parse(value)?.into()),
+            ("GR", IdentifierScheme::GrBusinessId) => Ok(crate::GrBusinessId::parse(value)?.into()),
+            ("BE", IdentifierScheme::BeBusinessId) => Ok(crate::BeBusinessId::parse(value)?.into()),
+            ("FI", IdentifierScheme::FiBusinessId) => Ok(crate::FiBusinessId::parse(value)?.into()),
+            ("FR", IdentifierScheme::FrBusinessId) => Ok(crate::FrBusinessId::parse(value)?.into()),
+            ("IS", IdentifierScheme::IsBusinessId) => Ok(crate::IsBusinessId::parse(value)?.into()),
+            ("IE", IdentifierScheme::IeBusinessId) => Ok(crate::IeBusinessId::parse(value)?.into()),
+            ("LT", IdentifierScheme::LtBusinessId) => Ok(crate::LtBusinessId::parse(value)?.into()),
+            ("LV", IdentifierScheme::LvBusinessId) => Ok(crate::LvBusinessId::parse(value)?.into()),
+            ("SK", IdentifierScheme::SkBusinessId) => Ok(crate::SkBusinessId::parse(value)?.into()),
+            ("PL", IdentifierScheme::PlBusinessId) => Ok(crate::PlBusinessId::parse(value)?.into()),
+            ("NO", IdentifierScheme::NoBusinessId) => Ok(crate::NoBusinessId::parse(value)?.into()),
+            ("EE", IdentifierScheme::EeBusinessId) => Ok(crate::EeBusinessId::parse(value)?.into()),
+            ("AT", IdentifierScheme::AtBusinessId) => Ok(crate::AtBusinessId::parse(value)?.into()),
+            ("CZ", IdentifierScheme::CzBusinessId) => Ok(crate::CzBusinessId::parse(value)?.into()),
             ("RO", IdentifierScheme::RoBusinessId) => Ok(RoBusinessId::parse(value)?.into()),
             _ => Err(LookupError::UnsupportedIdentifierScheme),
         }
@@ -59,6 +73,142 @@ impl From<RoBusinessId> for BusinessId {
         Self {
             country: "RO".into(),
             scheme: IdentifierScheme::RoBusinessId,
+            value: id.into(),
+        }
+    }
+}
+impl From<crate::CzBusinessId> for BusinessId {
+    fn from(id: crate::CzBusinessId) -> Self {
+        Self {
+            country: "CZ".into(),
+            scheme: IdentifierScheme::CzBusinessId,
+            value: id.into(),
+        }
+    }
+}
+impl From<crate::AtBusinessId> for BusinessId {
+    fn from(id: crate::AtBusinessId) -> Self {
+        Self {
+            country: "AT".into(),
+            scheme: IdentifierScheme::AtBusinessId,
+            value: id.into(),
+        }
+    }
+}
+impl From<crate::BeBusinessId> for BusinessId {
+    fn from(id: crate::BeBusinessId) -> Self {
+        Self {
+            country: "BE".into(),
+            scheme: IdentifierScheme::BeBusinessId,
+            value: id.into(),
+        }
+    }
+}
+
+impl From<crate::FiBusinessId> for BusinessId {
+    fn from(id: crate::FiBusinessId) -> Self {
+        Self {
+            country: "FI".into(),
+            scheme: IdentifierScheme::FiBusinessId,
+            value: id.into(),
+        }
+    }
+}
+
+impl From<crate::FrBusinessId> for BusinessId {
+    fn from(id: crate::FrBusinessId) -> Self {
+        Self {
+            country: "FR".into(),
+            scheme: IdentifierScheme::FrBusinessId,
+            value: id.into(),
+        }
+    }
+}
+
+impl From<crate::IsBusinessId> for BusinessId {
+    fn from(id: crate::IsBusinessId) -> Self {
+        Self {
+            country: "IS".into(),
+            scheme: IdentifierScheme::IsBusinessId,
+            value: id.into(),
+        }
+    }
+}
+
+impl From<crate::IeBusinessId> for BusinessId {
+    fn from(id: crate::IeBusinessId) -> Self {
+        Self {
+            country: "IE".into(),
+            scheme: IdentifierScheme::IeBusinessId,
+            value: id.into(),
+        }
+    }
+}
+
+impl From<crate::LtBusinessId> for BusinessId {
+    fn from(id: crate::LtBusinessId) -> Self {
+        Self {
+            country: "LT".into(),
+            scheme: IdentifierScheme::LtBusinessId,
+            value: id.into(),
+        }
+    }
+}
+
+impl From<crate::LvBusinessId> for BusinessId {
+    fn from(id: crate::LvBusinessId) -> Self {
+        Self {
+            country: "LV".into(),
+            scheme: IdentifierScheme::LvBusinessId,
+            value: id.into(),
+        }
+    }
+}
+
+impl From<crate::SkBusinessId> for BusinessId {
+    fn from(id: crate::SkBusinessId) -> Self {
+        Self {
+            country: "SK".into(),
+            scheme: IdentifierScheme::SkBusinessId,
+            value: id.into(),
+        }
+    }
+}
+
+impl From<crate::PlBusinessId> for BusinessId {
+    fn from(id: crate::PlBusinessId) -> Self {
+        Self {
+            country: "PL".into(),
+            scheme: IdentifierScheme::PlBusinessId,
+            value: id.into(),
+        }
+    }
+}
+
+impl From<crate::NoBusinessId> for BusinessId {
+    fn from(id: crate::NoBusinessId) -> Self {
+        Self {
+            country: "NO".into(),
+            scheme: IdentifierScheme::NoBusinessId,
+            value: id.into(),
+        }
+    }
+}
+
+impl From<crate::EeBusinessId> for BusinessId {
+    fn from(id: crate::EeBusinessId) -> Self {
+        Self {
+            country: "EE".into(),
+            scheme: IdentifierScheme::EeBusinessId,
+            value: id.into(),
+        }
+    }
+}
+impl From<crate::GrBusinessId> for BusinessId {
+    fn from(id: crate::GrBusinessId) -> Self {
+        Self {
+            country: "GR".into(),
+            scheme: IdentifierScheme::GrBusinessId,
             value: id.into(),
         }
     }
@@ -145,6 +295,134 @@ pub enum CompanyDetails {
         #[serde(flatten)]
         details: crate::BulstatDetails,
     },
+    /// Greek GEMI public company details.
+    #[non_exhaustive]
+    GreekGemi {
+        /// Original source status label.
+        native_registry_status: Option<String>,
+        /// Native tax number, dates and codes.
+        #[serde(flatten)]
+        details: Box<crate::GrGemiDetails>,
+    },
+    /// Finnish PRH YTJ company details.
+    #[non_exhaustive]
+    FinnishPrh {
+        /// Original Trade Register status code.
+        native_registry_status: Option<String>,
+        /// Typed native source fields and contact-address roles.
+        #[serde(flatten)]
+        details: Box<crate::FiPrhDetails>,
+    },
+    /// French API Recherche Entreprises company details.
+    #[non_exhaustive]
+    FrenchRechercheEntreprises {
+        /// Original administrative status code.
+        native_registry_status: Option<String>,
+        /// Typed native source fields and contact-address roles.
+        #[serde(flatten)]
+        details: Box<crate::FrCompanyDetails>,
+    },
+    /// Icelandic public company-page fields.
+    #[non_exhaustive]
+    IcelandicSkatturinn {
+        /// Aggregate status is unavailable; selected page facts remain in details.
+        native_registry_status: Option<String>,
+        /// Typed native source fields and contact-address roles.
+        #[serde(flatten)]
+        details: Box<crate::IsCompanyDetails>,
+    },
+    /// Irish CRO public company record.
+    #[non_exhaustive]
+    IrishCro {
+        /// Original CRO company-status label.
+        native_registry_status: Option<String>,
+        /// Typed native source fields and contact-address roles.
+        #[serde(flatten)]
+        details: Box<crate::IeCompanyDetails>,
+    },
+    /// Lithuanian published legal-entity record.
+    #[non_exhaustive]
+    LithuanianJar {
+        /// Aggregate status is unavailable; opaque source status remains in details.
+        native_registry_status: Option<String>,
+        /// Typed native source fields and contact-address roles.
+        #[serde(flatten)]
+        details: Box<crate::LtCompanyDetails>,
+    },
+    /// Latvian official registry open-data record.
+    #[non_exhaustive]
+    LatvianOpenData {
+        /// Original source closed marker, without inferred lifecycle.
+        native_registry_status: Option<String>,
+        /// Typed native source fields and contact-address roles.
+        #[serde(flatten)]
+        details: Box<crate::LvCompanyDetails>,
+    },
+    /// Slovak public accounting-entity observations.
+    #[non_exhaustive]
+    SlovakRuz {
+        /// Aggregate status is unavailable; source observations remain in details.
+        native_registry_status: Option<String>,
+        /// Typed native source fields and contact-address roles.
+        #[serde(flatten)]
+        details: Box<crate::SkCompanyDetails>,
+    },
+    /// Polish current KRS business extract.
+    #[non_exhaustive]
+    PolishKrs {
+        /// Aggregate status is unavailable; native facts remain in details.
+        native_registry_status: Option<String>,
+        /// Typed native source fields and contact-address roles.
+        #[serde(flatten)]
+        details: Box<crate::PlCompanyDetails>,
+    },
+    /// Norwegian Enhetsregisteret company details.
+    #[non_exhaustive]
+    NorwegianBrreg {
+        /// Aggregate status is unavailable; native facts remain in details.
+        native_registry_status: Option<String>,
+        /// Typed native source fields and contact-address roles.
+        #[serde(flatten)]
+        details: Box<crate::NoCompanyDetails>,
+    },
+    /// Estonian public portal company details.
+    #[non_exhaustive]
+    EstonianRik {
+        /// Original public-register status label.
+        native_registry_status: Option<String>,
+        /// Typed native source fields and contact-address roles.
+        #[serde(flatten)]
+        details: Box<crate::EeCompanyDetails>,
+    },
+    /// NBB Consult company data derived from CBE.
+    #[non_exhaustive]
+    BelgianNbb {
+        /// Original legal-situation label.
+        native_registry_status: Option<String>,
+        /// Original structured office, retaining street and box separately.
+        registered_office: crate::BeRegistryAddress,
+        /// Native codes and dates.
+        #[serde(flatten)]
+        details: Box<crate::BeNbbDetails>,
+    },
+    /// Austrian public Firmenbuch source details.
+    #[non_exhaustive]
+    AustrianFirmenbuch {
+        /// Original source status code.
+        native_registry_status: Option<String>,
+        /// Source record metadata and structured address.
+        #[serde(flatten)]
+        details: Box<crate::AtFirmenbuchDetails>,
+    },
+    /// Czech ARES economic-subject source details.
+    #[non_exhaustive]
+    CzechAres {
+        /// No single lifecycle status is reported by this ARES endpoint.
+        native_registry_status: Option<String>,
+        /// Native codes, dates and source registrations.
+        #[serde(flatten)]
+        details: Box<crate::CzAresDetails>,
+    },
     /// Romanian fiscal observation; not an ONRC company extract.
     #[non_exhaustive]
     RomanianAnaf {
@@ -163,6 +441,20 @@ impl CompanyDetails {
             Self::BulgarianCommercialRegister { .. } => Provider::BulgarianCommercialRegister,
             Self::Bulstat { .. } => Provider::Bulstat,
             Self::RomanianAnaf { .. } => Provider::RomanianAnaf,
+            Self::CzechAres { .. } => Provider::CzechAres,
+            Self::AustrianFirmenbuch { .. } => Provider::AustrianFirmenbuch,
+            Self::BelgianNbb { .. } => Provider::BelgianNbb,
+            Self::FinnishPrh { .. } => Provider::FinnishPrh,
+            Self::FrenchRechercheEntreprises { .. } => Provider::FrenchRechercheEntreprises,
+            Self::IcelandicSkatturinn { .. } => Provider::IcelandicSkatturinn,
+            Self::IrishCro { .. } => Provider::IrishCro,
+            Self::LithuanianJar { .. } => Provider::LithuanianJar,
+            Self::LatvianOpenData { .. } => Provider::LatvianOpenData,
+            Self::SlovakRuz { .. } => Provider::SlovakRuz,
+            Self::PolishKrs { .. } => Provider::PolishKrs,
+            Self::NorwegianBrreg { .. } => Provider::NorwegianBrreg,
+            Self::EstonianRik { .. } => Provider::EstonianRik,
+            Self::GreekGemi { .. } => Provider::GreekGemi,
         }
     }
 }
