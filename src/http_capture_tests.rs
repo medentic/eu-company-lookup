@@ -212,3 +212,15 @@ async fn multi_request_capture_keeps_order_and_does_not_reuse_previous_status() 
     assert!(debug.exchanges[1].response.is_none());
     task.await.unwrap();
 }
+
+#[test]
+fn curl_preserves_explicit_empty_headers() {
+    let request = reqwest::Client::new()
+        .get("https://example.invalid/")
+        .header("x-empty", "")
+        .build()
+        .unwrap();
+    let capture = request_capture(&request);
+    assert!(capture.curl.unwrap().contains("--header 'x-empty;'"));
+    assert_eq!(capture.headers[0].value.data, "");
+}

@@ -191,7 +191,13 @@ fn request_capture(request: &reqwest::Request) -> CapturedRequest {
     for (name, value) in request.headers() {
         match std::str::from_utf8(value.as_bytes()) {
             Ok(value) if !value.contains('\0') => {
-                command.push_str(&format!(" --header {}", quote(&format!("{name}: {value}"))))
+                // cURL uses a semicolon to send an empty header; a colon removes it.
+                let header = if value.is_empty() {
+                    format!("{name};")
+                } else {
+                    format!("{name}: {value}")
+                };
+                command.push_str(&format!(" --header {}", quote(&header)))
             }
             _ => unavailable = Some("header_not_representable_in_shell"),
         }
