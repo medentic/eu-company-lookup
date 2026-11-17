@@ -1,6 +1,6 @@
 # Public API compatibility
 
-The 3.x contract covers exported Rust types and methods and documented JSON field
+The 4.x contract covers exported Rust types and methods and documented JSON field
 names, value types and null semantics. Provider data remains an observation that
 can change between requests.
 
@@ -13,11 +13,12 @@ and migration rules.
 `VatLookupResult` contains VIES validity and available identity/address details.
 `CompanyLookupResult` is the country-independent result of
 `Client::lookup_company(value, country)`. Lower-level registry clients return
-`BgCompanyLookupResult` or `RoCompanyLookupResult`. `VatCheck` and `CompanyRecord`
-remain aliases to `VatLookupResult` and `BgCompanyLookupResult`, respectively.
+country-specific results such as `BgCompanyLookupResult` and `RoCompanyLookupResult`.
+The crate root exports each implemented adapter's native types. `VatCheck` and
+`CompanyRecord` remain aliases to `VatLookupResult` and `BgCompanyLookupResult`, respectively.
 
 `BusinessId` validates country, scheme and value together, including Serde input.
-It accepts supported BG/RO national schemes and preserves leading zeroes. VAT
+It accepts the national schemes for `Client::SUPPORTED_COMPANY_COUNTRIES` and preserves leading zeroes. VAT
 identifiers remain separate. The shared company view distinguishes registered
 and fiscal addresses, retains native status and exposes typed provider details.
 Converting a native result consumes it without fetching or merging other sources.
@@ -29,7 +30,7 @@ Converting a native result consumes it without fetching or merging other sources
   match arm. Minor releases may add fields or variants.
 - Construct configs using `Default` and assign public fields. Construction validates
   bounds. Endpoint overrides and parser internals are not public APIs.
-- `VatId`, `BgBusinessId` and `RoBusinessId` keep their contents private. Parsing,
+- `VatId`, `BgBusinessId`, `RoBusinessId`, `NoBusinessId`, `IeBusinessId` keep their contents private. Parsing,
   `TryFrom` and Serde input validate syntax. `AsRef<str>` borrows the normalized
   identifier; conversion to `String` consumes it. `BusinessId` additionally validates
   the country/scheme pair. Results support serialization, not general deserialization.
@@ -42,6 +43,14 @@ The minimum Rust version is 1.98.1. Increases require a documented minor release
 never a patch release. Network lookups require Tokio with I/O and time enabled.
 CI covers Linux; no broader platform verification is claimed. See
 [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/semver.html).
+
+## Migrating from 3.x
+
+Version 4.0 replaces the public `LookupError` enum and removes `RegistryError`.
+Every public operation returns the common `LookupError` struct, with stable
+`ErrorId`, English title/description, an availability flag and structured details.
+See the [complete error catalog, raw diagnostics and migration](errors.md).
+Do not match removed enum variants or parse human-readable error messages.
 
 ## Migrating from 2.x
 
@@ -63,8 +72,8 @@ top level. Rename Rust `details` to `registry_details` and JSON `details` to
 registry-specific fields; `provider` agrees with top-level `source`. RO retains
 its `RomanianAnaf` variant and returns null for both new common fields.
 
-The country argument accepts BG/RO case-insensitively after trimming surrounding
-whitespace. Unsupported countries return `UnsupportedIdentifierScheme` locally.
+The country argument accepts entries in `Client::SUPPORTED_COMPANY_COUNTRIES`
+case-insensitively after trimming surrounding whitespace. Unsupported countries return `UnsupportedIdentifierScheme` locally.
 For a supported country, disabled adapters return `OperationDisabled` before
 identifier validation; malformed codes return `InvalidInput` when enabled.
 VAT-prefixed IDs remain invalid for company lookup.
@@ -150,8 +159,8 @@ should tolerate unknown fields and values. Missing information stays null rather
 than becoming an invented fact or an assertion of absence.
 
 VAT and company results are separate contracts. `valid: false` is a matched
-negative VIES observation. `NotFound` requires definitive misses from both
-Bulgarian registers. `RegistryNotFound { provider: RomanianAnaf }` is an
+negative VIES observation. `not_found` with reason `both_bulgarian_registers_missed` requires definitive misses from both
+Bulgarian registers. `not_found` with provider `RomanianAnaf` is an
 ANAF-specific miss. Operational failures never become negative observations.
 
 For native Bulgarian results, `taxId` is a business code, `companyEnglishName` is

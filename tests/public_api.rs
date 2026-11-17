@@ -30,18 +30,32 @@ async fn consumer_gets_typed_errors_instead_of_false() {
     let client = Client::new().unwrap();
     assert!(matches!(
         client.is_vat_valid("not-a-vat").await,
-        Err(LookupError::InvalidInput)
+        Err(LookupError {
+            id: eu_company_lookup::ErrorId::InvalidInput,
+            ..
+        })
     ));
     assert!(matches!(
         client.lookup_vat("GB123456789").await,
-        Err(LookupError::UnsupportedJurisdiction)
+        Err(LookupError {
+            id: eu_company_lookup::ErrorId::UnsupportedIdentifier,
+            ..
+        })
     ));
     assert!(matches!(
         client.lookup_company("BG123456789", "BG").await,
-        Err(LookupError::InvalidInput)
+        Err(LookupError {
+            id: eu_company_lookup::ErrorId::InvalidInput,
+            ..
+        })
     ));
-    assert!(LookupError::ServiceUnavailable { retry_after: None }.is_service_unavailable());
-    assert!(!LookupError::NotFound.is_service_unavailable());
+    assert!(
+        !client
+            .lookup_vat("bad")
+            .await
+            .unwrap_err()
+            .is_service_unavailable()
+    );
 }
 
 #[test]

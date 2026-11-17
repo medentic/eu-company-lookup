@@ -1,5 +1,6 @@
 //! Explicitly selected local-only observations; never part of the ordinary tests.
 use super::*;
+use crate::LookupError;
 use chrono::{NaiveDate, Utc};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -72,7 +73,10 @@ async fn live_anaf_batch() {
                 row["response"] = serde_json::to_value(result).unwrap();
                 false
             }
-            Err(crate::LookupError::RegistryNotFound { .. }) => {
+            Err(LookupError {
+                kind: crate::model::LookupFailure::RegistryNotFound { .. },
+                ..
+            }) => {
                 row["notFound"] = json!(true);
                 false
             }

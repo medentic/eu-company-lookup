@@ -42,7 +42,9 @@ def check(root, files, packaged=False):
             errors.append(f'{name}: missing Markdown file')
             continue
         text = path.read_text(encoding='utf-8')
-        if re.search(r'/(?:Users|home)/[^\s]+', text):
+        # Provider documentation URLs can legitimately contain /home/ or /Users/.
+        local_text = re.sub(r'https?://[^\s<>()]+', '', text)
+        if re.search(r'/(?:Users|home)/[^\s]+', local_text):
             errors.append(f'{name}: contains a machine-specific home path')
         for raw in LINK.findall(prose(text)):
             target = urlsplit(raw.strip('<>'))

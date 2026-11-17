@@ -1,7 +1,7 @@
 use super::{address, html};
 use crate::{
     BgBusinessId, BgCompanyLookupResult, Provider, RegistryCapital, RegistryDetails,
-    RegistryDocument, RegistryError, RegistryMoney, RegistryPerson,
+    RegistryDocument, RegistryFailure, RegistryMoney, RegistryPerson,
 };
 use crate::{CommercialRegisterDetails, CompanyStatus, RegistryDocumentType, RegistryRole};
 use chrono::NaiveDateTime;
@@ -51,7 +51,7 @@ fn field<'a>(
     deed: &'a SubDeed,
     ident: &str,
     code: &str,
-) -> Result<Option<&'a Field>, RegistryError> {
+) -> Result<Option<&'a Field>, RegistryFailure> {
     let mut fields = deed
         .groups
         .iter()
@@ -59,16 +59,16 @@ fn field<'a>(
         .filter(|f| f.field_ident == ident);
     let first = fields.next();
     if fields.next().is_some() {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let Some(f) = first else { return Ok(None) };
     if f.name_code != code {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     match f.field_operation {
         2 => Ok(None),
         1 | 3 => Ok(Some(f)),
-        _ => Err(RegistryError::UnexpectedResponse),
+        _ => Err(RegistryFailure::UnexpectedResponse),
     }
 }
 fn text(f: Option<&Field>) -> Option<String> {
@@ -234,13 +234,14 @@ fn documents(f: Option<&Field>) -> Option<Vec<RegistryDocument>> {
 pub(super) fn decode(
     body: &[u8],
     id: &BgBusinessId,
-) -> Result<BgCompanyLookupResult, RegistryError> {
-    let deed: Deed = serde_json::from_slice(body).map_err(|_| RegistryError::UnexpectedResponse)?;
+) -> Result<BgCompanyLookupResult, RegistryFailure> {
+    let deed: Deed =
+        serde_json::from_slice(body).map_err(|_| RegistryFailure::UnexpectedResponse)?;
     if deed.uic != id.as_str() {
-        return Err(RegistryError::MismatchedResponse);
+        return Err(RegistryFailure::MismatchedResponse);
     }
     if deed.full_name.trim().is_empty() {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let main: Vec<_> = deed
         .sections
@@ -250,7 +251,7 @@ pub(super) fn decode(
         .filter(|s| s.sub_uic_type == 1)
         .collect();
     if main.len() != 1 {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let main = main[0];
     let get = |ident, code| field(main, ident, code);
@@ -258,12 +259,12 @@ pub(super) fn decode(
     if let Some(value) = text(uic) {
         let mut lines = value.lines();
         if lines.next() != Some(id.as_str()) {
-            return Err(RegistryError::MismatchedResponse);
+            return Err(RegistryFailure::MismatchedResponse);
         }
         // Migrated records append the original court-file reference to field 1.
         // It is metadata, not part of the UIC; do not accept arbitrary extra text.
         if lines.any(|line| !line.starts_with("Фирмено дело: ")) {
-            return Err(RegistryError::UnexpectedResponse);
+            return Err(RegistryFailure::UnexpectedResponse);
         }
     }
     let deleted_field = text(get("00270", "CR_F_27_L")?);
@@ -294,7 +295,7 @@ pub(super) fn decode(
         deed.full_name.clone()
     };
     if company_name.is_empty() {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let identifier_date = date(uic);
     let doc_deeds: Vec<_> = deed
@@ -313,7 +314,7 @@ pub(super) fn decode(
         }
     }
     if constitutive.len() > 1 {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let docs = documents(constitutive.first().copied());
     Ok(BgCompanyLookupResult {

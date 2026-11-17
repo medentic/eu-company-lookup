@@ -1,5 +1,23 @@
 # Changelog
 
+## 4.0.0
+
+- Replace public error enums with one serializable `LookupError` object: stable
+  IDs, English titles and administrator descriptions, availability flag and
+  structured details. See the [error contract and migration](docs/reference/errors.md).
+- Add opt-in raw HTTP diagnostics with request/response header arrays, lossless
+  bodies, cURL reproduction and explicit incomplete-capture reasons.
+- Add keyless national company lookup for Ireland (CRO open data) and Norway
+  (Enhetsregisteret). Native identifiers, typed provider details and explicit
+  capability discovery remain separate from VIES VAT verification.
+- Share bounded registry transport and CKAN wire handling while preserving
+  provider-specific identity checks, absence rules, address roles and VAT scope.
+- Extend conservative address parsing and retain original provider address text.
+- Document VIES national-service availability and capacity failures separately
+  from matched negative VAT responses.
+- Add bounded, resumable multi-country verification tooling; collected identifiers
+  and source observations remain excluded from the public source and package.
+
 ## 3.0.0
 
 - Automatically enrich nine-digit BG company lookups through a required VIES

@@ -137,7 +137,10 @@ async fn boolean_convenience_distinguishes_false_from_failure() {
     let server = Server::new(http(500, &fault("MS_UNAVAILABLE"), ""), Duration::ZERO).await;
     assert!(matches!(
         server.client().is_vat_valid("BG123456789").await,
-        Err(LookupError::MemberStateUnavailable { .. })
+        Err(LookupError {
+            kind: crate::model::LookupFailure::MemberStateUnavailable { .. },
+            ..
+        })
     ));
 }
 
@@ -147,11 +150,17 @@ async fn local_failures_send_no_request() {
     let client = server.client();
     assert!(matches!(
         client.lookup_vat("bad").await,
-        Err(LookupError::InvalidInput)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::InvalidInput,
+            ..
+        })
     ));
     assert!(matches!(
         client.lookup_vat("US123456789").await,
-        Err(LookupError::UnsupportedJurisdiction)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::UnsupportedJurisdiction,
+            ..
+        })
     ));
     assert_eq!(client.capabilities().len(), 31);
     assert_eq!(server.calls.load(Ordering::SeqCst), 0);
@@ -170,7 +179,7 @@ async fn http_errors_and_redirects_cannot_turn_into_valid_results() {
         )
         .await;
         assert!(matches!(server.client().lookup_vat("BG123456789").await,
-            Err(LookupError::Http { status: s, retry_after: Some(RetryAfter::Seconds(120)) }) if s == status));
+            Err(LookupError { kind: crate::model::LookupFailure::Http { status: s, retry_after: Some(RetryAfter::Seconds(120)) }, .. }) if s == status));
         assert_eq!(server.calls.load(Ordering::SeqCst), 1);
     }
 }
@@ -187,21 +196,30 @@ async fn http_server_and_gateway_failures_report_verification_unavailable() {
             if matches!(status, 408 | 504) {
                 assert!(matches!(
                     error,
-                    LookupError::ProviderTimeout {
-                        retry_after: Some(RetryAfter::Seconds(120))
+                    LookupError {
+                        kind: crate::model::LookupFailure::ProviderTimeout {
+                            retry_after: Some(RetryAfter::Seconds(120))
+                        },
+                        ..
                     }
                 ));
             } else {
                 assert!(matches!(
                     error,
-                    LookupError::ServiceUnavailable {
-                        retry_after: Some(RetryAfter::Seconds(120))
+                    LookupError {
+                        kind: crate::model::LookupFailure::ServiceUnavailable {
+                            retry_after: Some(RetryAfter::Seconds(120))
+                        },
+                        ..
                     }
                 ));
             }
             assert!(matches!(
                 client.lookup_vat("BG123456789").await,
-                Err(LookupError::CoolingDown { .. })
+                Err(LookupError {
+                    kind: crate::model::LookupFailure::CoolingDown { .. },
+                    ..
+                })
             ));
             assert_eq!(server.calls.load(Ordering::SeqCst), 1);
         }
@@ -242,9 +260,12 @@ async fn soap_faults_are_decoded_on_success_and_failure_http_statuses() {
         .await;
         assert!(matches!(
             server.client().lookup_vat("BG123456789").await,
-            Err(LookupError::RateLimited {
-                scope: LimitScope::Global,
-                retry_after: Some(RetryAfter::Seconds(75))
+            Err(LookupError {
+                kind: crate::model::LookupFailure::RateLimited {
+                    scope: LimitScope::Global,
+                    retry_after: Some(RetryAfter::Seconds(75))
+                },
+                ..
             })
         ));
     }
@@ -260,13 +281,19 @@ async fn rate_limit_establishes_shared_global_cooldown_without_retry() {
     let client = server.client();
     assert!(matches!(
         client.lookup_vat("BG123456789").await,
-        Err(LookupError::RateLimited { .. })
+        Err(LookupError {
+            kind: crate::model::LookupFailure::RateLimited { .. },
+            ..
+        })
     ));
     assert!(matches!(
         client.clone().lookup_vat("EL123456789").await,
-        Err(LookupError::CoolingDown {
-            scope: LimitScope::Global,
-            retry_after_seconds: 119..=120
+        Err(LookupError {
+            kind: crate::model::LookupFailure::CoolingDown {
+                scope: LimitScope::Global,
+                retry_after_seconds: 119..=120
+            },
+            ..
         })
     ));
     assert_eq!(server.calls.load(Ordering::SeqCst), 1);
@@ -282,21 +309,30 @@ async fn country_cooldown_does_not_block_other_countries() {
     let client = server.client();
     assert!(matches!(
         client.lookup_vat("BG123456789").await,
-        Err(LookupError::RateLimited {
-            scope: LimitScope::MemberState,
+        Err(LookupError {
+            kind: crate::model::LookupFailure::RateLimited {
+                scope: LimitScope::MemberState,
+                ..
+            },
             ..
         })
     ));
     assert!(matches!(
         client.clone().lookup_vat("BG123456789").await,
-        Err(LookupError::CoolingDown {
-            scope: LimitScope::MemberState,
+        Err(LookupError {
+            kind: crate::model::LookupFailure::CoolingDown {
+                scope: LimitScope::MemberState,
+                ..
+            },
             ..
         })
     ));
     assert!(matches!(
         client.lookup_vat("EL123456789").await,
-        Err(LookupError::RateLimited { .. })
+        Err(LookupError {
+            kind: crate::model::LookupFailure::RateLimited { .. },
+            ..
+        })
     ));
     assert_eq!(server.calls.load(Ordering::SeqCst), 2);
 }
@@ -318,12 +354,16 @@ async fn limits_apply_to_known_length_and_streamed_bodies() {
             server.url.clone(),
             ClientConfig {
                 max_response_bytes: 1024,
+                raw_debug: false,
                 ..config()
             },
         );
         assert!(matches!(
             client.lookup_vat("BG123456789").await,
-            Err(LookupError::ResponseTooLarge)
+            Err(LookupError {
+                kind: crate::model::LookupFailure::ResponseTooLarge,
+                ..
+            })
         ));
     }
     let server = Server::new(http(200, VALID, ""), Duration::ZERO).await;
@@ -331,6 +371,7 @@ async fn limits_apply_to_known_length_and_streamed_bodies() {
         server.url.clone(),
         ClientConfig {
             max_response_bytes: VALID.len(),
+            raw_debug: false,
             ..config()
         },
     );
@@ -345,7 +386,10 @@ async fn malformed_utf8_xml_and_truncated_body_are_failures() {
         let server = Server::new(response, Duration::ZERO).await;
         assert!(matches!(
             server.client().lookup_vat("BG123456789").await,
-            Err(LookupError::MalformedResponse)
+            Err(LookupError {
+                kind: crate::model::LookupFailure::MalformedResponse,
+                ..
+            })
         ));
     }
     let server = Server::new(
@@ -355,7 +399,10 @@ async fn malformed_utf8_xml_and_truncated_body_are_failures() {
     .await;
     assert!(matches!(
         server.client().lookup_vat("BG123456789").await,
-        Err(LookupError::Transport)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Transport,
+            ..
+        })
     ));
 }
 
@@ -372,7 +419,10 @@ async fn deadline_includes_network_wait() {
     );
     assert!(matches!(
         client.lookup_vat("BG123456789").await,
-        Err(LookupError::DeadlineExceeded)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::DeadlineExceeded,
+            ..
+        })
     ));
     assert_eq!(server.calls.load(Ordering::SeqCst), 1);
 }
@@ -408,7 +458,10 @@ async fn unavailable_local_start_slot_returns_busy_without_claiming_an_outage() 
         let start = Instant::now();
         assert!(matches!(
             client.clone().lookup_vat(next).await,
-            Err(LookupError::Busy)
+            Err(LookupError {
+                kind: crate::model::LookupFailure::Busy,
+                ..
+            })
         ));
         assert!(start.elapsed() < Duration::from_secs(2));
         assert_eq!(server.calls.load(Ordering::SeqCst), 1);
@@ -424,14 +477,20 @@ async fn clones_share_capacity_and_cancellation_releases_slots() {
     server.wait_calls(1).await;
     assert!(matches!(
         client.lookup_vat("BG987654321").await,
-        Err(LookupError::Busy)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Busy,
+            ..
+        })
     ));
     let clone = client.clone();
     let second = tokio::spawn(async move { clone.lookup_vat("EL123456789").await });
     server.wait_calls(2).await;
     assert!(matches!(
         client.lookup_vat("RO12").await,
-        Err(LookupError::Busy)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Busy,
+            ..
+        })
     ));
     first.abort();
     second.abort();
@@ -472,12 +531,21 @@ async fn unavailable_faults_preserve_retry_after_and_apply_the_correct_scope() {
         let error = client.lookup_vat("BG123456789").await.unwrap_err();
         assert!(matches!(
             error,
-            LookupError::ServiceUnavailable {
-                retry_after: Some(RetryAfter::Seconds(180))
-            } | LookupError::MemberStateUnavailable {
-                retry_after: Some(RetryAfter::Seconds(180))
-            } | LookupError::ProviderTimeout {
-                retry_after: Some(RetryAfter::Seconds(180))
+            LookupError {
+                kind: crate::model::LookupFailure::ServiceUnavailable {
+                    retry_after: Some(RetryAfter::Seconds(180))
+                },
+                ..
+            } | LookupError {
+                kind: crate::model::LookupFailure::MemberStateUnavailable {
+                    retry_after: Some(RetryAfter::Seconds(180))
+                },
+                ..
+            } | LookupError {
+                kind: crate::model::LookupFailure::ProviderTimeout {
+                    retry_after: Some(RetryAfter::Seconds(180))
+                },
+                ..
             }
         ));
         let scope = if code == "SERVICE_UNAVAILABLE" {
@@ -486,7 +554,7 @@ async fn unavailable_faults_preserve_retry_after_and_apply_the_correct_scope() {
             LimitScope::MemberState
         };
         assert!(matches!(client.lookup_vat("BG123456789").await,
-            Err(LookupError::CoolingDown { scope: s, retry_after_seconds: 179..=180 }) if s == scope));
+            Err(LookupError { kind: crate::model::LookupFailure::CoolingDown { scope: s, retry_after_seconds: 179..=180 }, .. }) if s == scope));
         assert_eq!(server.calls.load(Ordering::SeqCst), 1);
     }
 }
@@ -506,14 +574,20 @@ async fn an_inflight_rate_limit_stops_a_call_waiting_for_global_spacing() {
     server.wait_calls(1).await;
     assert!(matches!(
         client.lookup_vat("EL123456789").await,
-        Err(LookupError::CoolingDown {
-            scope: LimitScope::Global,
+        Err(LookupError {
+            kind: crate::model::LookupFailure::CoolingDown {
+                scope: LimitScope::Global,
+                ..
+            },
             ..
         })
     ));
     assert!(matches!(
         first.await.unwrap(),
-        Err(LookupError::RateLimited { .. })
+        Err(LookupError {
+            kind: crate::model::LookupFailure::RateLimited { .. },
+            ..
+        })
     ));
     assert_eq!(server.calls.load(Ordering::SeqCst), 1);
 }
@@ -542,7 +616,10 @@ async fn stalled_body_is_bounded_by_the_total_deadline() {
     );
     assert!(matches!(
         client.lookup_vat("BG123456789").await,
-        Err(LookupError::DeadlineExceeded)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::DeadlineExceeded,
+            ..
+        })
     ));
     server.abort();
     let _ = server.await;
@@ -555,7 +632,13 @@ async fn closed_connection_is_a_sanitized_transport_error() {
     let server = Server::new(Vec::new(), Duration::ZERO).await;
     let client = server.client();
     let error = client.lookup_vat("BG123456789").await.unwrap_err();
-    assert!(matches!(error, LookupError::Transport));
+    assert!(matches!(
+        error,
+        LookupError {
+            kind: crate::model::LookupFailure::Transport,
+            ..
+        }
+    ));
     assert!(!format!("{error:?} {error}").contains("123456789"));
     assert_eq!(server.calls.load(Ordering::SeqCst), 1);
 }
@@ -589,14 +672,20 @@ async fn extreme_retry_after_does_not_overflow_cooldown_arithmetic() {
     let client = server.client();
     assert!(matches!(
         client.lookup_vat("BG123456789").await,
-        Err(LookupError::RateLimited {
-            retry_after: Some(RetryAfter::Seconds(u64::MAX)),
+        Err(LookupError {
+            kind: crate::model::LookupFailure::RateLimited {
+                retry_after: Some(RetryAfter::Seconds(u64::MAX)),
+                ..
+            },
             ..
         })
     ));
     assert!(matches!(
         client.lookup_vat("BG123456789").await,
-        Err(LookupError::CoolingDown { .. })
+        Err(LookupError {
+            kind: crate::model::LookupFailure::CoolingDown { .. },
+            ..
+        })
     ));
 }
 
@@ -617,6 +706,7 @@ fn invalid_configuration_fails_before_any_lookup() {
         },
         ClientConfig {
             max_response_bytes: 0,
+            raw_debug: false,
             ..Default::default()
         },
         ClientConfig {
@@ -630,7 +720,10 @@ fn invalid_configuration_fails_before_any_lookup() {
     ] {
         assert!(matches!(
             Client::with_config(config),
-            Err(LookupError::InvalidConfiguration(_))
+            Err(LookupError {
+                kind: crate::model::LookupFailure::InvalidConfiguration(_),
+                ..
+            })
         ));
     }
 }
@@ -678,9 +771,174 @@ async fn invalid_utf8_error_page_preserves_http_failure_classification() {
     let server = Server::new(reply, Duration::ZERO).await;
     assert!(matches!(
         server.client().lookup_vat("BG123456789").await,
-        Err(LookupError::Http {
-            status: 400,
-            retry_after: Some(RetryAfter::Seconds(120))
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Http {
+                status: 400,
+                retry_after: Some(RetryAfter::Seconds(120))
+            },
+            ..
         })
     ));
+}
+
+#[tokio::test]
+async fn raw_fault_diagnostics_preserve_headers_bodies_and_country() {
+    let body = fault("MS_UNAVAILABLE");
+    let server=Server::new(http(500,&body,"Content-Type: text/xml; charset=utf-8\r\nSet-Cookie: first=secret\r\nSet-Cookie: second=secret\r\n"),Duration::ZERO).await;
+    let mut cfg = config();
+    cfg.raw_debug = true;
+    let error = Client::for_test(server.url.clone(), cfg)
+        .lookup_vat("EL123456789")
+        .await
+        .unwrap_err();
+    assert_eq!(error.id, crate::ErrorId::ServiceUnavailable);
+    assert_eq!(error.details.country.as_deref(), Some("GR"));
+    assert_eq!(error.details.upstream_code, Some("MS_UNAVAILABLE"));
+    assert!(error.is_service_unavailable());
+    let json = serde_json::to_value(&error).unwrap();
+    assert_eq!(json["id"], "service_unavailable");
+    assert!(json.get("kind").is_none());
+    let exchanges = &error.details.debug.as_ref().unwrap().exchanges;
+    assert_eq!(exchanges.len(), 1);
+    let request = &exchanges[0].request;
+    assert!(
+        request
+            .body
+            .as_ref()
+            .unwrap()
+            .data
+            .contains("<vatNumber>123456789</vatNumber>")
+    );
+    let response = exchanges[0].response.as_ref().unwrap();
+    assert_eq!(response.body.data, body);
+    assert!(response.complete);
+    assert_eq!(
+        response
+            .headers
+            .iter()
+            .filter(|h| h.name == "set-cookie")
+            .count(),
+        2
+    );
+    let sent = server.requests.lock().unwrap()[0].to_ascii_lowercase();
+    for header in &request.headers {
+        assert!(sent.contains(&format!(
+            "{}: {}",
+            header.name,
+            header.value.data.to_ascii_lowercase()
+        )));
+    }
+    assert!(request.curl.as_ref().unwrap().contains("--data-binary @-"));
+    assert!(!format!("{error:?} {error}").contains("123456789"));
+    assert!(!format!("{error:?} {error}").contains("secret"));
+}
+
+#[tokio::test]
+async fn debug_disabled_keeps_metadata_without_raw_values() {
+    let server = Server::new(
+        http(500, &fault("MS_UNAVAILABLE"), "Content-Type: text/xml\r\n"),
+        Duration::ZERO,
+    )
+    .await;
+    let error = server.client().lookup_vat("EL123456789").await.unwrap_err();
+    assert_eq!(error.details.upstream_http_status, Some(500));
+    assert_eq!(
+        error.details.response_content_type.as_deref(),
+        Some("text/xml")
+    );
+    assert!(error.details.debug.is_none());
+    assert!(!serde_json::to_string(&error).unwrap().contains("123456789"));
+}
+
+#[tokio::test]
+async fn raw_authoritative_error_reads_body_and_keeps_retry_instruction() {
+    let server = Server::new(
+        http(
+            429,
+            "too many; raw details",
+            "Content-Type: text/plain\r\nRetry-After: 17\r\n",
+        ),
+        Duration::ZERO,
+    )
+    .await;
+    let mut cfg = config();
+    cfg.raw_debug = true;
+    let error = Client::for_test(server.url.clone(), cfg)
+        .lookup_vat("BG123456789")
+        .await
+        .unwrap_err();
+    assert_eq!(error.id, crate::ErrorId::RateLimited);
+    assert!(!error.is_service_unavailable());
+    assert_eq!(error.details.retry_after, Some(RetryAfter::Seconds(17)));
+    assert_eq!(
+        error.details.debug.unwrap().exchanges[0]
+            .response
+            .as_ref()
+            .unwrap()
+            .body
+            .data,
+        "too many; raw details"
+    );
+}
+
+#[tokio::test]
+async fn raw_oversize_and_binary_responses_are_lossless_and_explicit() {
+    let server = Server::new(
+        http(200, "abcdefghijklmnop", "Content-Type: text/xml\r\n"),
+        Duration::ZERO,
+    )
+    .await;
+    let mut cfg = config();
+    cfg.raw_debug = true;
+    cfg.max_response_bytes = 8;
+    let error = Client::for_test(server.url.clone(), cfg)
+        .lookup_vat("BG123456789")
+        .await
+        .unwrap_err();
+    assert_eq!(error.id, crate::ErrorId::ResponseTooLarge);
+    let debug = error.details.debug.unwrap();
+    let response = debug.exchanges[0].response.as_ref().unwrap();
+    assert!(!response.complete);
+    assert_eq!(response.incomplete_reason, Some("size_limit"));
+    assert!("abcdefghijklmnop".starts_with(&response.body.data));
+    let mut bytes =
+        b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nContent-Type: application/octet-stream\r\n\r\n"
+            .to_vec();
+    bytes.extend_from_slice(&[0xff, 0]);
+    let server = Server::new(bytes, Duration::ZERO).await;
+    let mut cfg = config();
+    cfg.raw_debug = true;
+    let error = Client::for_test(server.url.clone(), cfg)
+        .lookup_vat("BG123456789")
+        .await
+        .unwrap_err();
+    assert_eq!(error.id, crate::ErrorId::UnexpectedResponse);
+    let debug = error.details.debug.unwrap();
+    let response = debug.exchanges[0].response.as_ref().unwrap();
+    assert_eq!(response.body.encoding, "base64");
+    assert_eq!(response.body.data, "/wA=");
+    assert!(response.complete);
+}
+
+#[tokio::test]
+async fn recognized_protocol_codes_remain_distinct_from_http_failures() {
+    for code in [
+        "GLOBAL_MAX_CONCURRENT_REQ",
+        "MS_MAX_CONCURRENT_REQ",
+        "SERVICE_UNAVAILABLE",
+        "TIMEOUT",
+    ] {
+        let server = Server::new(
+            http(500, &fault(code), "Retry-After: 13\r\n"),
+            Duration::ZERO,
+        )
+        .await;
+        let error = server.client().lookup_vat("EL123456789").await.unwrap_err();
+        assert_eq!(error.details.upstream_code, Some(code));
+        assert_eq!(error.details.retry_after, Some(RetryAfter::Seconds(13)));
+    }
+    let server = Server::new(http(504, "", ""), Duration::ZERO).await;
+    let error = server.client().lookup_vat("EL123456789").await.unwrap_err();
+    assert_eq!(error.id, crate::ErrorId::ServiceUnavailable);
+    assert!(error.details.upstream_code.is_none());
 }

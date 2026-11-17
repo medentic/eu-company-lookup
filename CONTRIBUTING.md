@@ -1,7 +1,8 @@
 # Contributing
 
-This single Rust crate supports VIES VAT verification and Bulgarian business
-lookup and Romanian ANAF taxpayer lookup. Start with [README.md](README.md) for supported behavior and
+This single Rust crate supports VIES VAT verification and national company or
+taxpayer lookup through private provider adapters. Start with
+[README.md](README.md#country-support) for current coverage and
 [API stability](docs/reference/api-stability.md) before changing consumer contracts.
 
 For a new developer or AI agent, the [handoff guide](docs/maintainers/agent-handoff.md)
@@ -16,7 +17,7 @@ links module ownership and provider field mappings.
 | `src/client.rs` | Provider-independent facade and named adapter configuration. |
 | `src/model/` | Shared identities/results, capability types and typed failures. |
 | `src/capabilities.rs` | Provider-independent jurisdiction catalog. |
-| `src/vies/`, `src/bg/`, `src/ro/` | Private provider clients, decoders and unit tests. |
+| `src/vies/`, `src/bg/`, `src/ro/`, `src/no/`, `src/ie/` | Private provider clients, decoders and unit tests. |
 | `src/locations/` | Public address utilities; private extraction and normalization rules. |
 | `tests/` | External-consumer API, identifier and configuration contracts. |
 | `examples/` | Runnable consumers; executing them contacts live providers. |

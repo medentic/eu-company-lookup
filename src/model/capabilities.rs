@@ -12,6 +12,12 @@ pub enum Provider {
     Bulstat,
     /// Romanian National Agency for Fiscal Administration.
     RomanianAnaf,
+
+    /// Irish anonymous public registry.
+    IrishCro,
+
+    /// Norwegian anonymous public registry.
+    NorwegianBrreg,
 }
 
 /// An implemented operation, not a roadmap promise.
@@ -36,6 +42,16 @@ pub enum Operation {
     LookupRoCompany,
     /// Romanian fiscal lookup with an explicit requested date.
     LookupRoCompanyAt,
+
+    /// Offline Irish identifier syntax.
+    ValidateIeBusinessIdSyntax,
+    /// Irish national lookup.
+    LookupIeCompany,
+
+    /// Offline Norwegian identifier syntax.
+    ValidateNoBusinessIdSyntax,
+    /// Norwegian national lookup.
+    LookupNoCompany,
 }
 
 /// Whether an operation makes provider requests.
@@ -77,7 +93,9 @@ impl OperationCapabilities {
         let execution = match operation {
             Operation::ValidateVatSyntax
             | Operation::ValidateBgBusinessIdSyntax
-            | Operation::ValidateRoBusinessIdSyntax => Execution::Local,
+            | Operation::ValidateRoBusinessIdSyntax
+            | Operation::ValidateNoBusinessIdSyntax
+            | Operation::ValidateIeBusinessIdSyntax => Execution::Local,
             _ => Execution::Remote,
         };
         Self {
@@ -103,6 +121,12 @@ pub enum IdentifierScheme {
     BgBusinessId,
     /// Romanian CUI without the RO VAT prefix.
     RoBusinessId,
+
+    /// Irish national identifier.
+    IeBusinessId,
+
+    /// Norwegian national identifier.
+    NoBusinessId,
 }
 
 /// Checksum coverage, independent of syntax and registration.

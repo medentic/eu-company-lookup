@@ -10,6 +10,7 @@ and [testing/evidence](../docs/development/testing.md) for review semantics.
 | `check_distribution.py` | Inspect Cargo's current package file list, allowed contents and consumer links. |
 | `check_public_source.py` | Detect collected records/queues/provenance in source and Git history. |
 | `vies_batch.py`, `vies_reporting.py` | VIES collection orchestration and reports. |
+| `vies_recovery.py` | Bounded multi-country recovery, availability observations, deferral and resumable single-ID batches; offline report by default. |
 | `registry_batch.py` | Commercial Register collection/replay workflow. |
 | `bulstat_batch.py` | BULSTAT-specific evidence workflow. |
 | `ro_batch.py` | ANAF collection/replay workflow. |

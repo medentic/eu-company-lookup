@@ -41,6 +41,8 @@ pub struct ClientConfig {
     pub failure_cooldown: Duration,
     /// Maximum response body bytes. Default: 65,536; maximum allowed: 1 MiB.
     pub max_response_bytes: usize,
+    /// Capture raw HTTP requests/responses in errors. Default: false; may expose sensitive data.
+    pub raw_debug: bool,
 }
 
 impl Default for ClientConfig {
@@ -53,6 +55,7 @@ impl Default for ClientConfig {
             country_start_interval: Duration::from_secs(5),
             failure_cooldown: Duration::from_secs(60),
             max_response_bytes: 65_536,
+            raw_debug: false,
         }
     }
 }
@@ -71,10 +74,12 @@ impl Admission {
     fn check(&self, scope: LimitScope) -> Result<(), LookupError> {
         if let Some(end) = self.cooldown.filter(|end| *end > Instant::now()) {
             let left = end.saturating_duration_since(Instant::now());
-            return Err(LookupError::CoolingDown {
-                scope,
-                retry_after_seconds: left.as_secs() + u64::from(left.subsec_nanos() > 0),
-            });
+            return Err(LookupError::from(
+                crate::model::LookupFailure::CoolingDown {
+                    scope,
+                    retry_after_seconds: left.as_secs() + u64::from(left.subsec_nanos() > 0),
+                },
+            ));
         }
         Ok(())
     }
@@ -116,15 +121,19 @@ impl ViesClient {
             || config.connect_timeout.is_zero()
             || config.connect_timeout > config.timeout
         {
-            return Err(LookupError::InvalidConfiguration(
-                "timeouts must be positive, connect <= total <= 300 seconds",
+            return Err(LookupError::from(
+                crate::model::LookupFailure::InvalidConfiguration(
+                    "timeouts must be positive, connect <= total <= 300 seconds",
+                ),
             ));
         }
         if !(1..=64).contains(&config.max_concurrent_requests)
             || !(1..=1_048_576).contains(&config.max_response_bytes)
         {
-            return Err(LookupError::InvalidConfiguration(
-                "concurrency must be 1..=64 and response limit 1..=1048576",
+            return Err(LookupError::from(
+                crate::model::LookupFailure::InvalidConfiguration(
+                    "concurrency must be 1..=64 and response limit 1..=1048576",
+                ),
             ));
         }
         if config.failure_cooldown.is_zero()
@@ -136,12 +145,14 @@ impl ViesClient {
             .iter()
             .any(|d| *d > Duration::from_secs(86_400))
         {
-            return Err(LookupError::InvalidConfiguration(
-                "intervals must be <= 24 hours and cooldown must be positive",
+            return Err(LookupError::from(
+                crate::model::LookupFailure::InvalidConfiguration(
+                    "intervals must be <= 24 hours and cooldown must be positive",
+                ),
             ));
         }
         let http = transport::client(config.connect_timeout, Some(config.timeout))
-            .map_err(|_| LookupError::ClientInitialization)?;
+            .map_err(|_| LookupError::from(crate::model::LookupFailure::ClientInitialization))?;
         let state = Arc::new(State {
             capacity: Semaphore::new(config.max_concurrent_requests),
             global: Mutex::new(Admission::new()),
@@ -162,9 +173,31 @@ impl ViesClient {
     /// `valid: false` is returned only for a matching negative
     /// VIES response. Capacity, service failures and deadlines remain errors.
     pub async fn lookup_vat(&self, vat_id: &str) -> Result<VatLookupResult, LookupError> {
-        let vat = validate_vat_syntax(vat_id)?;
-        self.lookup_with_deadline(&vat, Instant::now() + self.config.timeout)
-            .await
+        crate::http_capture::scope(
+            self.config.raw_debug,
+            self.config.max_response_bytes,
+            self.config.timeout,
+            Provider::Vies,
+            async {
+                let vat = validate_vat_syntax(vat_id)?;
+                self.lookup_with_deadline(&vat, Instant::now() + self.config.timeout)
+                    .await
+            },
+        )
+        .await
+        .map_err(|mut error| {
+            if let Ok(vat) = validate_vat_syntax(vat_id) {
+                error.details.country = Some(
+                    match vat.prefix() {
+                        "EL" => "GR",
+                        "XI" => "GB",
+                        prefix => prefix,
+                    }
+                    .into(),
+                );
+            }
+            error
+        })
     }
 
     async fn lookup_with_deadline(
@@ -176,15 +209,15 @@ impl ViesClient {
             .state
             .capacity
             .try_acquire()
-            .map_err(|_| LookupError::Busy)?;
+            .map_err(|_| LookupError::from(crate::model::LookupFailure::Busy))?;
         let mut country = self.state.countries[vat.prefix()]
             .try_lock()
-            .map_err(|_| LookupError::Busy)?;
+            .map_err(|_| LookupError::from(crate::model::LookupFailure::Busy))?;
         country.check(LimitScope::MemberState)?;
         // Check the global cooldown before waiting, and again immediately before sending.
         self.state.global.lock().await.check(LimitScope::Global)?;
         if country.next_start >= deadline {
-            return Err(LookupError::Busy);
+            return Err(LookupError::from(crate::model::LookupFailure::Busy));
         }
         tokio::time::sleep_until(country.next_start).await;
         loop {
@@ -198,38 +231,81 @@ impl ViesClient {
             let start = global.next_start;
             drop(global);
             if start >= deadline {
-                return Err(LookupError::Busy);
+                return Err(LookupError::from(crate::model::LookupFailure::Busy));
             }
             // An in-flight response can establish a cooldown while we sleep.
             // Recheck both spacing and cooldown after waking.
             tokio::time::sleep_until(start).await;
         }
         if Instant::now() >= deadline {
-            return Err(LookupError::Busy);
+            return Err(LookupError::from(crate::model::LookupFailure::Busy));
         }
         country.next_start = Instant::now() + self.config.country_start_interval;
         let result = tokio::time::timeout_at(deadline, self.fetch_vat_result(vat))
             .await
-            .unwrap_or(Err(LookupError::DeadlineExceeded));
+            .unwrap_or(Err(LookupError::from(
+                crate::model::LookupFailure::DeadlineExceeded,
+            )));
         let scope = match &result {
-            Err(LookupError::RateLimited { scope, .. }) => Some(*scope),
+            Err(LookupError {
+                kind: crate::model::LookupFailure::RateLimited { scope, .. },
+                ..
+            }) => Some(*scope),
             Err(
-                LookupError::MemberStateUnavailable { .. } | LookupError::ProviderTimeout { .. },
+                LookupError {
+                    kind: crate::model::LookupFailure::MemberStateUnavailable { .. },
+                    ..
+                }
+                | LookupError {
+                    kind: crate::model::LookupFailure::ProviderTimeout { .. },
+                    ..
+                },
             ) => Some(LimitScope::MemberState),
-            Err(LookupError::ServiceUnavailable { .. } | LookupError::Http { status: 503, .. }) => {
-                Some(LimitScope::Global)
-            }
-            Err(LookupError::Transport | LookupError::DeadlineExceeded) => Some(LimitScope::Global),
+            Err(
+                LookupError {
+                    kind: crate::model::LookupFailure::ServiceUnavailable { .. },
+                    ..
+                }
+                | LookupError {
+                    kind: crate::model::LookupFailure::Http { status: 503, .. },
+                    ..
+                },
+            ) => Some(LimitScope::Global),
+            Err(
+                LookupError {
+                    kind: crate::model::LookupFailure::Transport,
+                    ..
+                }
+                | LookupError {
+                    kind: crate::model::LookupFailure::DeadlineExceeded,
+                    ..
+                },
+            ) => Some(LimitScope::Global),
             _ => None,
         };
         if let Some(scope) = scope {
             let retry = match &result {
                 Err(
-                    LookupError::RateLimited { retry_after, .. }
-                    | LookupError::Http { retry_after, .. }
-                    | LookupError::ServiceUnavailable { retry_after }
-                    | LookupError::MemberStateUnavailable { retry_after }
-                    | LookupError::ProviderTimeout { retry_after },
+                    LookupError {
+                        kind: crate::model::LookupFailure::RateLimited { retry_after, .. },
+                        ..
+                    }
+                    | LookupError {
+                        kind: crate::model::LookupFailure::Http { retry_after, .. },
+                        ..
+                    }
+                    | LookupError {
+                        kind: crate::model::LookupFailure::ServiceUnavailable { retry_after },
+                        ..
+                    }
+                    | LookupError {
+                        kind: crate::model::LookupFailure::MemberStateUnavailable { retry_after },
+                        ..
+                    }
+                    | LookupError {
+                        kind: crate::model::LookupFailure::ProviderTimeout { retry_after },
+                        ..
+                    },
                 ) => retry_after.as_ref(),
                 _ => None,
             };
@@ -258,64 +334,74 @@ impl ViesClient {
         let retry_after = response.retry_after.as_deref().and_then(parse_retry_after);
         // A 429 is already authoritative; do not spend time downloading its body.
         if status.as_u16() == 429 {
-            return Err(LookupError::RateLimited {
-                scope: LimitScope::Global,
-                retry_after,
-            });
+            return Err(LookupError::from(
+                crate::model::LookupFailure::RateLimited {
+                    scope: LimitScope::Global,
+                    retry_after,
+                },
+            ));
         }
         // Gateway failures are already availability failures, even with an HTML,
         // empty, oversized or stalled body. No negative VAT result is possible.
         if matches!(status.as_u16(), 408 | 504) {
-            return Err(LookupError::ProviderTimeout { retry_after });
+            return Err(LookupError::from(
+                crate::model::LookupFailure::ProviderTimeout { retry_after },
+            ));
         }
         if status.as_u16() == 502 {
-            return Err(LookupError::ServiceUnavailable { retry_after });
+            return Err(LookupError::from(
+                crate::model::LookupFailure::ServiceUnavailable { retry_after },
+            ));
         }
         // 500/503 may contain precise SOAP faults. If their body is incomplete
         // or oversized, the HTTP failure still establishes unavailability.
         let body_error = |error| {
             if status.is_server_error() {
-                LookupError::ServiceUnavailable {
+                LookupError::from(crate::model::LookupFailure::ServiceUnavailable {
                     retry_after: retry_after.clone(),
-                }
+                })
             } else {
                 error
             }
         };
         let decoded = match response.body {
             transport::Body::Text(xml) => soap::decode(&xml, vat),
-            transport::Body::Failed(transport::Failure::InvalidUtf8) => {
-                Err(LookupError::MalformedResponse)
-            }
+            transport::Body::Failed(transport::Failure::InvalidUtf8) => Err(LookupError::from(
+                crate::model::LookupFailure::MalformedResponse,
+            )),
             transport::Body::Failed(error) => return Err(body_error(transport_error(error))),
             transport::Body::Skipped => unreachable!("authoritative statuses handled above"),
         };
         let decoded = match decoded {
-            Err(LookupError::RateLimited { scope, .. }) => {
-                return Err(LookupError::RateLimited { scope, retry_after });
+            Err(mut error) => {
+                use crate::model::LookupFailure as F;
+                match &mut error.kind {
+                    F::RateLimited {
+                        retry_after: slot, ..
+                    }
+                    | F::ServiceUnavailable { retry_after: slot }
+                    | F::MemberStateUnavailable { retry_after: slot }
+                    | F::ProviderTimeout { retry_after: slot } => {
+                        *slot = retry_after.clone();
+                        error.details.retry_after = retry_after;
+                        return Err(error);
+                    }
+                    F::ProviderRejectedInput | F::UnknownSoapFault => return Err(error),
+                    _ => Err(error),
+                }
             }
-            Err(e @ (LookupError::ProviderRejectedInput | LookupError::UnknownSoapFault)) => {
-                return Err(e);
-            }
-            Err(LookupError::ServiceUnavailable { .. }) => {
-                return Err(LookupError::ServiceUnavailable { retry_after });
-            }
-            Err(LookupError::MemberStateUnavailable { .. }) => {
-                return Err(LookupError::MemberStateUnavailable { retry_after });
-            }
-            Err(LookupError::ProviderTimeout { .. }) => {
-                return Err(LookupError::ProviderTimeout { retry_after });
-            }
-            other => other,
+            success => success,
         };
         if !status.is_success() {
             if status.is_server_error() {
-                return Err(LookupError::ServiceUnavailable { retry_after });
+                return Err(LookupError::from(
+                    crate::model::LookupFailure::ServiceUnavailable { retry_after },
+                ));
             }
-            return Err(LookupError::Http {
+            return Err(LookupError::from(crate::model::LookupFailure::Http {
                 status: status.as_u16(),
                 retry_after,
-            });
+            }));
         }
         let decoded = decoded?;
         Ok(VatLookupResult {
@@ -332,10 +418,16 @@ impl ViesClient {
 
 fn transport_error(error: transport::Failure) -> LookupError {
     match error {
-        transport::Failure::Timeout => LookupError::DeadlineExceeded,
-        transport::Failure::Network => LookupError::Transport,
-        transport::Failure::TooLarge => LookupError::ResponseTooLarge,
-        transport::Failure::InvalidUtf8 => LookupError::MalformedResponse,
+        transport::Failure::Timeout => {
+            LookupError::from(crate::model::LookupFailure::DeadlineExceeded)
+        }
+        transport::Failure::Network => LookupError::from(crate::model::LookupFailure::Transport),
+        transport::Failure::TooLarge => {
+            LookupError::from(crate::model::LookupFailure::ResponseTooLarge)
+        }
+        transport::Failure::InvalidUtf8 => {
+            LookupError::from(crate::model::LookupFailure::MalformedResponse)
+        }
     }
 }
 pub(super) fn parse_retry_after(value: &str) -> Option<RetryAfter> {

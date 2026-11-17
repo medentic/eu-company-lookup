@@ -1,6 +1,7 @@
 //! One bounded HTTP exchange shared by production and development probes.
 //! Admission, retries and SOAP error policy belong to callers.
 use super::{VatId, soap};
+use crate::http_capture::SendTraced;
 use std::time::Duration;
 
 pub(super) const ENDPOINT: &str =
@@ -62,7 +63,7 @@ pub(super) async fn exchange(
         .header("Content-Type", "text/xml; charset=utf-8")
         .header("SOAPAction", "\"\"")
         .body(soap::request(vat))
-        .send()
+        .send_traced()
         .await
         .map_err(Failure::network)?;
     let status = response.status();
@@ -85,7 +86,7 @@ pub(super) async fn exchange(
     })
 }
 
-async fn read_body(response: &mut reqwest::Response, limit: usize) -> Body {
+async fn read_body(response: &mut crate::http_capture::Response, limit: usize) -> Body {
     let mut bytes = Vec::new();
     loop {
         match response.chunk().await {

@@ -1,5 +1,5 @@
 use super::*;
-use crate::{LookupError, Provider, RegistryError, RetryAfter};
+use crate::{LookupError, Provider, RegistryFailure, RetryAfter};
 use chrono::NaiveDate;
 use serde_json::{Value, json};
 use std::time::Duration;
@@ -16,7 +16,7 @@ fn fixture() -> Value {
         "adresa_domiciliu_fiscal":{"dcod_Postal":"012345","ddenumire_Localitate":"București"}
     }],"notFound":[]})
 }
-fn decode(value: Value) -> Result<Option<RoCompanyLookupResult>, RegistryError> {
+fn decode(value: Value) -> Result<Option<RoCompanyLookupResult>, RegistryFailure> {
     super::decode::decode(
         &serde_json::to_vec(&value).unwrap(),
         &RoBusinessId::parse("001234").unwrap(),
@@ -174,28 +174,44 @@ async fn typed_negative_and_http_failures_never_become_false() {
         match (expected, err) {
             (
                 "miss",
-                LookupError::RegistryNotFound {
-                    provider: Provider::RomanianAnaf,
+                LookupError {
+                    kind:
+                        crate::model::LookupFailure::RegistryNotFound {
+                            provider: Provider::RomanianAnaf,
+                        },
+                    ..
                 },
             ) => {}
             (
                 "http",
-                LookupError::Registry {
-                    error: RegistryError::Http { .. },
+                LookupError {
+                    kind:
+                        crate::model::LookupFailure::Registry {
+                            error: RegistryFailure::Http { .. },
+                            ..
+                        },
                     ..
                 },
             ) => {}
             (
                 "access",
-                LookupError::Registry {
-                    error: RegistryError::AccessDenied,
+                LookupError {
+                    kind:
+                        crate::model::LookupFailure::Registry {
+                            error: RegistryFailure::AccessDenied,
+                            ..
+                        },
                     ..
                 },
             ) => {}
             (
                 "schema",
-                LookupError::Registry {
-                    error: RegistryError::UnexpectedResponse,
+                LookupError {
+                    kind:
+                        crate::model::LookupFailure::Registry {
+                            error: RegistryFailure::UnexpectedResponse,
+                            ..
+                        },
                     ..
                 },
             ) => {}
@@ -215,9 +231,12 @@ async fn throttle_cools_down_clones_without_another_request() {
     let client = RoRegistryClient::for_test(url, RoRegistryConfig::default());
     assert!(matches!(
         client.lookup_at("1234", date()).await,
-        Err(LookupError::Registry {
-            error: RegistryError::RateLimited {
-                retry_after: Some(RetryAfter::Seconds(120))
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::RateLimited {
+                    retry_after: Some(RetryAfter::Seconds(120))
+                },
+                ..
             },
             ..
         })
@@ -225,8 +244,11 @@ async fn throttle_cools_down_clones_without_another_request() {
     task.await.unwrap();
     assert!(matches!(
         client.clone().lookup_at("1234", date()).await,
-        Err(LookupError::Registry {
-            error: RegistryError::CoolingDown { .. },
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::CoolingDown { .. },
+                ..
+            },
             ..
         })
     ));
@@ -243,8 +265,11 @@ async fn content_type_size_and_admission_are_bounded() {
         RoRegistryClient::for_test(url, RoRegistryConfig::default())
             .lookup_at("1234", date())
             .await,
-        Err(LookupError::Registry {
-            error: RegistryError::UnexpectedResponse,
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::UnexpectedResponse,
+                ..
+            },
             ..
         })
     ));
@@ -257,14 +282,18 @@ async fn content_type_size_and_admission_are_bounded() {
     .await;
     let config = RoRegistryConfig {
         max_response_bytes: 10,
+        raw_debug: false,
         ..Default::default()
     };
     assert!(matches!(
         RoRegistryClient::for_test(url, config)
             .lookup_at("1234", date())
             .await,
-        Err(LookupError::Registry {
-            error: RegistryError::ResponseTooLarge,
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::ResponseTooLarge,
+                ..
+            },
             ..
         })
     ));
@@ -283,7 +312,10 @@ async fn content_type_size_and_admission_are_bounded() {
     task.await.unwrap();
     assert!(matches!(
         client.lookup_at("1234", date()).await,
-        Err(LookupError::Busy)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Busy,
+            ..
+        })
     ));
 }
 #[tokio::test]
@@ -299,13 +331,19 @@ async fn deadline_releases_capacity_and_establishes_cooldown() {
     let (_socket, _) = listener.accept().await.unwrap();
     assert!(matches!(
         client.lookup_at("1234", date()).await,
-        Err(LookupError::Busy)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Busy,
+            ..
+        })
     ));
     assert!(task.await.unwrap().unwrap_err().is_service_unavailable());
     assert!(matches!(
         client.lookup_at("1234", date()).await,
-        Err(LookupError::Registry {
-            error: RegistryError::CoolingDown { .. },
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::CoolingDown { .. },
+                ..
+            },
             ..
         })
     ));
@@ -462,8 +500,11 @@ async fn shared_dispatch_uses_anaf_and_preserves_negative_observations() {
         if negative {
             assert!(matches!(
                 result,
-                Err(LookupError::RegistryNotFound {
-                    provider: Provider::RomanianAnaf
+                Err(LookupError {
+                    kind: crate::model::LookupFailure::RegistryNotFound {
+                        provider: Provider::RomanianAnaf
+                    },
+                    ..
                 })
             ));
         } else {
@@ -621,4 +662,41 @@ fn missing_anaf_address_countries_default_to_romania() {
     let fiscal = shared.fiscal_address.unwrap();
     assert_eq!(fiscal.country.as_deref(), Some("Romania"));
     assert_eq!(fiscal.country_iso2.as_deref(), Some("RO"));
+}
+
+#[tokio::test]
+async fn raw_registry_errors_use_the_common_object_and_capture_post_body() {
+    let (url, task) = server(
+        "503 Unavailable",
+        "Content-Type: application/json\r\n",
+        "{\"message\":\"exact upstream details\"}".into(),
+    )
+    .await;
+    let config = RoRegistryConfig {
+        raw_debug: true,
+        ..Default::default()
+    };
+    let error = RoRegistryClient::for_test(url, config)
+        .lookup_at("1234", date())
+        .await
+        .unwrap_err();
+    assert_eq!(error.id, crate::ErrorId::ServiceUnavailable);
+    assert_eq!(error.details.provider, Some(Provider::RomanianAnaf));
+    assert_eq!(error.details.country.as_deref(), Some("RO"));
+    let debug = error.details.debug.unwrap();
+    assert_eq!(
+        debug.exchanges[0].request.content_type.as_deref(),
+        Some("application/json")
+    );
+    assert_eq!(
+        serde_json::from_str::<Value>(&debug.exchanges[0].request.body.as_ref().unwrap().data)
+            .unwrap(),
+        json!([{"cui":1234,"data":"2025-02-14"}])
+    );
+    assert_eq!(
+        debug.exchanges[0].response.as_ref().unwrap().body.data,
+        "{\"message\":\"exact upstream details\"}"
+    );
+    assert!(debug.exchanges[0].response.as_ref().unwrap().complete);
+    task.await.unwrap();
 }

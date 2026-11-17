@@ -16,7 +16,7 @@ other punctuation are rejected. Validation checks format, not checksum or existe
 | Exact Commercial Register record | Return it; do not query BULSTAT. |
 | Empty Commercial Register HTTP 200, with absent or JSON content type | Query BULSTAT. |
 | Exact BULSTAT search and detail match | Return the BULSTAT record. |
-| Recognized empty BULSTAT search after a Commercial Register miss | Return `LookupError::NotFound`. |
+| Recognized empty BULSTAT search after a Commercial Register miss | Return error ID `not_found` with reason `both_bulgarian_registers_missed`. |
 | Timeout, throttling, access denial, unexpected schema or mismatched identity | Return an error; do not interpret it as absence or trigger fallback. |
 
 Whitespace, JSON null, HTML and endpoint 404s are not Commercial Register misses.

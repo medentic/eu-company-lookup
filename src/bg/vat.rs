@@ -74,6 +74,10 @@ fn apply_vat_verification(company: &mut CompanyLookupResult, observation: VatLoo
         } => {
             *vat_verification = Some(Box::new(observation));
         }
-        CompanyDetails::RomanianAnaf { .. } => unreachable!("BG enrichment only"),
+        CompanyDetails::RomanianAnaf { .. }
+        | CompanyDetails::NorwegianBrreg { .. }
+        | CompanyDetails::IrishCro { .. } => {
+            unreachable!("BG enrichment only")
+        }
     }
 }

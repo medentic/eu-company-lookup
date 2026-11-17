@@ -14,7 +14,10 @@ working source; they do not establish a published version or live coverage.
 | Identity and result contracts | [model](model/README.md) | National identity, common company view, source details, errors and JSON. |
 | VAT verification | [vies](vies/README.md) | VAT syntax, SOAP exchange, matched validity and VAT jurisdiction. |
 | Bulgarian business registration | [bg](bg/README.md) | Commercial Register first, then BULSTAT only after a definitive miss. |
+| Norwegian entity information | [no](no/README.md) | Anonymous Enhetsregisteret entities; domestic VAT and address roles remain source-specific. |
+| Irish company records | [ie](ie/README.md) | Anonymous CRO dataset with exact company number; includes dissolved records. |
 | Romanian fiscal registration | [ro](ro/README.md) | ANAF CUI/date matching and domestic fiscal observations. |
+| Anonymous registry transport | [registry_transport](registry_transport/mod.rs) | Private AT/BE/CZ/EE/FI/FR/GR/IE/IS/LT/LV/NO/PL/SK bounds, admission, cooldowns, HTTP failure classification and bounded JSON/HTML bodies; shared CKAN wire envelopes, with native decoding owned by providers. |
 | Address interpretation | [locations](locations/README.md) | Offline extraction and country metadata; no registration decisions. |
 
 ## Request flow
@@ -28,7 +31,7 @@ its adapter as well as a support-list entry.
 A facade method checks whether its adapter is enabled, then the adapter validates
 input, applies admission/deadline policy, exchanges bounded responses and checks
 source identity before producing a result. `lookup_company` takes a national code and country string, selects
-the BG/RO adapter, validates the code and converts the native BG/RO result into a common view.
+the country adapter, validates the code and converts its native result into a common view.
 Provider-local `mapping.rs` modules own these pure projections. Conversion
 performs no extra lookup. The facade delegates BG company lookup to its private country
 orchestrator, which owns a required VIES dependency and retains supplementary
@@ -50,3 +53,7 @@ in [tests](../tests); provider unit tests remain beside the implementation.
 
 For the maintenance workflow and verification matrix, see the
 [agent handoff guide](../docs/maintainers/agent-handoff.md).
+
+[HTTP capture](http_capture.rs) supplies request-scoped raw diagnostics to the common
+[error contract](../docs/reference/errors.md). Capture defaults off and does not
+replace provider admission, response interpretation or definitive-miss policy.

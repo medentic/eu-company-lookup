@@ -1,5 +1,5 @@
 use super::*;
-use crate::{LookupError, Provider, RegistryError, RetryAfter, UnavailabilityReason};
+use crate::{LookupError, Provider, RegistryFailure, RetryAfter, UnavailabilityReason};
 use serde_json::{Value, json};
 use std::{
     collections::VecDeque,
@@ -238,7 +238,10 @@ async fn not_found_requires_two_definitive_misses() {
     .await;
     assert!(matches!(
         server.client().lookup("123456789").await,
-        Err(LookupError::NotFound)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::NotFound,
+            ..
+        })
     ));
     assert_eq!(server.calls.load(Ordering::SeqCst), 2);
 }
@@ -249,7 +252,10 @@ async fn invalid_input_skips_both_sources() {
     for value in ["BG123456789", "1234567890", "garbage"] {
         assert!(matches!(
             server.client().lookup(value).await,
-            Err(LookupError::InvalidInput)
+            Err(LookupError {
+                kind: crate::model::LookupFailure::InvalidInput,
+                ..
+            })
         ));
     }
     assert_eq!(server.calls.load(Ordering::SeqCst), 0);
@@ -268,18 +274,24 @@ async fn server_failures_are_specific_unavailability_and_never_fall_back() {
         assert!(error.is_service_unavailable());
         assert!(matches!(
             error,
-            LookupError::Registry {
-                provider: Provider::BulgarianCommercialRegister,
-                error: RegistryError::ServiceUnavailable {
-                    retry_after: Some(RetryAfter::Seconds(180)),
-                    ..
-                }
+            LookupError {
+                kind: crate::model::LookupFailure::Registry {
+                    provider: Provider::BulgarianCommercialRegister,
+                    error: RegistryFailure::ServiceUnavailable {
+                        retry_after: Some(RetryAfter::Seconds(180)),
+                        ..
+                    }
+                },
+                ..
             }
         ));
         assert!(matches!(
             client.clone().lookup("123456789").await,
-            Err(LookupError::Registry {
-                error: RegistryError::CoolingDown { .. },
+            Err(LookupError {
+                kind: crate::model::LookupFailure::Registry {
+                    error: RegistryFailure::CoolingDown { .. },
+                    ..
+                },
                 ..
             })
         ));
@@ -298,9 +310,12 @@ async fn bulstat_outage_after_commercial_miss_is_not_not_found() {
     assert!(error.is_service_unavailable());
     assert!(matches!(
         error,
-        LookupError::Registry {
-            provider: Provider::Bulstat,
-            error: RegistryError::ServiceUnavailable { .. }
+        LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                provider: Provider::Bulstat,
+                error: RegistryFailure::ServiceUnavailable { .. }
+            },
+            ..
         }
     ));
 }
@@ -325,7 +340,10 @@ async fn wrong_content_access_errors_and_mismatch_never_fall_back() {
         let server = Server::new(vec![response], Duration::ZERO).await;
         assert!(matches!(
             server.client().lookup("123456789").await,
-            Err(LookupError::Registry { .. })
+            Err(LookupError {
+                kind: crate::model::LookupFailure::Registry { .. },
+                ..
+            })
         ));
         assert_eq!(server.calls.load(Ordering::SeqCst), 1);
     }
@@ -370,7 +388,10 @@ async fn clones_share_capacity_and_cancel_releases_it() {
     server.wait().await;
     assert!(matches!(
         client.lookup("123456789").await,
-        Err(LookupError::Busy)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Busy,
+            ..
+        })
     ));
     running.abort();
     assert!(running.await.unwrap_err().is_cancelled());
@@ -400,15 +421,21 @@ async fn rate_limits_and_local_spacing_are_not_negative_results() {
     let client = server.client();
     assert!(matches!(
         client.lookup("123456789").await,
-        Err(LookupError::Registry {
-            error: RegistryError::RateLimited { .. },
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::RateLimited { .. },
+                ..
+            },
             ..
         })
     ));
     assert!(matches!(
         client.lookup("123456789").await,
-        Err(LookupError::Registry {
-            error: RegistryError::CoolingDown { .. },
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::CoolingDown { .. },
+                ..
+            },
             ..
         })
     ));
@@ -428,7 +455,10 @@ async fn rate_limits_and_local_spacing_are_not_negative_results() {
     client.lookup("123456789").await.unwrap();
     assert!(matches!(
         client.lookup("123456789").await,
-        Err(LookupError::Busy)
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Busy,
+            ..
+        })
     ));
     assert_eq!(server.calls.load(Ordering::SeqCst), 1);
 }
@@ -445,13 +475,17 @@ async fn response_size_is_bounded_before_parsing() {
         format!("{}preview", server.base),
         BgRegistryConfig {
             max_response_bytes: 16,
+            raw_debug: false,
             ..config()
         },
     );
     assert!(matches!(
         client.lookup("123456789").await,
-        Err(LookupError::Registry {
-            error: RegistryError::ResponseTooLarge,
+        Err(LookupError {
+            kind: crate::model::LookupFailure::Registry {
+                error: RegistryFailure::ResponseTooLarge,
+                ..
+            },
             ..
         })
     ));
@@ -522,7 +556,7 @@ fn bulstat_missing_markup_links_or_conflicting_identity_never_mean_absence() {
             &id,
             "Пример".into()
         ),
-        Err(RegistryError::MismatchedResponse)
+        Err(RegistryFailure::MismatchedResponse)
     ));
     assert!(bulstat::detail(detail().as_bytes(), &id, "Different".into()).is_err());
 }
@@ -568,16 +602,16 @@ fn sofia_date_boundary_handles_dst_and_utc_day_rollover() {
         assert_eq!(client::end_of_day(utc.parse().unwrap()), expected);
     }
     assert!(
-        LookupError::Registry {
+        LookupError::from(crate::model::LookupFailure::Registry {
             provider: Provider::Bulstat,
-            error: RegistryError::ServiceUnavailable {
+            error: RegistryFailure::ServiceUnavailable {
                 reason: UnavailabilityReason::Timeout,
                 retry_after: None
             }
-        }
+        })
         .is_service_unavailable()
     );
-    assert!(!LookupError::NotFound.is_service_unavailable());
+    assert!(!LookupError::from(crate::model::LookupFailure::NotFound).is_service_unavailable());
 }
 
 #[tokio::test]
@@ -1264,8 +1298,11 @@ async fn shared_dispatch_uses_bg_and_preserves_provider_failures() {
         if failure {
             assert!(matches!(
                 result,
-                Err(LookupError::Registry {
-                    provider: Provider::BulgarianCommercialRegister,
+                Err(LookupError {
+                    kind: crate::model::LookupFailure::Registry {
+                        provider: Provider::BulgarianCommercialRegister,
+                        ..
+                    },
                     ..
                 })
             ));
@@ -1382,7 +1419,10 @@ async fn bg_facade_enriches_only_valid_name_matched_vat_and_retains_evidence() {
         let client = enriched_client(&registry, &vies);
         assert!(matches!(
             client.lookup_vat("BG123456789").await,
-            Err(LookupError::OperationDisabled { .. })
+            Err(LookupError {
+                kind: crate::model::LookupFailure::OperationDisabled { .. },
+                ..
+            })
         ));
         let result = client.lookup_company("123456789", "BG").await.unwrap();
         assert_eq!(result.vat_registered, expected);
@@ -1457,7 +1497,13 @@ async fn bg_facade_never_queries_vies_after_registry_failure_or_for_branches() {
             assert!(result.vat_id.is_none());
             assert!(result.vat_registered.is_none());
         } else {
-            assert!(matches!(result, Err(LookupError::Registry { .. })));
+            assert!(matches!(
+                result,
+                Err(LookupError {
+                    kind: crate::model::LookupFailure::Registry { .. },
+                    ..
+                })
+            ));
         }
         assert_eq!(vies.calls.load(Ordering::SeqCst), 0);
     }

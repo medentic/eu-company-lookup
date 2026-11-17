@@ -8,6 +8,7 @@ supported providers and the country-registry roadmap.
 These references describe the public contract and are included in the crate:
 
 - [Shared company object](reference/company-result.md): all common fields, addresses, provider details and null semantics.
+- [Error catalog and diagnostics](reference/errors.md): common error object, raw HTTP capture and 4.0 migration.
 - [VIES](reference/vies.md): identifiers, VAT results, address fields and failures.
 - [Bulgarian registry](reference/bulgarian-registry.md): Commercial Register/BULSTAT
   lookup, fallback, company fields and coverage limitations.

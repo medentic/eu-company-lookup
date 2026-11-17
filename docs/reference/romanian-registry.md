@@ -69,9 +69,9 @@ legal dissolution. This operation never creates a VIES `valid` result.
 
 Only an otherwise successful response with no found records and exactly the
 requested CUI in `notFound` yields
-`LookupError::RegistryNotFound { provider: Provider::RomanianAnaf }`.
+`LookupError` with ID `not_found` and `details.provider: RomanianAnaf`.
 That means ANAF missed the identifier, not that every Romanian register did.
-Existing `LookupError::NotFound` retains its Bulgarian meaning.
+A Bulgarian definitive miss uses the same ID with reason `both_bulgarian_registers_missed`.
 
 Success requires exactly one matching CUI and requested date. Conflicting,
 duplicate, empty or malformed envelopes are errors. Operational failures,

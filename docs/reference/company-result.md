@@ -5,8 +5,8 @@ supported country. Use this object for business forms, company profiles and
 billing details. Its purpose is a consistent company observation, not a complete
 legal extract or a combined report from several authorities.
 
-This reference describes the shared contract in version 3. See
-[API stability and migration](api-stability.md#migrating-from-2x)
+This reference describes the shared contract in version 4. See
+[API stability and migration](api-stability.md#migrating-from-3x)
 before upgrading from a released version. Lower-level BG/RO clients still expose
 their native result types; converting them with `Into` produces this shared view.
 
@@ -37,7 +37,7 @@ public Rust fields remain mutable, so caller edits can invalidate them.
 | `vatRegistered` | `vat_registered: Option<bool>` | VAT registration supported by provider-specific evidence. RO: ANAF article-316 flag. BG: true after valid, name-matched VIES enrichment; otherwise null. A negative VIES result never becomes domestic false. Does not cover every special registration. |
 | `vatId` | `vat_id: Option<VatId>` | VAT number supported by the matched registration and a provider-specific rule. Null when unavailable; not proof that no VAT ID exists. Never blindly prefix or truncate `taxId`. |
 | `source` | `source: Provider` | Primary registry provider; supplementary VIES evidence has its own source in details. Required; equals `registryDetails.provider` on returned results. |
-| `registryUrl` | `registry_url: Option<String>` | Official human-readable link for this record, when supplied by the adapter. No API endpoint, generic homepage, session token or invented permalink. Access may require interaction. Currently populated for BG and null for RO. Null means the adapter supplies no link, not that no official lookup site exists. |
+| `registryUrl` | `registry_url: Option<String>` | Official human-readable link for this record, when supplied by the adapter. No API endpoint, generic homepage, session token or invented permalink. Access may require interaction. Currently populated for BG and GR; other adapters may leave it null. Null means the adapter supplies no link, not that no official lookup site exists. |
 | `companyName` | `company_name: String` | Source legal/display company name. Required; no generated translation. |
 | `foreignName` | `foreign_name: Option<String>` | Separately registered foreign-script name. Not necessarily English and never an automatic translation. Null if unavailable. |
 | `legalForm` | `legal_form: Option<String>` | Source legal form or supported local abbreviation. Null if unavailable. Equal-looking forms from different countries are not asserted to be legally equivalent. |
@@ -46,8 +46,9 @@ public Rust fields remain mutable, so caller edits can invalidate them.
 | `status` | `status: Option<CompanyStatus>` | Normalized lifecycle: `active`, `closed`, `unknown`, or null. Unknown means a source status exists but has no supported lifecycle mapping; null means none was supplied. VAT status and fiscal inactivity do not determine lifecycle. |
 | `registryDetails` | `registry_details: CompanyDetails` | Required typed provider extension, described below. Native observations remain available here even when a common field can be mapped. |
 
-Current provider values are `BulgarianCommercialRegister`, `Bulstat` and
-`RomanianAnaf`. `Vies` is a VAT provider, not a company-lookup result source.
+Current company provider values are `BulgarianCommercialRegister`, `Bulstat`,
+`RomanianAnaf`, `AustrianFirmenbuch`, `BelgianNbb`, `CzechAres`, `FinnishPrh`, `FrenchRechercheEntreprises`, `EstonianRik`, `NorwegianBrreg`, `PolishKrs`, `SlovakRuz`, `LatvianOpenData`, `LithuanianJar`, `IrishCro`, `IcelandicSkatturinn` and
+`GreekGemi`. `Vies` is a VAT provider, not a company-lookup result source.
 The support list is `Client::SUPPORTED_COMPANY_COUNTRIES`; capability discovery
 also distinguishes compiled support from adapters enabled on a client.
 
@@ -127,8 +128,8 @@ reference before interpreting these extensions.
 | Optional field is null | That fact is unavailable in this observation. |
 | `vatRegistered: false` | The source reports no standard domestic registration in the checked scope/date; special registrations and VIES remain separate. |
 | `status: "unknown"` | A source status exists without a supported lifecycle mapping. |
-| `NotFound` | Both BG registries definitively missed. |
-| `RegistryNotFound { provider: RomanianAnaf }` | ANAF definitively missed; not proof of an ONRC miss. |
+| `not_found`, reason `both_bulgarian_registers_missed` | Both BG registries definitively missed. |
+| `not_found`, provider `RomanianAnaf` | ANAF definitively missed; not proof of an ONRC miss. |
 | Timeout, service/schema/identity error | The lookup failed. No absence or false registration conclusion follows. |
 
 A new registry must preserve these meanings. Optionality handles unavailable
@@ -142,3 +143,32 @@ BG address envelopes likewise default missing countries to `България` / 
 Country names in registry details use the same title-case normalization and
 recognized ISO codes are uppercase. Missing manager/owner countries remain null;
 these party fields are not company addresses. Original source text is unchanged.
+
+## Norwegian Enhetsregisteret
+
+`NorwegianBrreg` matches a nine-digit organisation number in the public entity
+endpoint. It supplies the source name and organisation-form description. The
+source `registrertIMvaregisteret` boolean supplies domestic `vatRegistered`, when
+present. Norway is outside VIES; `vatId` remains null and no number is synthesized.
+This is a current register observation, not a caller-selected historical date.
+
+Typed `NoCompanyDetails` retains source name/number, organisation form, selected
+registration dates, activity classifications, domestic VAT and insolvency flags,
+and separate `forretningsadresse` and `postadresse` objects. These business/postal
+roles do not establish the common registered-office or fiscal-address role; both
+common addresses remain null. Native address components and their original text
+remain available. No aggregate lifecycle status is inferred from separate flags;
+common status and native aggregate status are null. Foreign name and registry
+link also remain null. HTTP 404 is retained as a provider error in this adapter.
+
+## Irish CRO open company records
+
+`IrishCro` accepts one-to-seven-digit company numbers and requires one exact
+record from the official company dataset. The source includes dissolved companies.
+It maps published name and company-type description while retaining native status,
+status/type codes, dates, company-address lines and Eircode. Common lifecycle is
+unknown when source status is present. The dataset's generically labelled address
+lines remain native pending a source-backed office/fiscal-role mapping; VAT fields,
+shared addresses, foreign name and company link remain null. A numeric source
+identifier is never padded to match input, and a missing record does not prove
+absence from every Irish register.

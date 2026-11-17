@@ -1,5 +1,5 @@
 use super::{RoBusinessId, RoCompanyLookupResult, RoRegistryAddress, RoTaxStatus};
-use crate::{Provider, RegistryError};
+use crate::{Provider, RegistryFailure};
 use chrono::{NaiveDate, Utc};
 use serde::Deserialize;
 use serde_json::{Map, Value};
@@ -38,24 +38,28 @@ fn identity(value: &Value, id: &RoBusinessId) -> bool {
     };
     actual == id.as_str().parse::<u64>().ok()
 }
-fn object(value: &Value) -> Result<&Object, RegistryError> {
-    value.as_object().ok_or(RegistryError::UnexpectedResponse)
+fn object(value: &Value) -> Result<&Object, RegistryFailure> {
+    value.as_object().ok_or(RegistryFailure::UnexpectedResponse)
 }
-fn text(fields: &Object, key: &str) -> Result<Option<String>, RegistryError> {
+fn text(fields: &Object, key: &str) -> Result<Option<String>, RegistryFailure> {
     match fields.get(key) {
         None | Some(Value::Null) => Ok(None),
         Some(Value::String(s)) => Ok((!s.trim().is_empty()).then(|| s.clone())),
-        _ => Err(RegistryError::UnexpectedResponse),
+        _ => Err(RegistryFailure::UnexpectedResponse),
     }
 }
-fn flag(fields: &Object, key: &str) -> Result<Option<bool>, RegistryError> {
+fn flag(fields: &Object, key: &str) -> Result<Option<bool>, RegistryFailure> {
     match fields.get(key) {
         None | Some(Value::Null) => Ok(None),
         Some(Value::Bool(b)) => Ok(Some(*b)),
-        _ => Err(RegistryError::UnexpectedResponse),
+        _ => Err(RegistryFailure::UnexpectedResponse),
     }
 }
-fn section_flag(fields: &Object, section: &str, key: &str) -> Result<Option<bool>, RegistryError> {
+fn section_flag(
+    fields: &Object,
+    section: &str,
+    key: &str,
+) -> Result<Option<bool>, RegistryFailure> {
     match fields.get(section) {
         None | Some(Value::Null) => Ok(None),
         Some(value) => flag(object(value)?, key),
@@ -65,7 +69,7 @@ fn address(
     fields: &Object,
     section: &str,
     prefix: &str,
-) -> Result<Option<RoRegistryAddress>, RegistryError> {
+) -> Result<Option<RoRegistryAddress>, RegistryFailure> {
     let fields = match fields.get(section) {
         None | Some(Value::Null) => return Ok(None),
         Some(value) => object(value)?,
@@ -93,43 +97,43 @@ pub(super) fn decode(
     body: &[u8],
     id: &RoBusinessId,
     date: NaiveDate,
-) -> Result<Option<RoCompanyLookupResult>, RegistryError> {
+) -> Result<Option<RoCompanyLookupResult>, RegistryFailure> {
     let response: Envelope =
-        serde_json::from_slice(body).map_err(|_| RegistryError::UnexpectedResponse)?;
+        serde_json::from_slice(body).map_err(|_| RegistryFailure::UnexpectedResponse)?;
     if response.cod.is_some_and(|code| code != 200)
         || response
             .message
             .as_deref()
             .is_some_and(|message| message != "SUCCESS")
     {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     if response.found.is_empty() && response.not_found.len() == 1 {
         return if identity(&response.not_found[0], id) {
             Ok(None)
         } else {
-            Err(RegistryError::MismatchedResponse)
+            Err(RegistryFailure::MismatchedResponse)
         };
     }
     if response.found.len() != 1 || !response.not_found.is_empty() {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let fields = object(&response.found[0])?;
     let general = object(
         fields
             .get("date_generale")
-            .ok_or(RegistryError::UnexpectedResponse)?,
+            .ok_or(RegistryFailure::UnexpectedResponse)?,
     )?;
     if !identity(
         general
             .get("cui")
-            .ok_or(RegistryError::UnexpectedResponse)?,
+            .ok_or(RegistryFailure::UnexpectedResponse)?,
         id,
     ) {
-        return Err(RegistryError::MismatchedResponse);
+        return Err(RegistryFailure::MismatchedResponse);
     }
     if text(general, "data")?.as_deref() != Some(date.to_string().as_str()) {
-        return Err(RegistryError::MismatchedResponse);
+        return Err(RegistryFailure::MismatchedResponse);
     }
     let registration_status = text(general, "stare_inregistrare")?;
     // No verified ANAF lifecycle mapping yet. Fiscal inactivity is not closure.
@@ -141,7 +145,7 @@ pub(super) fn decode(
         source: Provider::RomanianAnaf,
         request_date: date,
         checked_at: Utc::now(),
-        company_name: text(general, "denumire")?.ok_or(RegistryError::UnexpectedResponse)?,
+        company_name: text(general, "denumire")?.ok_or(RegistryFailure::UnexpectedResponse)?,
         trade_register_number: text(general, "nrRegCom")?,
         status,
         native_registry_status: registration_status.clone(),

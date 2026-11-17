@@ -15,7 +15,7 @@ pub enum UnavailabilityReason {
 /// Sanitized registry failure; never contains the submitted code or provider body.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
-pub enum RegistryError {
+pub(crate) enum RegistryFailure {
     /// The lookup could not be completed; validity remains unknown.
     #[error("registry service unavailable ({reason:?})")]
     ServiceUnavailable {

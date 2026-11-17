@@ -1,5 +1,5 @@
 use super::{address, html::element_text};
-use crate::{BgBusinessId, BgCompanyLookupResult, Provider, RegistryDetails, RegistryError};
+use crate::{BgBusinessId, BgCompanyLookupResult, Provider, RegistryDetails, RegistryFailure};
 use scraper::{ElementRef, Html, Selector};
 
 pub(super) const BASE: &str = "https://reports.bulstat.bg/bulstat-ireports/";
@@ -17,14 +17,14 @@ pub(super) fn public_url(id: &BgBusinessId) -> String {
     url.into()
 }
 
-fn document(body: &[u8]) -> Result<Html, RegistryError> {
-    let text = std::str::from_utf8(body).map_err(|_| RegistryError::UnexpectedResponse)?;
+fn document(body: &[u8]) -> Result<Html, RegistryFailure> {
+    let text = std::str::from_utf8(body).map_err(|_| RegistryFailure::UnexpectedResponse)?;
     let doc = Html::parse_document(text);
     let visible = element_text(doc.root_element());
     if !visible.lines().any(|s| s == "РЕГИСТЪР БУЛСТАТ - СПРАВКИ")
         || !visible.lines().any(|s| s == TITLE)
     {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     Ok(doc)
 }
@@ -38,7 +38,7 @@ fn cells(row: ElementRef<'_>) -> Vec<ElementRef<'_>> {
 
 /// Select the exact code, never the first (possibly related) subject. Links are
 /// inspected only; the client constructs its own fixed, allowlisted detail URL.
-pub(super) fn search(body: &[u8], id: &BgBusinessId) -> Result<Option<String>, RegistryError> {
+pub(super) fn search(body: &[u8], id: &BgBusinessId) -> Result<Option<String>, RegistryFailure> {
     let doc = document(body)?;
     let mut matches = Vec::new();
     let mut rows = 0;
@@ -70,19 +70,19 @@ pub(super) fn search(body: &[u8], id: &BgBusinessId) -> Result<Option<String>, R
             }
         }
         if !valid_link {
-            return Err(RegistryError::UnexpectedResponse);
+            return Err(RegistryFailure::UnexpectedResponse);
         }
         rows += 1;
         if code == id.as_str() {
             let name = element_text(columns[1]);
             if name.is_empty() {
-                return Err(RegistryError::UnexpectedResponse);
+                return Err(RegistryFailure::UnexpectedResponse);
             }
             matches.push(name);
         }
     }
     if matches.len() > 1 {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     if let Some(name) = matches.pop() {
         return Ok(Some(name));
@@ -93,19 +93,19 @@ pub(super) fn search(body: &[u8], id: &BgBusinessId) -> Result<Option<String>, R
     if rows == 0 && text.lines().any(|s| s == "Няма намерен резултат!") {
         return Ok(None);
     }
-    Err(RegistryError::UnexpectedResponse)
+    Err(RegistryFailure::UnexpectedResponse)
 }
 
 pub(super) fn detail(
     body: &[u8],
     id: &BgBusinessId,
     name: String,
-) -> Result<BgCompanyLookupResult, RegistryError> {
+) -> Result<BgCompanyLookupResult, RegistryFailure> {
     let doc = document(body)?;
     let table = doc
         .select(&Selector::parse("table#tab1").unwrap())
         .next()
-        .ok_or(RegistryError::UnexpectedResponse)?;
+        .ok_or(RegistryFailure::UnexpectedResponse)?;
     let mut values = std::collections::HashMap::new();
     let mut addresses = Vec::new();
     for row in table.select(&Selector::parse("tr").unwrap()) {
@@ -119,7 +119,7 @@ pub(super) fn detail(
             "Код по БУЛСТАТ" | "Нефизическо лице" | "Физическо лице" | "Състояние"
         ) {
             if values.insert(label, element_text(columns[1])).is_some() {
-                return Err(RegistryError::UnexpectedResponse);
+                return Err(RegistryFailure::UnexpectedResponse);
             }
         } else if label.is_empty() {
             let text = element_text(columns[1]);
@@ -130,22 +130,22 @@ pub(super) fn detail(
     }
     let code = values
         .get("Код по БУЛСТАТ")
-        .ok_or(RegistryError::UnexpectedResponse)?;
+        .ok_or(RegistryFailure::UnexpectedResponse)?;
     if code != id.as_str() {
-        return Err(RegistryError::MismatchedResponse);
+        return Err(RegistryFailure::MismatchedResponse);
     }
     let subjects: Vec<_> = ["Нефизическо лице", "Физическо лице"]
         .iter()
         .filter_map(|k| values.get(*k))
         .collect();
     if subjects.len() != 1 || subjects[0].is_empty() {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let subject = subjects[0];
     // Names can contain commas; take the separately supplied search name instead
     // of splitting the compound subject description at an arbitrary comma.
     if subject != &name && !subject.starts_with(&format!("{name},")) {
-        return Err(RegistryError::UnexpectedResponse);
+        return Err(RegistryFailure::UnexpectedResponse);
     }
     let raw_address = if addresses.len() == 1 {
         addresses.pop()

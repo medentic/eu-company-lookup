@@ -606,6 +606,55 @@ fn finnish_special_postal_recipient_is_not_asserted_as_city() {
 }
 
 #[test]
+fn estonian_settlement_labels_keep_municipalities_separate() {
+    for label in ["küla", "alevik", "alev", "linn"] {
+        let raw = format!("Example 1  12345 Sample {label} Other vald");
+        let parsed = split("EE", Some(raw.clone()));
+        assert_eq!(parsed.full_address_by_vies, Some(raw));
+        assert_eq!(parsed.city, Some(format!("Sample {label}")));
+        assert_eq!(parsed.municipality.as_deref(), Some("Other vald"));
+    }
+    let parsed = split(
+        "EE",
+        Some("Example 1  12345 Sample linn Sample linn".into()),
+    );
+    assert_eq!(parsed.city.as_deref(), Some("Sample linn"));
+    assert_eq!(parsed.municipality.as_deref(), Some("Sample linn"));
+    let parsed = split(
+        "EE",
+        Some("Example 1  12345 Sample alevik unclassified".into()),
+    );
+    assert!(parsed.municipality.is_none());
+}
+
+#[test]
+fn finnish_postal_only_and_foreign_layouts_preserve_source() {
+    for (raw, postcode, city, recipient) in [
+        ("12345 EXAMPLE\n", Some("12345"), Some("EXAMPLE"), None),
+        (
+            "00012 EXAMPLE ORGANIZATION",
+            Some("00012"),
+            None,
+            Some("EXAMPLE ORGANIZATION"),
+        ),
+        (
+            "C/O Example A/S Examplevej 1 5500 Middelfart\nDENMARK",
+            None,
+            None,
+            None,
+        ),
+        ("1234 EXAMPLE", None, None, None),
+    ] {
+        let parsed = split("FI", Some(raw.into()));
+        assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+        assert!(parsed.address.is_none());
+        assert_eq!(parsed.postcode.as_deref(), postcode);
+        assert_eq!(parsed.city.as_deref(), city);
+        assert_eq!(parsed.address2.as_deref(), recipient);
+    }
+}
+
+#[test]
 fn croatian_settlement_and_hungarian_numeric_boundaries() {
     let raw = "Example 17, Settlement, 12345 Postal town";
     let parsed = split("HR", Some(raw.into()));

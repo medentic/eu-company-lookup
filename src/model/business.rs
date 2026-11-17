@@ -24,12 +24,21 @@ impl BusinessId {
     ) -> Result<Self, LookupError> {
         let country = country.to_ascii_uppercase();
         if !crate::Client::SUPPORTED_COMPANY_COUNTRIES.contains(&country.as_str()) {
-            return Err(LookupError::UnsupportedIdentifierScheme);
+            return Err(LookupError::from(
+                crate::model::LookupFailure::UnsupportedIdentifierScheme,
+            ));
         }
         match (country.as_str(), scheme) {
             ("BG", IdentifierScheme::BgBusinessId) => Ok(BgBusinessId::parse(value)?.into()),
+
+            ("IE", IdentifierScheme::IeBusinessId) => Ok(crate::IeBusinessId::parse(value)?.into()),
+
+            ("NO", IdentifierScheme::NoBusinessId) => Ok(crate::NoBusinessId::parse(value)?.into()),
+
             ("RO", IdentifierScheme::RoBusinessId) => Ok(RoBusinessId::parse(value)?.into()),
-            _ => Err(LookupError::UnsupportedIdentifierScheme),
+            _ => Err(LookupError::from(
+                crate::model::LookupFailure::UnsupportedIdentifierScheme,
+            )),
         }
     }
     /// ISO country owning this identifier scheme, not the physical address country.
@@ -63,6 +72,27 @@ impl From<RoBusinessId> for BusinessId {
         }
     }
 }
+
+impl From<crate::IeBusinessId> for BusinessId {
+    fn from(id: crate::IeBusinessId) -> Self {
+        Self {
+            country: "IE".into(),
+            scheme: IdentifierScheme::IeBusinessId,
+            value: id.into(),
+        }
+    }
+}
+
+impl From<crate::NoBusinessId> for BusinessId {
+    fn from(id: crate::NoBusinessId) -> Self {
+        Self {
+            country: "NO".into(),
+            scheme: IdentifierScheme::NoBusinessId,
+            value: id.into(),
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for BusinessId {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         #[derive(Deserialize)]
@@ -145,6 +175,27 @@ pub enum CompanyDetails {
         #[serde(flatten)]
         details: crate::BulstatDetails,
     },
+
+    /// Irish CRO public company record.
+    #[non_exhaustive]
+    IrishCro {
+        /// Original CRO company-status label.
+        native_registry_status: Option<String>,
+        /// Typed native source fields and contact-address roles.
+        #[serde(flatten)]
+        details: Box<crate::IeCompanyDetails>,
+    },
+
+    /// Norwegian Enhetsregisteret company details.
+    #[non_exhaustive]
+    NorwegianBrreg {
+        /// Aggregate status is unavailable; native facts remain in details.
+        native_registry_status: Option<String>,
+        /// Typed native source fields and contact-address roles.
+        #[serde(flatten)]
+        details: Box<crate::NoCompanyDetails>,
+    },
+
     /// Romanian fiscal observation; not an ONRC company extract.
     #[non_exhaustive]
     RomanianAnaf {
@@ -163,6 +214,10 @@ impl CompanyDetails {
             Self::BulgarianCommercialRegister { .. } => Provider::BulgarianCommercialRegister,
             Self::Bulstat { .. } => Provider::Bulstat,
             Self::RomanianAnaf { .. } => Provider::RomanianAnaf,
+
+            Self::IrishCro { .. } => Provider::IrishCro,
+
+            Self::NorwegianBrreg { .. } => Provider::NorwegianBrreg,
         }
     }
 }

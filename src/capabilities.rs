@@ -53,6 +53,33 @@ pub fn capabilities() -> Vec<JurisdictionCapabilities> {
                     },
                     false,
                 )),
+
+                "IE" => entry.providers.push(registry(
+                    Provider::IrishCro,
+                    IdentifierScheme::IeBusinessId,
+                    Operation::ValidateIeBusinessIdSyntax,
+                    Operation::LookupIeCompany,
+                    LanguageSupport {
+                        available: vec!["en"],
+                        default: Some("en"),
+                        selectable: false,
+                    },
+                    false,
+                )),
+
+                "NO" => entry.providers.push(registry(
+                    Provider::NorwegianBrreg,
+                    IdentifierScheme::NoBusinessId,
+                    Operation::ValidateNoBusinessIdSyntax,
+                    Operation::LookupNoCompany,
+                    LanguageSupport {
+                        available: vec!["nb"],
+                        default: Some("nb"),
+                        selectable: false,
+                    },
+                    false,
+                )),
+
                 _ => {}
             }
             entry

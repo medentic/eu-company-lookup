@@ -69,7 +69,7 @@ fn formats_and_capabilities_cover_the_same_jurisdictions() {
         assert!(!provider.requires_credentials);
         assert_eq!(
             VatId::parse(&format!("{}!", raw)).unwrap_err().to_string(),
-            LookupError::InvalidInput.to_string()
+            LookupError::from(crate::model::LookupFailure::InvalidInput).to_string()
         );
     }
     let greece = capabilities
@@ -135,14 +135,23 @@ fn bad_inputs_are_rejected_without_guessing_or_panicking() {
         "BE2123456789",
     ] {
         assert!(
-            matches!(VatId::parse(raw), Err(LookupError::InvalidInput)),
+            matches!(
+                VatId::parse(raw),
+                Err(LookupError {
+                    kind: crate::model::LookupFailure::InvalidInput,
+                    ..
+                })
+            ),
             "{raw:?}"
         );
     }
     for raw in ["GR123456789", "GB123456789", "CH123456789", "US123456789"] {
         assert!(matches!(
             VatId::parse(raw),
-            Err(LookupError::UnsupportedJurisdiction)
+            Err(LookupError {
+                kind: crate::model::LookupFailure::UnsupportedJurisdiction,
+                ..
+            })
         ));
     }
     assert!(VatId::parse(&" ".repeat(65)).is_err());

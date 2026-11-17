@@ -29,21 +29,50 @@ pub enum AttemptError {
 impl From<LookupError> for AttemptError {
     fn from(error: LookupError) -> Self {
         match error {
-            LookupError::RateLimited {
-                scope: LimitScope::Global,
+            LookupError {
+                kind:
+                    crate::model::LookupFailure::RateLimited {
+                        scope: LimitScope::Global,
+                        ..
+                    },
                 ..
             } => Self::GlobalRateLimit,
-            LookupError::RateLimited {
-                scope: LimitScope::MemberState,
+            LookupError {
+                kind:
+                    crate::model::LookupFailure::RateLimited {
+                        scope: LimitScope::MemberState,
+                        ..
+                    },
                 ..
             } => Self::MemberStateRateLimit,
-            LookupError::ServiceUnavailable { .. } => Self::ServiceUnavailable,
-            LookupError::MemberStateUnavailable { .. } => Self::MemberStateUnavailable,
-            LookupError::ProviderTimeout { .. } => Self::ProviderTimeout,
-            LookupError::ProviderRejectedInput => Self::RejectedInput,
-            LookupError::UnknownSoapFault => Self::UnknownSoapFault,
-            LookupError::MalformedResponse => Self::MalformedResponse,
-            LookupError::MismatchedResponse => Self::MismatchedResponse,
+            LookupError {
+                kind: crate::model::LookupFailure::ServiceUnavailable { .. },
+                ..
+            } => Self::ServiceUnavailable,
+            LookupError {
+                kind: crate::model::LookupFailure::MemberStateUnavailable { .. },
+                ..
+            } => Self::MemberStateUnavailable,
+            LookupError {
+                kind: crate::model::LookupFailure::ProviderTimeout { .. },
+                ..
+            } => Self::ProviderTimeout,
+            LookupError {
+                kind: crate::model::LookupFailure::ProviderRejectedInput,
+                ..
+            } => Self::RejectedInput,
+            LookupError {
+                kind: crate::model::LookupFailure::UnknownSoapFault,
+                ..
+            } => Self::UnknownSoapFault,
+            LookupError {
+                kind: crate::model::LookupFailure::MalformedResponse,
+                ..
+            } => Self::MalformedResponse,
+            LookupError {
+                kind: crate::model::LookupFailure::MismatchedResponse,
+                ..
+            } => Self::MismatchedResponse,
             other => Self::Unexpected(other.to_string()),
         }
     }

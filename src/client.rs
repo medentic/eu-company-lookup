@@ -11,6 +11,8 @@ pub struct Client {
     vies: Option<crate::vies::ViesClient>,
     bg: Option<crate::bg::BgCompanyClient>,
     ro: Option<RoRegistryClient>,
+    ie: Option<crate::IeRegistryClient>,
+    no: Option<crate::NoRegistryClient>,
 }
 
 /// Named adapter configuration. Defaults enable all implemented lookup adapters;
@@ -20,6 +22,8 @@ pub struct ClientBuilder {
     vies: Option<ClientConfig>,
     bg: Option<BgRegistryConfig>,
     ro: Option<RoRegistryConfig>,
+    ie: Option<crate::IeRegistryConfig>,
+    no: Option<crate::NoRegistryConfig>,
 }
 impl Default for ClientBuilder {
     fn default() -> Self {
@@ -27,6 +31,8 @@ impl Default for ClientBuilder {
             vies: Some(Default::default()),
             bg: Some(Default::default()),
             ro: Some(Default::default()),
+            ie: Some(Default::default()),
+            no: Some(Default::default()),
         }
     }
 }
@@ -38,6 +44,8 @@ impl ClientBuilder {
             vies: None,
             bg: None,
             ro: None,
+            ie: None,
+            no: None,
         }
     }
     /// Enable standalone VIES with these transport/admission bounds.
@@ -56,6 +64,29 @@ impl ClientBuilder {
         self.ro = Some(config);
         self
     }
+
+    /// Enable anonymous Irish CRO open-data lookup.
+    pub fn irish_registry(mut self, config: crate::IeRegistryConfig) -> Self {
+        self.ie = Some(config);
+        self
+    }
+    /// Disable Irish CRO open-data lookup.
+    pub fn without_irish_registry(mut self) -> Self {
+        self.ie = None;
+        self
+    }
+
+    /// Enable anonymous Norwegian Enhetsregisteret lookup.
+    pub fn norwegian_registry(mut self, config: crate::NoRegistryConfig) -> Self {
+        self.no = Some(config);
+        self
+    }
+    /// Disable Norwegian Enhetsregisteret lookup.
+    pub fn without_norwegian_registry(mut self) -> Self {
+        self.no = None;
+        self
+    }
+
     /// Disable only standalone VAT lookup operations.
     /// BG company lookup still performs its required internal VIES check, using defaults.
     pub fn without_vies(mut self) -> Self {
@@ -92,6 +123,15 @@ impl ClientBuilder {
             })
             .transpose()?;
         Ok(Client {
+            ie: self
+                .ie
+                .map(crate::IeRegistryClient::with_config)
+                .transpose()?,
+            no: self
+                .no
+                .map(crate::NoRegistryClient::with_config)
+                .transpose()?,
+
             vies,
             bg,
             ro: self.ro.map(RoRegistryClient::with_config).transpose()?,
@@ -100,10 +140,10 @@ impl ClientBuilder {
 }
 
 fn disabled(operation: Operation, identifier_scheme: IdentifierScheme) -> LookupError {
-    LookupError::OperationDisabled {
+    LookupError::from(crate::model::LookupFailure::OperationDisabled {
         operation,
         identifier_scheme,
-    }
+    })
 }
 
 impl Client {
@@ -111,7 +151,7 @@ impl Client {
     ///
     /// This lists compiled support; use `capabilities()` to inspect which
     /// providers are enabled on a particular client.
-    pub const SUPPORTED_COMPANY_COUNTRIES: [&'static str; 2] = ["BG", "RO"];
+    pub const SUPPORTED_COMPANY_COUNTRIES: [&'static str; 4] = ["BG", "IE", "RO", "NO"];
 
     /// Configure adapters by name, starting with all current adapters enabled.
     pub fn builder() -> ClientBuilder {
@@ -152,6 +192,10 @@ impl Client {
                 Provider::Vies => self.vies.is_some(),
                 Provider::BulgarianCommercialRegister | Provider::Bulstat => self.bg.is_some(),
                 Provider::RomanianAnaf => self.ro.is_some(),
+
+                Provider::IrishCro => self.ie.is_some(),
+
+                Provider::NorwegianBrreg => self.no.is_some(),
             });
         }
         catalog
@@ -194,35 +238,48 @@ impl Client {
     ) -> Result<CompanyLookupResult, LookupError> {
         let country = country.trim().to_ascii_uppercase();
         if !Self::SUPPORTED_COMPANY_COUNTRIES.contains(&country.as_str()) {
-            return Err(LookupError::UnsupportedIdentifierScheme);
+            return Err(LookupError::from(
+                crate::model::LookupFailure::UnsupportedIdentifierScheme,
+            ));
         }
         match country.as_str() {
             "BG" => {
-                self.bg
-                    .as_ref()
-                    .ok_or_else(|| {
-                        disabled(Operation::LookupCompany, IdentifierScheme::BgBusinessId)
-                    })?
+                company_adapter(&self.bg, IdentifierScheme::BgBusinessId)?
                     .lookup(value)
                     .await
             }
-            "RO" => self
-                .ro
-                .as_ref()
-                .ok_or_else(|| disabled(Operation::LookupCompany, IdentifierScheme::RoBusinessId))?
+            "RO" => company_adapter(&self.ro, IdentifierScheme::RoBusinessId)?
                 .lookup(value)
                 .await
                 .map(Into::into),
-            _ => Err(LookupError::UnsupportedIdentifierScheme),
+
+            "IE" => company_adapter(&self.ie, IdentifierScheme::IeBusinessId)?
+                .lookup(value)
+                .await
+                .map(Into::into),
+
+            "NO" => company_adapter(&self.no, IdentifierScheme::NoBusinessId)?
+                .lookup(value)
+                .await
+                .map(Into::into),
+
+            _ => Err(LookupError::from(
+                crate::model::LookupFailure::UnsupportedIdentifierScheme,
+            )),
         }
     }
+}
+
+fn company_adapter<T>(adapter: &Option<T>, scheme: IdentifierScheme) -> Result<&T, LookupError> {
+    adapter
+        .as_ref()
+        .ok_or_else(|| disabled(Operation::LookupCompany, scheme))
 }
 
 #[cfg(test)]
 impl Client {
     pub(crate) fn with_test_registries(bg: BgRegistryClient, ro: RoRegistryClient) -> Self {
         Self {
-            vies: None,
             bg: Some(crate::bg::BgCompanyClient::new(
                 bg,
                 crate::vies::ViesClient::for_test(
@@ -231,6 +288,7 @@ impl Client {
                 ),
             )),
             ro: Some(ro),
+            ..Self::empty_for_test()
         }
     }
     pub(crate) fn with_test_vies(mut self, endpoint: String) -> Self {
@@ -247,5 +305,30 @@ impl Client {
         let mut client = Self::new().unwrap();
         client.vies = Some(crate::vies::ViesClient::for_test(endpoint, config));
         client
+    }
+}
+
+#[cfg(test)]
+impl Client {
+    pub(crate) fn with_test_irish(ie: crate::IeRegistryClient) -> Self {
+        Self {
+            ie: Some(ie),
+            ..Self::empty_for_test()
+        }
+    }
+
+    pub(crate) fn with_test_norwegian(no: crate::NoRegistryClient) -> Self {
+        Self {
+            no: Some(no),
+            ..Self::empty_for_test()
+        }
+    }
+}
+
+#[cfg(test)]
+impl Client {
+    fn empty_for_test() -> Self {
+        // The empty builder constructs no transports, including the BG VIES dependency.
+        ClientBuilder::empty().build().unwrap()
     }
 }
