@@ -12,34 +12,12 @@ pub enum Provider {
     Bulstat,
     /// Romanian National Agency for Fiscal Administration.
     RomanianAnaf,
-    /// Czech Ministry of Finance ARES economic subjects.
-    CzechAres,
-    /// Austrian public Firmenbuch via JustizOnline.
-    AustrianFirmenbuch,
-    /// National Bank of Belgium Consult, with CBE-derived company identity.
-    BelgianNbb,
-    /// Greek General Commercial Registry public company details.
-    GreekGemi,
-    /// Finnish Patent and Registration Office YTJ open data.
-    FinnishPrh,
-    /// French DINUM public company search.
-    FrenchRechercheEntreprises,
-    /// Icelandic anonymous public registry.
-    IcelandicSkatturinn,
+
     /// Irish anonymous public registry.
     IrishCro,
-    /// Lithuanian anonymous public registry.
-    LithuanianJar,
-    /// Latvian anonymous public registry.
-    LatvianOpenData,
-    /// Slovak anonymous public registry.
-    SlovakRuz,
-    /// Polish anonymous public registry.
-    PolishKrs,
+
     /// Norwegian anonymous public registry.
     NorwegianBrreg,
-    /// Estonian anonymous public registry.
-    EstonianRik,
 }
 
 /// An implemented operation, not a roadmap promise.
@@ -64,62 +42,16 @@ pub enum Operation {
     LookupRoCompany,
     /// Romanian fiscal lookup with an explicit requested date.
     LookupRoCompanyAt,
-    /// Offline Czech IČO syntax validation.
-    ValidateCzBusinessIdSyntax,
-    /// Czech ARES economic-subject lookup.
-    LookupCzCompany,
-    /// Offline Austrian Firmenbuch number syntax validation.
-    ValidateAtBusinessIdSyntax,
-    /// Austrian public Firmenbuch lookup.
-    LookupAtCompany,
-    /// Offline Belgian enterprise-number syntax validation.
-    ValidateBeBusinessIdSyntax,
-    /// Belgian NBB Consult company lookup.
-    LookupBeCompany,
-    /// Offline Greek GEMI-number syntax validation.
-    ValidateGrBusinessIdSyntax,
-    /// Greek GEMI public company lookup.
-    LookupGrCompany,
-    /// Offline Finnish business-ID syntax validation.
-    ValidateFiBusinessIdSyntax,
-    /// Finnish PRH YTJ company lookup.
-    LookupFiCompany,
-    /// Offline French SIREN syntax validation.
-    ValidateFrBusinessIdSyntax,
-    /// French public company lookup.
-    LookupFrCompany,
-    /// Offline Icelandic identifier syntax.
-    ValidateIsBusinessIdSyntax,
-    /// Icelandic national lookup.
-    LookupIsCompany,
+
     /// Offline Irish identifier syntax.
     ValidateIeBusinessIdSyntax,
     /// Irish national lookup.
     LookupIeCompany,
-    /// Offline Lithuanian identifier syntax.
-    ValidateLtBusinessIdSyntax,
-    /// Lithuanian national lookup.
-    LookupLtCompany,
-    /// Offline Latvian identifier syntax.
-    ValidateLvBusinessIdSyntax,
-    /// Latvian national lookup.
-    LookupLvCompany,
-    /// Offline Slovak identifier syntax.
-    ValidateSkBusinessIdSyntax,
-    /// Slovak national lookup.
-    LookupSkCompany,
-    /// Offline Polish identifier syntax.
-    ValidatePlBusinessIdSyntax,
-    /// Polish national lookup.
-    LookupPlCompany,
+
     /// Offline Norwegian identifier syntax.
     ValidateNoBusinessIdSyntax,
     /// Norwegian national lookup.
     LookupNoCompany,
-    /// Offline Estonian identifier syntax.
-    ValidateEeBusinessIdSyntax,
-    /// Estonian national lookup.
-    LookupEeCompany,
 }
 
 /// Whether an operation makes provider requests.
@@ -162,20 +94,8 @@ impl OperationCapabilities {
             Operation::ValidateVatSyntax
             | Operation::ValidateBgBusinessIdSyntax
             | Operation::ValidateRoBusinessIdSyntax
-            | Operation::ValidateCzBusinessIdSyntax
-            | Operation::ValidateAtBusinessIdSyntax
-            | Operation::ValidateBeBusinessIdSyntax
-            | Operation::ValidateEeBusinessIdSyntax
             | Operation::ValidateNoBusinessIdSyntax
-            | Operation::ValidatePlBusinessIdSyntax
-            | Operation::ValidateSkBusinessIdSyntax
-            | Operation::ValidateLvBusinessIdSyntax
-            | Operation::ValidateLtBusinessIdSyntax
-            | Operation::ValidateIeBusinessIdSyntax
-            | Operation::ValidateIsBusinessIdSyntax
-            | Operation::ValidateFrBusinessIdSyntax
-            | Operation::ValidateFiBusinessIdSyntax
-            | Operation::ValidateGrBusinessIdSyntax => Execution::Local,
+            | Operation::ValidateIeBusinessIdSyntax => Execution::Local,
             _ => Execution::Remote,
         };
         Self {
@@ -201,34 +121,12 @@ pub enum IdentifierScheme {
     BgBusinessId,
     /// Romanian CUI without the RO VAT prefix.
     RoBusinessId,
-    /// Eight-digit Czech IČO, without VAT prefix.
-    CzBusinessId,
-    /// Austrian Firmenbuch number without FN label or VAT prefix.
-    AtBusinessId,
-    /// Ten-digit Belgian enterprise number without VAT prefix.
-    BeBusinessId,
-    /// Twelve-digit Greek GEMI registration number, distinct from AFM.
-    GrBusinessId,
-    /// Finnish business ID with its hyphen; distinct from a VAT number.
-    FiBusinessId,
-    /// French nine-digit SIREN.
-    FrBusinessId,
-    /// Icelandic national identifier.
-    IsBusinessId,
+
     /// Irish national identifier.
     IeBusinessId,
-    /// Lithuanian national identifier.
-    LtBusinessId,
-    /// Latvian national identifier.
-    LvBusinessId,
-    /// Slovak national identifier.
-    SkBusinessId,
-    /// Polish national identifier.
-    PlBusinessId,
+
     /// Norwegian national identifier.
     NoBusinessId,
-    /// Estonian national identifier.
-    EeBusinessId,
 }
 
 /// Checksum coverage, independent of syntax and registration.

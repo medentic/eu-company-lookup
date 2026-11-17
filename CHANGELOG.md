@@ -1,15 +1,14 @@
 # Changelog
 
-## 4.0.0 (Unreleased)
+## 4.0.0
 
 - Replace public error enums with one serializable `LookupError` object: stable
   IDs, English titles and administrator descriptions, availability flag and
   structured details. See the [error contract and migration](docs/reference/errors.md).
 - Add opt-in raw HTTP diagnostics with request/response header arrays, lossless
   bodies, cURL reproduction and explicit incomplete-capture reasons.
-- Add keyless national company lookup adapters for Austria, Belgium, Czechia,
-  Estonia, Finland, France, Greece, Iceland, Ireland, Latvia, Lithuania, Norway,
-  Poland and Slovakia. Native identifiers, typed provider details and explicit
+- Add keyless national company lookup for Ireland (CRO open data) and Norway
+  (Enhetsregisteret). Native identifiers, typed provider details and explicit
   capability discovery remain separate from VIES VAT verification.
 - Share bounded registry transport and CKAN wire handling while preserving
   provider-specific identity checks, absence rules, address roles and VAT scope.
@@ -18,10 +17,6 @@
   from matched negative VAT responses.
 - Add bounded, resumable multi-country verification tooling; collected identifiers
   and source observations remain excluded from the public source and package.
-
-The expansion is in release preparation. Country inclusion remains subject to
-source-reviewed verification and the release gates; this entry is not a claim
-that every implemented adapter has completed live verification.
 
 ## 3.0.0
 

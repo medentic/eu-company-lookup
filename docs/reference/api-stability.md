@@ -30,7 +30,7 @@ Converting a native result consumes it without fetching or merging other sources
   match arm. Minor releases may add fields or variants.
 - Construct configs using `Default` and assign public fields. Construction validates
   bounds. Endpoint overrides and parser internals are not public APIs.
-- `VatId`, `BgBusinessId`, `RoBusinessId`, `CzBusinessId`, `AtBusinessId`, `BeBusinessId`, `FiBusinessId`, `FrBusinessId`, `EeBusinessId`, `NoBusinessId`, `PlBusinessId`, `SkBusinessId`, `LvBusinessId`, `LtBusinessId`, `IeBusinessId`, `IsBusinessId` and `GrBusinessId` keep their contents private. Parsing,
+- `VatId`, `BgBusinessId`, `RoBusinessId`, `NoBusinessId`, `IeBusinessId` keep their contents private. Parsing,
   `TryFrom` and Serde input validate syntax. `AsRef<str>` borrows the normalized
   identifier; conversion to `String` consumes it. `BusinessId` additionally validates
   the country/scheme pair. Results support serialization, not general deserialization.

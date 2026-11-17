@@ -56,16 +56,9 @@ fn non_vies_eea_discovery_distinguishes_implemented_national_lookup() {
     for code in ["NO", "IS", "LI"] {
         let entry = catalog.iter().find(|c| c.country_code == code).unwrap();
         assert!(entry.vat_prefix.is_none());
-        if code == "NO" || code == "IS" {
+        if code == "NO" {
             assert_eq!(entry.providers.len(), 1);
-            assert_eq!(
-                entry.providers[0].provider,
-                if code == "NO" {
-                    Provider::NorwegianBrreg
-                } else {
-                    Provider::IcelandicSkatturinn
-                }
-            );
+            assert_eq!(entry.providers[0].provider, Provider::NorwegianBrreg);
             assert!(!entry.providers[0].requires_credentials);
         } else {
             assert!(entry.providers.is_empty());

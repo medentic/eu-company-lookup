@@ -17,7 +17,7 @@ links module ownership and provider field mappings.
 | `src/client.rs` | Provider-independent facade and named adapter configuration. |
 | `src/model/` | Shared identities/results, capability types and typed failures. |
 | `src/capabilities.rs` | Provider-independent jurisdiction catalog. |
-| `src/vies/`, `src/bg/`, `src/ro/`, `src/cz/`, `src/at/`, `src/be/`, `src/gr/`, `src/fi/`, `src/fr/`, `src/ee/`, `src/no/`, `src/pl/`, `src/sk/`, `src/lv/`, `src/lt/`, `src/ie/`, `src/is/` | Private provider clients, decoders and unit tests. |
+| `src/vies/`, `src/bg/`, `src/ro/`, `src/no/`, `src/ie/` | Private provider clients, decoders and unit tests. |
 | `src/locations/` | Public address utilities; private extraction and normalization rules. |
 | `tests/` | External-consumer API, identifier and configuration contracts. |
 | `examples/` | Runnable consumers; executing them contacts live providers. |

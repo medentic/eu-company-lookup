@@ -19,7 +19,7 @@ async fn timeout_cools_only_the_owning_provider() {
     let result = execute(
         &admission,
         &limits,
-        Provider::BelgianNbb,
+        Provider::IrishCro,
         Spacing::FromStart,
         async {
             tokio::time::sleep(Duration::from_secs(3)).await;
@@ -31,7 +31,7 @@ async fn timeout_cools_only_the_owning_provider() {
         result,
         Err(LookupError {
             kind: crate::model::LookupFailure::Registry {
-                provider: Provider::BelgianNbb,
+                provider: Provider::IrishCro,
                 error: RegistryFailure::ServiceUnavailable {
                     reason: UnavailabilityReason::Timeout,
                     ..
@@ -43,7 +43,7 @@ async fn timeout_cools_only_the_owning_provider() {
     let result = execute(
         &admission,
         &limits,
-        Provider::BelgianNbb,
+        Provider::IrishCro,
         Spacing::FromStart,
         async {
             panic!("cooling client must not poll the request");
@@ -66,7 +66,7 @@ async fn timeout_cools_only_the_owning_provider() {
         execute(
             &Admission::new(),
             &limits,
-            Provider::CzechAres,
+            Provider::NorwegianBrreg,
             Spacing::FromStart,
             async { Ok(()) }
         )
@@ -80,26 +80,16 @@ async fn completion_spacing_preserves_two_request_adapter_gap() {
     for spacing in [Spacing::FromStart, Spacing::AfterCompletion] {
         let admission = Admission::new();
         let limits = bounds();
-        execute(
-            &admission,
-            &limits,
-            Provider::AustrianFirmenbuch,
-            spacing,
-            async {
-                tokio::time::sleep(Duration::from_secs(4)).await;
-                Ok(())
-            },
-        )
+        execute(&admission, &limits, Provider::IrishCro, spacing, async {
+            tokio::time::sleep(Duration::from_secs(4)).await;
+            Ok(())
+        })
         .await
         .unwrap();
         let finished = Instant::now();
-        execute(
-            &admission,
-            &limits,
-            Provider::AustrianFirmenbuch,
-            spacing,
-            async { Ok(()) },
-        )
+        execute(&admission, &limits, Provider::IrishCro, spacing, async {
+            Ok(())
+        })
         .await
         .unwrap();
         let expected = if spacing == Spacing::AfterCompletion {
@@ -119,7 +109,7 @@ async fn occupied_slot_and_insufficient_admission_budget_do_not_send() {
     let result = execute(
         &admission,
         &limits,
-        Provider::GreekGemi,
+        Provider::NorwegianBrreg,
         Spacing::FromStart,
         async {
             panic!("occupied slot must not poll the request");
@@ -140,7 +130,7 @@ async fn occupied_slot_and_insufficient_admission_budget_do_not_send() {
     let result = execute(
         &admission,
         &limits,
-        Provider::GreekGemi,
+        Provider::NorwegianBrreg,
         Spacing::FromStart,
         async {
             panic!("spacing beyond the deadline must not poll the request");
