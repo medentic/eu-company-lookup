@@ -36,14 +36,15 @@ include = [
 base64 = "0.23.1"
 jiff = { version = "1", default-features = false, features = ["std", "serde", "tzdb-bundle-always"] }
 httpdate = "1"
+lopdf = { version = "0.47", default-features = false }
 regex-lite = "0.1"
-reqwest = { version = "0.13.5", default-features = false, features = ["rustls"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "cookies"] }
 roxmltree = "0.21"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 scraper = { version = "0.29", default-features = false }
 thiserror = "2"
-tokio = { version = "1", features = ["sync", "time"] }
+tokio = { version = "1", features = ["sync", "time", "rt"] }
 
 [dev-dependencies]
 sha2 = "0.10"

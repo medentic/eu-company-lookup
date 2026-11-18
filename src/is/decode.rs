@@ -69,6 +69,7 @@ pub(super) fn decode(
     }
     let registration_text = subtitles.first().map(|e| e.text().collect::<String>());
     let details = IsCompanyDetails {
+        registration_overview: None,
         kennitala: id.to_string(),
         registration_text,
         postal_address: cells[0].text().collect(),

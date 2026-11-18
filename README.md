@@ -198,7 +198,7 @@ column means the jurisdiction is not supported by VIES.
 | Germany | `DE` | — | Pending |
 | [Greece](docs/examples/gr.md) | `EL` | GEMI by registration number | Implemented |
 | Hungary | `HU` | — | Pending |
-| [Iceland](docs/examples/is.md) | — | Skatturinn company pages | Implemented |
+| [Iceland](docs/examples/is.md) | — | Skatturinn pages and free registration overviews | Implemented |
 | [Ireland](docs/examples/ie.md) | `IE` | CRO dataset lookup | Implemented |
 | Italy | `IT` | — | Pending |
 | [Latvia](docs/examples/lv.md) | `LV` | Registry open data | Implemented |

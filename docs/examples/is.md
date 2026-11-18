@@ -91,7 +91,7 @@ This adapter does not expose a definitive `not_found` outcome. For example, upst
 
 | Case | Behavior |
 | --- | --- |
-| Registration date only | A founding/registration date alone does not establish active lifecycle; lookup returns `unresolved_data`. |
+| Registration date only | A founding/registration date alone does not establish lifecycle. The identity-bound free overview can resolve it; without an explicit recognized status, lookup returns `unresolved_data`. |
 | Closure wording | Only the exact company deregistration notice with a valid date establishes closure. VAT removal text or unrelated page text does not. |
 | Legal vs postal address | `Lögheimili` supplies original registered-office text. Keep postal address and municipality in native details; structured office components stay null. |
 | VIES | Iceland is outside VIES. Absence of a VAT table is not a domestic VAT-negative observation. |
@@ -100,7 +100,59 @@ This adapter does not expose a definitive `not_found` outcome. For example, upst
 
 The success output is serialized through the current decoder and common-result mapping from the `source` fixture with the lifecycle change described above in the [synthetic tests](../../src/is/tests.rs). Failure output is serialized from an offline loopback HTTP response through the public client and shared [error conversion](../../src/model/error.rs). Field and lifecycle rules live in the [provider mapping](../../src/is/mapping.rs). See [reading these examples](README.md#reading-the-examples) for null, failure and version semantics.
 
-An ordinary registration date on an identity-matched page does not produce the
-closed result shown above, nor does it establish active lifecycle. It produces
-`unresolved_data`; a separate document or API source needs its own verified
-status semantics before it can resolve that case.
+## Active registration from the free overview
+
+When the public page has no lifecycle status, the client reads the free registration
+overview offered for that identifier. Its explicit `Virk skráning` status establishes
+active registration. The document date, identifier and decoded status remain in
+native details. PDF text extraction may omit visual spaces in the status text.
+
+```json
+{
+  "country": "IS",
+  "taxId": "4101000000",
+  "vatRegistered": null,
+  "vatId": null,
+  "source": "IcelandicSkatturinn",
+  "registryUrl": null,
+  "foreignName": null,
+  "companyName": "Synthetic ehf.",
+  "legalForm": "Einkahlutafélag (ehf)",
+  "registeredOffice": {
+    "fullAddressByRegistry": " Legal & road  200 Town ",
+    "address": null,
+    "address2": null,
+    "city": null,
+    "postcode": null,
+    "region": null,
+    "municipality": null,
+    "country": null,
+    "countryISO2": null
+  },
+  "fiscalAddress": null,
+  "status": "active",
+  "registryDetails": {
+    "provider": "IcelandicSkatturinn",
+    "data": {
+      "nativeRegistryStatus": "Virk skráning",
+      "kennitala": "4101000000",
+      "registrationText": "Stofnað/Skráð: 01.01.2000",
+      "postalAddress": " Postal  100 City ",
+      "legalAddress": " Legal & road  200 Town ",
+      "municipalityText": "1000Town",
+      "legalFormText": "E1 Einkahlutafélag (ehf)",
+      "legalFormCode": "E1",
+      "legalFormDescription": "Einkahlutafélag (ehf)",
+      "registrationOverview": {
+        "kennitala": "4101000000",
+        "issuedOn": "2026-11-18",
+        "nativeStatus": "Virk skráning"
+      }
+    }
+  }
+}
+```
+
+This synthetic example is checked through the PDF decoder, common mapping and
+serializer in the country tests. Unknown document statuses and failed document
+requests remain errors through the public company lookup.

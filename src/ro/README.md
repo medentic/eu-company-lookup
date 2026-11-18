@@ -111,3 +111,20 @@ file does not prove that the legal entity closed. Both directions remain
 `unresolved_data` without lifecycle evidence, even when ANAF supplies a trade
 register number, a VAT flag or a fiscal-inactivity flag. A successful HTTP 200
 with such a record is a data limitation, not an access failure.
+
+Current company information is available through ONRC's registered-user services.
+The [official EU register description](https://e-justice.europa.eu/topics/registers-business-insolvency-land/business-registers-eu-countries/ro_ro)
+distinguishes free services from paid extracts and requires an ONRC account for
+portal access. This is a separate access prerequisite for a current cross-check;
+it does not make ANAF's matched transfer wording an operational error. The
+adapter neither creates accounts nor substitutes a dated bulk snapshot for a
+current authenticated record.
+
+The EU's [BRIS company search](https://e-justice.europa.eu/topics/registers-business-insolvency-land/business-registers-search-company-eu_en)
+provides an alternative manual cross-check of current ONRC records, including
+registration number, fiscal code and explicit company status. It requires an
+interactive antispam challenge and acceptance of its access conditions. Match
+both identifiers before interpreting `funcţiune` as active in that separate
+source. A BRIS review does not resolve the original ANAF response or authorize a
+general `TRANSFER(SOSIRE)` → active rule. The library has no BRIS transport;
+interactive browser evidence is not an unattended runtime fallback.

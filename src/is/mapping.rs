@@ -8,8 +8,26 @@ impl From<IsCompanyLookupResult> for CompanyLookupResult {
                 full_address_by_registry: Some(v.details.legal_address.clone()),
                 fields: Default::default(),
             });
-        let status = lifecycle(v.details.registration_text.as_deref());
-        let native_registry_status = status.and(v.details.registration_text.clone());
+        let (status, native_registry_status) =
+            if let Some(overview) = &v.details.registration_overview {
+                (
+                    Some(
+                        match overview
+                            .native_status
+                            .split_whitespace()
+                            .collect::<String>()
+                            .as_str()
+                        {
+                            "Virkskráning" => crate::CompanyStatus::Active,
+                            _ => crate::CompanyStatus::Unknown,
+                        },
+                    ),
+                    Some(overview.native_status.clone()),
+                )
+            } else {
+                let status = lifecycle(v.details.registration_text.as_deref());
+                (status, status.and(v.details.registration_text.clone()))
+            };
         let registry_details = CompanyDetails::IcelandicSkatturinn {
             native_registry_status,
             details: Box::new(v.details),

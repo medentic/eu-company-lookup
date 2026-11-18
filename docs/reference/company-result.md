@@ -351,8 +351,13 @@ heading identity and labelled source table. The decoded `Lögheimili` cell suppl
 registered-office full text with whitespace preserved; postal address remains
 native. Legal-form code/description are taken only from two explicit source text
 segments. Only the registration-labelled subtitle is retained, excluding contact
-subtitles. No officers or document-ordering data are returned. Lifecycle, VAT
-fields, fiscal address, foreign name and company link remain null. Iceland is
+subtitles. No officers or document contents are returned. An explicit dated
+company-deregistration notice maps to closed. Otherwise, when offered by the
+matched page, a free registration overview supplements lifecycle: exact
+`Virk skráning` maps to active. Typed `registrationOverview` details retain its
+identifier, printed date and decoded status; PDF extraction may omit visual
+spaces. Unsupported statuses remain unresolved. VAT fields, fiscal address,
+foreign name and company link remain null. Iceland is
 outside VIES; a missing domestic VAT table is not treated as nonregistration.
 
 See the [company mapping audit](https://github.com/medentic/eu-company-lookup/blob/main/docs/development/company-mapping-audit.md) for
@@ -362,7 +367,7 @@ provider-specific status values, code-list sources and remaining null-field deci
 
 Successful national lookups return a resolved lifecycle: `active`, `closed`,
 `liquidation`, `bankruptcy`, `receivership`, `liquidationAndReceivership`,
-`restructuring`, `closed`, `liquidationStayed`, `administration`, or
+`restructuring`, `liquidationStayed`, `administration`, or
 `inactive`. Proceedings do not imply closure, VAT invalidity or an identity miss.
 Known source codes and labels map only in their owning provider.
 

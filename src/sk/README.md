@@ -71,3 +71,9 @@ For investigation, RPO also documents historical-inclusive `onlyActive=false`
 and `fullName` searches. A name search can locate a candidate but cannot replace
 exact identifier binding. An empty successful search remains a data gap; a 503
 or timeout is an access failure, including when RÚZ has already returned a record.
+
+The EU's [BRIS company search](https://e-justice.europa.eu/topics/registers-business-insolvency-land/business-registers-search-company-eu_en)
+can provide another manual official cross-check, subject to its interactive
+antispam and access conditions. An empty BRIS search, like an empty historical
+ORSR or RPO search, does not establish closure of an identity-matched RÚZ record.
+Keep that source-coverage gap separate from HTTP, authentication and timeout failures.

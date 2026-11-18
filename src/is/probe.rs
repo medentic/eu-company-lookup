@@ -33,6 +33,9 @@ async fn live_registry_batch() {
         let capture = native.take_capture();
         let raw = capture["body"].as_str();
         let mut row = json!({"id": id, "checkedAt": jiff::Timestamp::now().to_string(), "capture": capture, "bodySha256": raw.map(|b|hash(b.as_bytes()))});
+        if row["capture"].get("overviewResponses").is_some() {
+            row["captureSha256"] = json!(hash(&serde_json::to_vec(&row["capture"]).unwrap()));
+        }
         let failed = result.is_err();
         match result {
             Ok(value) => row["result"] = serde_json::to_value(value).unwrap(),
@@ -70,11 +73,14 @@ fn replay_registry_batch() {
         let id = IsBusinessId::parse(row["id"].as_str().unwrap()).unwrap();
         let raw = row["capture"]["body"].as_str().unwrap();
         assert_eq!(row["bodySha256"], hash(raw.as_bytes()));
-        let native = decode::decode(raw.as_bytes(), &id).unwrap();
+        let native = replay_native(&row, &id).unwrap();
         let common: crate::CompanyLookupResult = native.into();
         let actual = serde_json::to_value(common).unwrap();
         let review = &expectations[id.as_str()];
         assert_eq!(review["bodySha256"], row["bodySha256"]);
+        if !row["captureSha256"].is_null() {
+            assert_eq!(review["captureSha256"], row["captureSha256"]);
+        }
         for (pointer, expected) in review["fields"].as_object().expect("review required") {
             assert_eq!(
                 actual.pointer(pointer),
@@ -108,12 +114,61 @@ fn audit_retained_registry_responses() {
     crate::test_support::retained_registry::run("IS", |row| {
         let id = IsBusinessId::parse(row["id"].as_str().ok_or("missingIdentity")?)
             .map_err(|e| e.to_string())?;
-        let raw = crate::test_support::retained_registry::body(row, "/capture/body", "bodySha256")?;
+        crate::test_support::retained_registry::body(row, "/capture/body", "bodySha256")?;
         if row["capture"]["httpStatus"] != 200 {
             return Err("nonSuccessHttpStatus".into());
         }
-        decode::decode(raw.as_bytes(), &id)
+        replay_native(row, &id)
             .map(|v| Some(v.into()))
             .map_err(|e| e.to_string())
     });
+}
+
+fn replay_native(row: &Value, id: &IsBusinessId) -> Result<IsCompanyLookupResult, String> {
+    let raw = crate::test_support::retained_registry::body(row, "/capture/body", "bodySha256")?;
+    let mut native = decode::decode(raw.as_bytes(), id).map_err(|e| e.to_string())?;
+    if let Some(responses) = row["capture"]["overviewResponses"].as_array() {
+        use base64::Engine;
+        if row["captureSha256"] != hash(&serde_json::to_vec(&row["capture"]).unwrap()) {
+            return Err("overviewCaptureHashMismatch".into());
+        }
+        if responses.len() != 5 || responses.iter().any(|r| r["httpStatus"] != 200) {
+            return Err("incompleteOrFailedOverview".into());
+        }
+        if !overview::available(raw.as_bytes(), id).map_err(|e| e.to_string())? {
+            return Err("missingOverviewOffer".into());
+        }
+        for (index, response) in responses.iter().enumerate() {
+            let (content_type, encoding) = if index == 4 {
+                ("application/pdf", "base64")
+            } else {
+                ("text/html", "utf8")
+            };
+            if response["encoding"] != encoding
+                || response["contentType"]
+                    .as_str()
+                    .and_then(|s| s.split(';').next())
+                    .map(str::trim)
+                    != Some(content_type)
+            {
+                return Err("unexpectedOverviewRepresentation".into());
+            }
+        }
+        let text = |index: usize| -> Result<&[u8], String> {
+            responses[index]["body"]
+                .as_str()
+                .map(str::as_bytes)
+                .ok_or("missingOverviewBody".into())
+        };
+        let kid = overview::cart(text(0)?).map_err(|e| e.to_string())?;
+        overview::page_fields(text(1)?, id, false).map_err(|e| e.to_string())?;
+        overview::confirmation(text(2)?, &kid).map_err(|e| e.to_string())?;
+        overview::page_fields(text(3)?, id, true).map_err(|e| e.to_string())?;
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(text(4)?)
+            .map_err(|e| e.to_string())?;
+        native.details.registration_overview =
+            Some(overview::pdf(&bytes, id).map_err(|e| e.to_string())?);
+    }
+    Ok(native)
 }

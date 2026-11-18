@@ -121,3 +121,7 @@ A source status such as `TRANSFER(SOSIRE)` or `TRANSFER(PLECARE)` produces
 `unresolved_data`, preserving the native wording in the error. Neither transfer
 direction proves active or closed lifecycle. A separately dated ONRC snapshot
 must not be presented as part of the ANAF response.
+
+A manual current ONRC/BRIS check can establish lifecycle in that separate source,
+but the adapter does not reuse browser evidence or substitute it into an ANAF
+result. Its unattended lookup still needs its own explicit lifecycle observation.

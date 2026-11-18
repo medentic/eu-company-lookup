@@ -127,8 +127,8 @@ pub use ie::{
 };
 
 pub use is::{
-    IsBusinessId, IsCompanyDetails, IsCompanyLookupResult, IsRegistryClient, IsRegistryConfig,
-    validate_is_business_id_syntax,
+    IsBusinessId, IsCompanyDetails, IsCompanyLookupResult, IsRegistrationOverview,
+    IsRegistryClient, IsRegistryConfig, validate_is_business_id_syntax,
 };
 
 pub(crate) use model::RegistryFailure;

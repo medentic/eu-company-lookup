@@ -18,6 +18,9 @@
   unsupported or conflicting lifecycle evidence returns `unresolved_data`, with
   native status retained in error details. Add distinct proceeding states rather
   than treating liquidation, bankruptcy or suspension as company deletion.
+- Resolve Icelandic page-only lifecycle gaps using identity-matched, zero-cost
+  official registration overviews. Bound PDF parsing, isolate document sessions
+  per lookup, and preserve the dated native status separately from page fields.
 - Search all Austrian Firmenbuch states explicitly so deleted companies can
   return a confirmed closed result. Empty searches and ambiguous revisions remain errors.
 - Resolve Polish KRS P/S routing, suspension, liquidation cancellation, merger

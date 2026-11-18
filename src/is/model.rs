@@ -3,6 +3,9 @@
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct IsCompanyDetails {
+    /// Explicit lifecycle from the identity-matched free registry overview, when needed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub registration_overview: Option<IsRegistrationOverview>,
     /// Exact company identifier from the heading.
     pub kennitala: String,
     /// Original decoded registration subtitle.
@@ -31,4 +34,18 @@ pub struct IsCompanyLookupResult {
     pub company_name: String,
     /// Typed source page fields.
     pub details: IsCompanyDetails,
+}
+
+/// Selected lifecycle evidence from a free Skatturinn registration overview.
+/// Officers, personal identifiers and document contents are not exposed.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+#[non_exhaustive]
+pub struct IsRegistrationOverview {
+    /// Exact legal-entity identifier in the document.
+    pub kennitala: String,
+    /// Date printed on the official overview.
+    pub issued_on: crate::Date,
+    /// Decoded Icelandic status text; PDF positioning may omit visual spaces.
+    pub native_status: String,
 }

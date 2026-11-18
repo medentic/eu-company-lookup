@@ -17,7 +17,7 @@ Explore complete success and error JSON plus provider-specific edge cases. There
 | [France](fr.md) | `FR` | API Recherche Entreprises | 5.0 |
 | [Greece](gr.md) | `GR` | GEMI | 5.0 |
 | [Ireland](ie.md) | `IE` | CRO open data | 5.0 |
-| [Iceland](is.md) | `IS` | Skatturinn company pages | 5.0 |
+| [Iceland](is.md) | `IS` | Skatturinn pages and free registration overviews | 5.0 |
 | [Lithuania](lt.md) | `LT` | JAR open data | 5.0 |
 | [Latvia](lv.md) | `LV` | Registry open data | 5.0 |
 | [Norway](no.md) | `NO` | Enhetsregisteret | 5.0 |
