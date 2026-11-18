@@ -136,9 +136,32 @@ fn lifecycle(v: &CzCompanyLookupResult) -> Option<crate::CompanyStatus> {
             if r.stav_zdroje_ir.as_deref() == Some("NEEXISTUJICI")
                 && r.stav_zdroje_ceu.as_deref() == Some("NEEXISTUJICI") =>
         {
-            Active
+            if liquidation_suffix(&v.company_name) {
+                Liquidation
+            } else {
+                Active
+            }
         }
         "ZANIKLY" => Closed,
         _ => Unknown,
     })
+}
+
+// Civil Code §187(2) requires this addition to the name during liquidation.
+// Match the final legal suffix, not a word occurring inside a company name.
+fn liquidation_suffix(name: &str) -> bool {
+    let normalized = name
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase();
+    let normalized = normalized.trim_end_matches(['"', '“', '”', '\'']);
+    [
+        " v likvidaci",
+        " \"v likvidaci",
+        " „v likvidaci",
+        " 'v likvidaci",
+    ]
+    .iter()
+    .any(|suffix| normalized.ends_with(suffix))
 }

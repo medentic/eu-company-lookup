@@ -30,6 +30,8 @@
   separately. Polish national lookup meets the reviewed 200-distinct-ID gate.
 - Resolve primary Czech public-register lifecycle when ROS explicitly has no
   record, retaining the native VR state and rejecting conflicting evidence.
+  Recognize the statutory liquidation name suffix on registered Czech companies
+  while preserving confirmed closure and unresolved-evidence precedence.
 - Supplement Czech cessation with identity-matched ROS evidence and Slovak RÚZ
   records with RPO lifecycle data when needed. Add Latvian proceeding evidence,
   Lithuanian status mappings and Romanian suspension/resumption/merger mappings.

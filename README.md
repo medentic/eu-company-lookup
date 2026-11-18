@@ -405,7 +405,7 @@ See the [Belgian output examples](docs/examples/be.md).
 ### Czech national verification status
 
 Czech ARES lookup meets the reviewed 200-distinct-ID national verification gate,
-including active and closed companies. Source-bound expectations and complete
+including active, liquidation and closed states. Source-bound expectations and complete
 offline replay cover the accepted sample. Primary public-register records can
 resolve lifecycle when ROS explicitly has no record; conflicting evidence and
 operational failures remain errors. This milestone does not claim exhaustive

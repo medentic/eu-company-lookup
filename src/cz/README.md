@@ -6,7 +6,7 @@ Czech company lookup is enabled in the facade and capability catalog.
 The [shared projection](mapping.rs) maps explicit cessation dates to closed and
 unambiguous ARES legal-form codes to Czech labels. VAT facts remain null.
 The reviewed sample meets the 200-distinct-ID national verification gate,
-including active and closed companies, with source-bound expectations and
+including active, liquidation and closed states, with source-bound expectations and
 complete offline replay. This does not establish coverage of every proceeding
 or entity type.
 
@@ -99,3 +99,10 @@ access denial, malformed JSON and other failures do not.
 
 See [shared pacing and evidence rules](../README.md#registry-pacing-and-evidence)
 for clone scope, cooldowns, error classification and complete-batch replay.
+
+For an otherwise resolved active Czech primary ROS/VR record, the statutory
+final name suffix `v likvidaci` maps to `liquidation`, including quoted variants.
+[Civil Code §187(2)](https://e-sbirka.gov.cz/sb/2012/89?odkazId=214769895)
+requires that suffix during liquidation. Original names and native register states
+remain preserved. Confirmed cessation takes precedence; names do not override
+conflicting or missing lifecycle evidence.

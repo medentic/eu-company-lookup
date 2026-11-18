@@ -204,9 +204,68 @@ or trading activity. Missing optional fields remain null.
 }
 ```
 
+## Registered company in liquidation
+
+Czech Civil Code §187(2) requires the name addition `v likvidaci` during
+liquidation. For an otherwise resolved active primary ROS/VR record, this final
+legal suffix refines the result to `liquidation`. The original name and native
+`AKTIVNI` remain intact. A confirmed cessation still takes precedence and maps
+to closed; conflicting insolvency evidence remains unresolved.
+See the [official explanation](https://portal.gov.cz/rozcestniky/likvidace-spolecnosti-RZC-33).
+
+```json
+{
+  "country": "CZ",
+  "taxId": "00123456",
+  "vatRegistered": null,
+  "vatId": null,
+  "source": "CzechAres",
+  "registryUrl": null,
+  "foreignName": null,
+  "companyName": "Example a.s. v likvidaci",
+  "legalForm": null,
+  "registeredOffice": null,
+  "fiscalAddress": null,
+  "status": "liquidation",
+  "registryDetails": {
+    "provider": "CzechAres",
+    "data": {
+      "nativeRegistryStatus": "AKTIVNI",
+      "registeredOffice": null,
+      "legalFormCode": null,
+      "rosLegalFormCode": null,
+      "taxIdentifier": null,
+      "vatGroupIdentifier": null,
+      "createdDate": null,
+      "ceasedDate": null,
+      "updatedDate": null,
+      "primarySource": "vr",
+      "sourceRegistrations": {
+        "stavZdrojeRos": "NEEXISTUJICI",
+        "stavZdrojeVr": "AKTIVNI",
+        "stavZdrojeRes": null,
+        "stavZdrojeRzp": null,
+        "stavZdrojeNrpzs": null,
+        "stavZdrojeRpsh": null,
+        "stavZdrojeRcns": null,
+        "stavZdrojeSzr": null,
+        "stavZdrojeDph": null,
+        "stavZdrojeSkDph": null,
+        "stavZdrojeSd": null,
+        "stavZdrojeIr": "NEEXISTUJICI",
+        "stavZdrojeCeu": "NEEXISTUJICI",
+        "stavZdrojeRs": null,
+        "stavZdrojeRed": null,
+        "stavZdrojeMonitor": null
+      }
+    }
+  }
+}
+```
+
 ## Example basis
 
-The reviewed national sample meets the 200-distinct-ID gate, including active and
-closed companies. This does not establish exhaustive proceeding coverage.
+The reviewed national sample meets the 200-distinct-ID gate, including active,
+liquidation and closed states. This does not establish exhaustive proceeding coverage.
 
 The success output is serialized through the current decoder and common-result mapping from `exact_identity_and_required_name` plus an explicit cessation date in the [synthetic tests](../../src/cz/tests.rs). Failure output is serialized from an offline loopback HTTP response through the public client and shared [error conversion](../../src/model/error.rs). Field and lifecycle rules live in the [provider mapping](../../src/cz/mapping.rs). See [reading these examples](README.md#reading-the-examples) for null, failure and version semantics.

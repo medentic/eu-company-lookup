@@ -163,6 +163,13 @@ view is pure and performs no VIES lookup. Native address text is preserved exact
 recognized country presentation follows shared normalization. No country is inferred
 from the lookup jurisdiction when absent from the source.
 
+For an otherwise resolved active Czech primary ROS/VR record, the statutory
+final name suffix `v likvidaci` maps to `liquidation`, including quoted variants.
+[Civil Code §187(2)](https://e-sbirka.gov.cz/sb/2012/89?odkazId=214769895)
+requires that suffix during liquidation. Original names and native register states
+remain preserved. Confirmed cessation takes precedence; names do not override
+conflicting or missing lifecycle evidence.
+
 ## Austrian public Firmenbuch
 
 The anonymous JustizOnline adapter resolves an exact Firmenbuch number through

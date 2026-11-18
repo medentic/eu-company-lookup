@@ -503,3 +503,44 @@ fn primary_public_register_resolves_without_ros_but_never_overrules_it() {
         crate::test_support::assert_company_contract(&result);
     }
 }
+
+#[test]
+fn statutory_liquidation_suffix_refines_registered_state_not_closure() {
+    use crate::CompanyStatus::{Active, Closed, Liquidation, Unknown};
+    use serde_json::json;
+    let id = CzBusinessId::parse("00123456").unwrap();
+    for primary in ["ros", "vr"] {
+        for (name, expected) in [
+            ("Example a.s. v likvidaci", Liquidation),
+            ("Example a.s., v likvidaci", Liquidation),
+            ("Example a.s. \"v likvidaci\"", Liquidation),
+            ("Example a.s. „v likvidaci“", Liquidation),
+            ("Example a.s. V  LIKVIDACI  ", Liquidation),
+            ("Example v likvidaci consulting a.s.", Active),
+            ("Example a.s. bez likvidace", Active),
+        ] {
+            let mut body = json!({"ico":"00123456","obchodniJmeno":name,"primarniZdroj":primary,
+                "seznamRegistraci":{"stavZdrojeRos":if primary=="ros" {"AKTIVNI"} else {"NEEXISTUJICI"},
+                    "stavZdrojeVr":"AKTIVNI","stavZdrojeIr":"NEEXISTUJICI","stavZdrojeCeu":"NEEXISTUJICI"}});
+            let project = |body: &serde_json::Value| -> crate::CompanyLookupResult {
+                decode::decode(&serde_json::to_vec(body).unwrap(), &id)
+                    .unwrap()
+                    .unwrap()
+                    .into()
+            };
+            let result = project(&body);
+            assert_eq!(result.status, Some(expected), "{primary} {name}");
+            assert_eq!(result.company_name, name);
+            if primary == "vr" && name == "Example a.s. v likvidaci" {
+                assert_eq!(
+                    serde_json::to_value(&result).unwrap(),
+                    crate::test_support::documentation::example("cz", 3)
+                );
+            }
+            body["seznamRegistraci"]["stavZdrojeIr"] = json!("AKTIVNI");
+            assert_eq!(project(&body).status, Some(Unknown));
+            body["datumZaniku"] = json!("2020-01-01");
+            assert_eq!(project(&body).status, Some(Closed));
+        }
+    }
+}
