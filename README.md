@@ -61,7 +61,7 @@ for national lookup coverage. ANAF is a taxpayer source. VAT verification and
 company registration are separate checks; syntax validation does not prove
 checksum validity or registration.
 
-On development main, national lookups require a resolved lifecycle. Missing or
+In version 5.0, national lookups require a resolved lifecycle. Missing or
 ambiguous lifecycle returns [`unresolved_data`](docs/reference/errors.md#unresolved-company-lifecycle),
 not a successful partial company or a negative registration result. Documented
 proceedings have explicit status values; other optional fields remain nullable.
@@ -239,7 +239,7 @@ upstream HTTP status and retry guidance when available.
 | `access_denied`, `provider_rejected_input` | Inspect provider details before retrying or changing the request. |
 | `unexpected_response`, `response_mismatch`, `response_too_large` | Inspect the response failure; do not treat it as a negative registration result. |
 | `not_found` | The identified registry sources definitively missed the company. |
-| `unresolved_data` (main) | A record matched, but lifecycle could not be resolved; registration is not disproved. |
+| `unresolved_data` | A record matched, but lifecycle could not be resolved; registration is not disproved. |
 | `unknown_error` | Generic failure; no validity conclusion follows. |
 
 `service_unavailable` sets `isServiceUnavailable: true`; rate limiting and
@@ -251,7 +251,7 @@ response is an `Ok` result, not a `LookupError`:
 | `Ok(result)` with VIES `valid: false` | Matched negative VAT response |
 | `not_found`, reason `both_bulgarian_registers_missed` | Definitive misses from both Bulgarian registers |
 | `not_found`, provider `RomanianAnaf` | Definitive ANAF miss only |
-| `not_found`, provider `CzechAres` (main) | Documented ARES negative response only |
+| `not_found`, provider `CzechAres` | Documented ARES negative response only |
 | Invalid input, timeout, rate limit, service or schema error | Lookup failed; registration status remains unproven |
 
 See the [full error catalog and 3.x migration guide](docs/reference/errors.md)

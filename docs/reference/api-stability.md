@@ -184,11 +184,15 @@ unsupported country/scheme pair; supported pairs with malformed values retain
 
 ## Company status and source values
 
-Every company result uses `status: Option<CompanyStatus>` with `Active`, `Closed`,
-or `Unknown` (JSON `active`, `closed`, `unknown`). Missing lifecycle evidence remains
-null; present but unmapped values become `Unknown`. Documented cessation dates
-can establish closed status without a native status label. Adapters must establish
-source-backed mappings rather than infer lifecycle from tax flags.
+Every company result uses `status: Option<CompanyStatus>`. Resolved states include
+`Active`, `Closed`, `Liquidation`, `Bankruptcy`, `Receivership`,
+`LiquidationAndReceivership`, `Restructuring`, `PendingClosure`,
+`LiquidationStayed`, `Administration` and `Inactive`, serialized in camelCase.
+Version 5.0 public lookups return `unresolved_data` when lifecycle cannot be
+resolved. Pure native-to-common projections retain null for missing evidence
+and `Unknown` (JSON `unknown`) for present but unmapped values. Documented
+cessation dates can establish closed status without a native status label.
+Adapters use source-backed mappings rather than infer lifecycle from tax flags.
 
 In the shared result, `registryDetails.data.nativeRegistryStatus` is a nullable
 string retaining the source status even when
@@ -207,7 +211,7 @@ special tax regimes and source structures belong in `registryDetails`. Provider 
 may extend the observation but cannot override common fields. A shared field can
 be null when unavailable; availability alone does not make it provider-specific.
 
-Within 2.x, documented field names, types, null behavior and provider spellings
+Within 5.x, documented field names, types, null behavior and provider spellings
 are stable. Minor releases can add fields and extensible enum values; consumers
 should tolerate unknown fields and values. Missing information stays null rather
 than becoming an invented fact or an assertion of absence.
