@@ -45,7 +45,9 @@ async fn live_registry_batch() {
         writeln!(output, "{}", serde_json::to_string(&row).unwrap()).unwrap();
         output.sync_all().unwrap();
         println!("{id}: success={}", !failed);
-        if failed {
+        // A matched but unresolved record is evidence to review, not an outage.
+        // Preserve it and finish the authorized selection; stop on transport/parser failures.
+        if failed && row["lookupError"]["id"] != "unresolved_data" {
             panic!(
                 "Stopped after provider/parser error; preserve original journal before recovery"
             );

@@ -14,7 +14,9 @@ hit. Numeric source codes become decimal strings without padding or truncation;
 string source codes retain zeroes. Empty and ambiguous searches remain errors.
 Require a nonblank source name. Historical names, native status and legal-form
 codes remain typed details. Status R maps to active and K to closed; liquidation L and bankruptcy N
-map to their distinct proceeding states. Verified legal-form codes 3 and 5 map to their Estonian labels.
+map to their distinct proceeding states, following RIK's
+[published status classification](https://avaandmed.ariregister.rik.ee/en/open-data-api/detailed-company-data-query).
+Verified legal-form codes 3 and 5 map to their Estonian labels.
 
 `legal_address` supplies the original registered-office text and `zip_code` the
 postcode. No delivery, locality or country components are inferred from this

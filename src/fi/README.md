@@ -27,7 +27,8 @@ missing labels stay null. No caller-selected language or historical-date lookup.
 
 The common result supplies FI, the exact business ID, source company name and
 available Finnish legal-form label. PRH's Trade Register status remains the native
-status code. Trade Register code 1 maps to active and 4 to closed; code 2 (removed)
+status code. PRH's [REK_KDI classification](https://avoindata.prh.fi/opendata-ytj-api/v3/description?code=REK_KDI&lang=en)
+distinguishes registered, removed and ceased entries. Trade Register code 1 maps to active and 4 to closed; code 2 (removed)
 does not itself prove dissolution. Ongoing situations or a dissolution date
 prevent a registered code from asserting active.
 VAT registration, VAT ID, fiscal address, foreign name and registry link remain null; tax-entry types include special notification and group regimes; no blanket VAT inference is made.

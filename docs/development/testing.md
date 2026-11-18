@@ -270,3 +270,17 @@ This diagnostic is not a completion certificate: original selection manifests,
 missing observations, duplicate IDs and source-bound review coverage must still
 be checked by the batch validation workflow. A passing audit test means the audit
 finished, not that every reported case resolved or passed its existing review.
+
+When a mapping change makes an expectation stale, review the captured provider
+fields against the provider's classification before creating a review revision.
+Do not copy the audit's actual output into expectations. Preserve the previous
+review and its source binding; replay the revised review against the original
+selection. Supplemental lifecycle responses must be captured and hash-bound too:
+changing a base-record expectation cannot replace missing lifecycle evidence.
+
+Report stale reviews, unresolved source facts, operational failures and sample-size
+shortfalls separately. A newer passing review can supersede an older review for
+the same identifier without deleting the older observation. A matched unresolved
+record is still useful evidence: bounded collection may continue past it, while
+provider or parser failures require recovery before collection resumes. Neither
+case contributes to resolved coverage until source review and replay pass.
