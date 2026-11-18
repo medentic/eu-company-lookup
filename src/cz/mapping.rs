@@ -50,13 +50,14 @@ impl From<CzCompanyLookupResult> for CompanyLookupResult {
     fn from(v: CzCompanyLookupResult) -> Self {
         let registered_office = v.registered_office.as_ref().map(address);
         let status = lifecycle(&v);
-        let native_registry_status = (v.primary_source.as_deref() == Some("ros"))
-            .then(|| {
-                v.source_registrations
-                    .as_ref()
-                    .and_then(|r| r.stav_zdroje_ros.clone())
-            })
-            .flatten();
+        let native_registry_status =
+            v.source_registrations
+                .as_ref()
+                .and_then(|r| match v.primary_source.as_deref() {
+                    Some("ros") => r.stav_zdroje_ros.clone(),
+                    Some("vr") => r.stav_zdroje_vr.clone(),
+                    _ => None,
+                });
         let legal_form = v
             .legal_form_code
             .as_deref()
@@ -118,13 +119,18 @@ fn lifecycle(v: &CzCompanyLookupResult) -> Option<crate::CompanyStatus> {
     }) {
         return Some(Closed);
     }
-    // StavZdroje means the subject's state in that register. Only the primary
-    // identity register ROS establishes lifecycle; tax/licence registers cannot.
-    if v.primary_source.as_deref() != Some("ros") {
-        return None;
-    }
+    // ARES uses the same StavZdroje codebook for ROS and the public registers.
+    // Primary VR can establish lifecycle when ROS explicitly has no record;
+    // a conflicting or missing ROS state must not be silently overruled.
     let r = v.source_registrations.as_ref()?;
-    let state = r.stav_zdroje_ros.as_deref()?;
+    let state = match v.primary_source.as_deref() {
+        Some("ros") => r.stav_zdroje_ros.as_deref()?,
+        Some("vr") if r.stav_zdroje_ros.as_deref() == Some("NEEXISTUJICI") => {
+            r.stav_zdroje_vr.as_deref()?
+        }
+        Some("vr") => return r.stav_zdroje_vr.as_ref().map(|_| Unknown),
+        _ => return None,
+    };
     Some(match state {
         "AKTIVNI"
             if r.stav_zdroje_ir.as_deref() == Some("NEEXISTUJICI")

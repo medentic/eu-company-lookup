@@ -5,7 +5,10 @@
 Czech company lookup is enabled in the facade and capability catalog.
 The [shared projection](mapping.rs) maps explicit cessation dates to closed and
 unambiguous ARES legal-form codes to Czech labels. VAT facts remain null.
-Broader live verification remains in progress.
+The reviewed sample meets the 200-distinct-ID national verification gate,
+including active and closed companies, with source-bound expectations and
+complete offline replay. This does not establish coverage of every proceeding
+or entity type.
 
 ARES is the Czech Ministry of Finance's aggregation service for economic subjects,
 not a certified commercial-register extract. The implementation source contract is
@@ -36,7 +39,7 @@ or personal tax numbers as IČO.
   subject's own VAT identity.
 - `seznamRegistraci` describes source registrations. Do not interpret a source's
   `AKTIVNI` value as proof of company lifecycle or standard domestic VAT status
-  without a documented source-specific rule. Primary ROS `AKTIVNI` plus explicit `NEEXISTUJICI` insolvency/execution registrations establishes active membership; primary ROS `ZANIKLY` establishes closure. The ARES `StavZdroje` codebook defines these values. For a non-ROS primary source with ROS `ZANIKLY` and no aggregate cessation date, query `/ekonomicke-subjekty-ros/{ico}`. Require an exact envelope and record IČO, exactly one record, `stavSubjektu: ZANIKLY` and a canonical cessation date. Preserve those facts separately in `rosClosure`; do not replace the aggregate date. Other cases remain unresolved.
+  without a documented source-specific rule. Primary ROS `AKTIVNI` plus explicit `NEEXISTUJICI` insolvency/execution registrations establishes active membership; primary ROS `ZANIKLY` establishes closure. Primary VR uses the same rules only when ROS explicitly reports `NEEXISTUJICI`: VR `AKTIVNI` requires absent IR/CEU records, and VR `ZANIKLY` establishes closure. Conflicting or missing ROS evidence does not permit this rule. The ARES `StavZdroje` codebook defines these values. For a non-ROS primary source with ROS `ZANIKLY` and no aggregate cessation date, query `/ekonomicke-subjekty-ros/{ico}`. Require an exact envelope and record IČO, exactly one record, `stavSubjektu: ZANIKLY` and a canonical cessation date. Preserve those facts separately in `rosClosure`; do not replace the aggregate date. Other cases remain unresolved.
 - Preserve dates and source identifiers in typed details. Do not infer incorporation
   or closure merely from response freshness.
 - A definitive miss requires HTTP 404 with the documented `NENALEZENO` envelope.

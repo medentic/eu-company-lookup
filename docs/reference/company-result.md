@@ -149,8 +149,13 @@ these party fields are not company addresses. Original source text is unchanged.
 `CzechAres` uses the existing common field meanings for eight-digit IČO identities.
 Its typed details retain native legal-form codes, tax and VAT-group identifiers,
 source creation/cessation/update dates, primary-source code, registered-office
-components and per-register status codes. `nativeRegistryStatus` is null because
-this endpoint supplies no single company lifecycle status. A valid source cessation date maps to closed; its absence does not imply active.
+components and per-register status codes. `nativeRegistryStatus` retains the primary
+ROS or VR state; other primary sources leave it null. A valid source cessation
+date maps to closed; its absence does not imply active. Primary ROS `AKTIVNI`
+requires explicitly absent IR/CEU records to establish active membership; primary
+ROS `ZANIKLY` establishes closure. Primary VR applies those rules only when ROS
+explicitly reports `NEEXISTUJICI`. Conflicting or missing ROS evidence blocks
+the VR-only rule; exact supplemental ROS cessation remains separate.
 Unambiguous ARES RES legal-form codes map to Czech labels. VAT fields remain null. No fiscal-address substitution is made.
 
 `CzRegistryClient::lookup` supplies the native result. Its conversion to the common

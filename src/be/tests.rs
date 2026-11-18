@@ -235,3 +235,16 @@ fn documented_company_output_matches_synthetic_source() {
     let native = decode::decode(raw.as_bytes(), &id).unwrap();
     crate::test_support::assert_documented_company("be", native);
 }
+
+#[test]
+fn documented_closed_code_needs_no_translated_label() {
+    let raw = br#"{"cbe":"0012345678","name":"Example","streetName":"Source","streetNumber":"12A","boxNumber":"003","postalCode":"0010","countryCode":"BE","legalSituationCode":"014"}"#;
+    let common: crate::CompanyLookupResult =
+        decode::decode(raw, &BeBusinessId::parse("0012345678").unwrap())
+            .unwrap()
+            .into();
+    assert_eq!(
+        serde_json::to_value(common).unwrap(),
+        crate::test_support::documentation::example("be", 2)
+    );
+}

@@ -393,6 +393,25 @@ failures remain in local evidence. This milestone does not establish coverage of
 every registry history or a definitive company-absence outcome.
 See the [Austrian output examples](docs/examples/at.md).
 
+### Belgian national verification status
+
+Belgian NBB lookup meets the reviewed 200-distinct-ID national verification gate
+with source-bound expectations and complete offline replay. The accepted sample
+contains active companies; closed and proceeding states have synthetic tests,
+which do not establish live coverage of those states. NBB misses and access
+failures never establish absence from CBE.
+See the [Belgian output examples](docs/examples/be.md).
+
+### Czech national verification status
+
+Czech ARES lookup meets the reviewed 200-distinct-ID national verification gate,
+including active and closed companies. Source-bound expectations and complete
+offline replay cover the accepted sample. Primary public-register records can
+resolve lifecycle when ROS explicitly has no record; conflicting evidence and
+operational failures remain errors. This milestone does not claim exhaustive
+coverage of proceedings or every ARES entity type.
+See the [Czech output examples](docs/examples/cz.md).
+
 ### Polish national verification status
 
 Polish KRS P/S lookup meets the reviewed 200-distinct-ID national verification
@@ -412,7 +431,7 @@ are listed in the support table; implementation and publication dates are not pr
 
 | Priority | Work |
 | --- | --- |
-| 1 | Verify Belgium and Czechia; investigate national lookup for Spain. |
+| 1 | Investigate national lookup for Spain. |
 | 2 | Verify Greek national lookup alongside VIES behavior. |
 | 3 | Extend Romanian coverage beyond the current ANAF taxpayer source. |
 

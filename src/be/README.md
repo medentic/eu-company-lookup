@@ -14,7 +14,10 @@ Country normalization uses only source-provided values. Original full-address
 text, VAT fields and record URL remain null. Normal situation maps to active; reviewed terminal codes map to closed.
 Documented liquidation, bankruptcy and restructuring codes map to distinct proceeding states. A code without a label
 is retained as native status; absence of both remains null.
-Collection and mapping verification remain in progress.
+The reviewed sample meets the 200-distinct-ID national verification gate with
+source-bound expectations and complete offline replay. That sample contains
+active records; closed and proceeding states have synthetic regression coverage,
+which does not establish live coverage of those states.
 
 See NBB's [Consult terms](https://www.nbb.be/en/central-balance-sheet-office/consultation/consult/terms-use)
 for the source and scope of the identity data. Collected records stay local-only.

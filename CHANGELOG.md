@@ -28,6 +28,8 @@
 - Resolve Polish KRS P/S routing, suspension, liquidation cancellation, merger
   direction and terminal removals. Retain successor identifiers and non-finality
   separately. Polish national lookup meets the reviewed 200-distinct-ID gate.
+- Resolve primary Czech public-register lifecycle when ROS explicitly has no
+  record, retaining the native VR state and rejecting conflicting evidence.
 - Supplement Czech cessation with identity-matched ROS evidence and Slovak RÚZ
   records with RPO lifecycle data when needed. Add Latvian proceeding evidence,
   Lithuanian status mappings and Romanian suspension/resumption/merger mappings.

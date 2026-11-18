@@ -27,7 +27,7 @@ pub struct CzCompanyLookupResult {
     pub updated_date: Option<String>,
     /// Original ARES `primarniZdroj` value; no inferred semantics.
     pub primary_source: Option<String>,
-    /// Native source-register states; lifecycle interpretation is limited to documented primary-ROS rules.
+    /// Native source-register states; lifecycle interpretation is limited to documented primary ROS/VR rules.
     pub source_registrations: Option<CzSourceRegistrations>,
     /// Matched supplemental ROS cessation evidence, separate from the aggregate.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -245,7 +245,7 @@ pub(super) struct Wire {
     /// Original ARES `primarniZdroj` value; no inferred semantics.
     #[serde(rename = "primarniZdroj")]
     pub primary_source: Option<String>,
-    /// Native source-register states; lifecycle interpretation is limited to documented primary-ROS rules.
+    /// Native source-register states; lifecycle interpretation is limited to documented primary ROS/VR rules.
     #[serde(rename = "seznamRegistraci")]
     pub source_registrations: Option<CzSourceRegistrations>,
 }

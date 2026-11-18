@@ -284,7 +284,7 @@ fn cessation_date_and_legal_form_are_independent_of_tax_registration() {
 }
 
 #[test]
-fn only_primary_ros_subject_state_establishes_active_lifecycle() {
+fn primary_ros_subject_state_establishes_active_lifecycle() {
     use crate::CompanyStatus::*;
     use serde_json::{Value, json};
     let base = json!({"ico":"00123456","obchodniJmeno":"Synthetic s.r.o.","primarniZdroj":"ros","seznamRegistraci":{"stavZdrojeRos":"AKTIVNI","stavZdrojeIr":"NEEXISTUJICI","stavZdrojeCeu":"NEEXISTUJICI","stavZdrojeDph":"ZANIKLY"}});
@@ -456,5 +456,50 @@ async fn ros_supplement_resolves_closure_and_preserves_aggregate() {
             ));
         }
         task.await.unwrap();
+    }
+}
+
+#[test]
+fn primary_public_register_resolves_without_ros_but_never_overrules_it() {
+    use crate::CompanyStatus::{Active, Closed, Unknown};
+    use serde_json::json;
+    let id = CzBusinessId::parse("00123456").unwrap();
+    let base = json!({"ico":"00123456","obchodniJmeno":"Example a.s.","primarniZdroj":"vr",
+        "seznamRegistraci":{"stavZdrojeVr":"AKTIVNI","stavZdrojeRos":"NEEXISTUJICI",
+            "stavZdrojeIr":"NEEXISTUJICI","stavZdrojeCeu":"NEEXISTUJICI"}});
+    let documented: crate::CompanyLookupResult =
+        decode::decode(&serde_json::to_vec(&base).unwrap(), &id)
+            .unwrap()
+            .unwrap()
+            .into();
+    assert_eq!(
+        serde_json::to_value(documented).unwrap(),
+        crate::test_support::documentation::example("cz", 2)
+    );
+    for (field, value, expected) in [
+        ("stavZdrojeVr", json!("AKTIVNI"), Some(Active)),
+        ("stavZdrojeVr", json!("ZANIKLY"), Some(Closed)),
+        ("stavZdrojeVr", json!("BUDOUCI"), Some(Unknown)),
+        ("stavZdrojeVr", json!("NEW"), Some(Unknown)),
+        ("stavZdrojeVr", json!(null), None),
+        ("stavZdrojeRos", json!("ZANIKLY"), Some(Unknown)),
+        ("stavZdrojeRos", json!("AKTIVNI"), Some(Unknown)),
+        ("stavZdrojeRos", json!(null), Some(Unknown)),
+        ("stavZdrojeIr", json!("AKTIVNI"), Some(Unknown)),
+        ("stavZdrojeCeu", json!(null), Some(Unknown)),
+    ] {
+        let mut body = base.clone();
+        body["seznamRegistraci"][field] = value;
+        let result: crate::CompanyLookupResult =
+            decode::decode(&serde_json::to_vec(&body).unwrap(), &id)
+                .unwrap()
+                .unwrap()
+                .into();
+        assert_eq!(result.status, expected, "{field}");
+        assert_eq!(
+            serde_json::to_value(&result).unwrap()["registryDetails"]["data"]["nativeRegistryStatus"],
+            body["seznamRegistraci"]["stavZdrojeVr"]
+        );
+        crate::test_support::assert_company_contract(&result);
     }
 }

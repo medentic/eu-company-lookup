@@ -140,12 +140,73 @@ HTTP 404 becomes `not_found` only with the documented `NENALEZENO` JSON error an
 
 | Case | Behavior |
 | --- | --- |
-| Active lifecycle | Requires primary source `ros`, ROS state `AKTIVNI`, and IR/CEU states explicitly `NEEXISTUJICI`; a tax-source `AKTIVNI` flag alone is insufficient. |
-| Closed ROS record | Primary source `ros` with ROS state `ZANIKLY` establishes closure. |
+| Active lifecycle | Requires primary ROS `AKTIVNI`, or primary VR `AKTIVNI` with ROS explicitly `NEEXISTUJICI`, and IR/CEU states explicitly `NEEXISTUJICI`; a tax-source `AKTIVNI` flag alone is insufficient. |
+| Closed primary record | Primary ROS `ZANIKLY`, or primary VR `ZANIKLY` with ROS explicitly `NEEXISTUJICI`, establishes closure. |
+| Conflicting primary VR record | Missing ROS state or an existing ROS record blocks the VR-only rule. ROS cessation recovery remains separate; no tax or trade-license status substitutes for it. |
 | Missing lifecycle | Without a supported lifecycle signal the public lookup returns `unresolved_data`. |
 | VAT | Native `dic` and `dicSkDph` do not establish VAT registration. |
 | Addresses | Registered office comes from `sidlo`. A delivery address is not a fiscal address; original `textovaAdresa` stays unchanged. |
 
+## Active primary public-register record
+
+This synthetic company has primary source `vr`, an explicit active VR record,
+no ROS record, and no IR/CEU records. The aggregate response establishes the
+registration state without another request. It does not establish VAT status
+or trading activity. Missing optional fields remain null.
+
+```json
+{
+  "country": "CZ",
+  "taxId": "00123456",
+  "vatRegistered": null,
+  "vatId": null,
+  "source": "CzechAres",
+  "registryUrl": null,
+  "foreignName": null,
+  "companyName": "Example a.s.",
+  "legalForm": null,
+  "registeredOffice": null,
+  "fiscalAddress": null,
+  "status": "active",
+  "registryDetails": {
+    "provider": "CzechAres",
+    "data": {
+      "nativeRegistryStatus": "AKTIVNI",
+      "registeredOffice": null,
+      "legalFormCode": null,
+      "rosLegalFormCode": null,
+      "taxIdentifier": null,
+      "vatGroupIdentifier": null,
+      "createdDate": null,
+      "ceasedDate": null,
+      "updatedDate": null,
+      "primarySource": "vr",
+      "sourceRegistrations": {
+        "stavZdrojeRos": "NEEXISTUJICI",
+        "stavZdrojeVr": "AKTIVNI",
+        "stavZdrojeRes": null,
+        "stavZdrojeRzp": null,
+        "stavZdrojeNrpzs": null,
+        "stavZdrojeRpsh": null,
+        "stavZdrojeRcns": null,
+        "stavZdrojeSzr": null,
+        "stavZdrojeDph": null,
+        "stavZdrojeSkDph": null,
+        "stavZdrojeSd": null,
+        "stavZdrojeIr": "NEEXISTUJICI",
+        "stavZdrojeCeu": "NEEXISTUJICI",
+        "stavZdrojeRs": null,
+        "stavZdrojeRed": null,
+        "stavZdrojeMonitor": null
+      }
+    }
+  }
+}
+```
+
 ## Example basis
+
+The reviewed national sample meets the 200-distinct-ID gate, including active and
+closed companies. This does not establish exhaustive proceeding coverage.
 
 The success output is serialized through the current decoder and common-result mapping from `exact_identity_and_required_name` plus an explicit cessation date in the [synthetic tests](../../src/cz/tests.rs). Failure output is serialized from an offline loopback HTTP response through the public client and shared [error conversion](../../src/model/error.rs). Field and lifecycle rules live in the [provider mapping](../../src/cz/mapping.rs). See [reading these examples](README.md#reading-the-examples) for null, failure and version semantics.
