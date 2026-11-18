@@ -179,7 +179,9 @@ impl RoRegistryClient {
 
 // ANAF dates follow the provider's calendar day, independent of the host timezone.
 pub(super) fn fiscal_date_at(now: Timestamp) -> Date {
-    now.in_tz("Europe/Bucharest")
-        .expect("bundled Bucharest timezone")
-        .date()
+    // Avoid a host-database preference if a consumer enables other Jiff features.
+    let zone = jiff::tz::TimeZoneDatabase::bundled()
+        .get("Europe/Bucharest")
+        .expect("bundled Bucharest timezone");
+    now.to_zoned_datetime(zone).date()
 }

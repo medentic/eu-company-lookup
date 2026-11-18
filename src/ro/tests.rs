@@ -822,7 +822,7 @@ fn documented_company_output_matches_synthetic_source() {
 }
 
 #[test]
-fn fiscal_day_uses_bucharest_midnight_across_dst_changes() {
+fn bucharest_date_boundary_handles_midnight_and_dst() {
     for (instant, expected) in [
         ("2026-01-01T21:59:59Z", "2026-01-01"),
         ("2026-01-01T22:00:00Z", "2026-01-02"),

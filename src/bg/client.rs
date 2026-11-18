@@ -403,12 +403,16 @@ fn retry_delay(value: &RetryAfter) -> Duration {
     }
 }
 pub(super) fn end_of_day(now: Timestamp) -> String {
+    // Select the bundled database explicitly: another dependency can enable
+    // Jiff's host-database features through Cargo feature unification.
+    let zone = jiff::tz::TimeZoneDatabase::bundled()
+        .get("Europe/Sofia")
+        .expect("bundled Sofia timezone");
     let local = now
-        .in_tz("Europe/Sofia")
-        .expect("bundled Sofia timezone")
+        .to_zoned_datetime(zone.clone())
         .date()
         .at(23, 59, 59, 999_000_000)
-        .in_tz("Europe/Sofia")
+        .to_zoned_datetime(zone)
         .expect("Sofia end of day is unambiguous");
     local.strftime("%Y-%m-%dT%H:%M:%S%.3f%:z").to_string()
 }
