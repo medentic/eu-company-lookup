@@ -40,7 +40,7 @@ fn search_requires_exact_identity_and_safe_source_route() {
     for bad in [
         SEARCH.replace("00123a", "00124a"),
         SEARCH.replace("00123a_7", "../00123a_7"),
-        SEARCH.replace("ACTIVE", "ALL"),
+        SEARCH.replace("ACTIVE", "UNSUPPORTED"),
         r#"{"numResults":0,"state":"ACTIVE","companies":[]}"#.into(),
     ] {
         assert!(decode::select(bad.as_bytes(), &id).is_err());
@@ -59,8 +59,12 @@ async fn anonymous_search_then_detail_and_capture() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
     let server = crate::test_support::http::spawn_server(async move {
+        let search = SEARCH.replace("ACTIVE", "ALL");
         for (path, body) in [
-            ("/search?term=00123a&size=5&page=0", SEARCH),
+            (
+                "/search?term=00123a&size=5&page=0&state=ALL",
+                search.as_str(),
+            ),
             ("/00123a_7", DETAIL),
         ] {
             let (mut socket, _) = listener.accept().await.unwrap();
@@ -229,4 +233,27 @@ fn documented_company_output_matches_synthetic_source() {
     let id = AtBusinessId::parse("00123A").unwrap();
     let native = decode::detail(DETAIL.as_bytes(), &id, "00123a_7").unwrap();
     crate::test_support::assert_documented_company("at", native);
+}
+
+#[test]
+fn all_status_search_resolves_deleted_company_without_guessing_revisions() {
+    let id = AtBusinessId::parse("00123A").unwrap();
+    let search = SEARCH.replace("ACTIVE", "ALL");
+    let record = decode::select(search.as_bytes(), &id).unwrap();
+    let deleted = DETAIL.replace("ACTIVE", "DELETED");
+    let common: crate::CompanyLookupResult = decode::detail(deleted.as_bytes(), &id, &record)
+        .unwrap()
+        .into();
+    assert_eq!(common.status, Some(crate::CompanyStatus::Closed));
+    assert_eq!(
+        serde_json::to_value(common).unwrap(),
+        crate::test_support::documentation::example("at", 2)
+    );
+    for ambiguous in [
+        r#"{"numResults":0,"state":"ALL","companies":[]}"#,
+        r#"{"numResults":2,"state":"ALL","companies":[{"id":"00123a_1","fnr":"00123a","status":"HISTORIC"},{"id":"00123a_7","fnr":"00123a","status":"DELETED"}]}"#,
+        r#"{"numResults":6,"state":"ALL","companies":[{"id":"00123a_7","fnr":"00123a"}]}"#,
+    ] {
+        assert!(decode::select(ambiguous.as_bytes(), &id).is_err());
+    }
 }

@@ -756,6 +756,8 @@ async fn lifecycle_quality_gate_preserves_source_and_distinguishes_negative_resu
         (Some("INREGISTRAT"), Some(crate::CompanyStatus::Active)),
         (Some("RADIAT"), Some(crate::CompanyStatus::Closed)),
         (Some("FUTURE SOURCE STATE"), None),
+        (Some("TRANSFER(SOSIRE) din data 01.02.2020"), None),
+        (Some("TRANSFER(PLECARE) din data 01.02.2020"), None),
         (None, None),
     ] {
         let mut body = fixture();

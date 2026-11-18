@@ -66,3 +66,8 @@ An empty RPO search remains a source-data gap when RÚZ has a matched company bu
 no dissolution date. The [Ministry of Justice commercial register](https://www.orsr.sk/search_ico.asp)
 can provide an independent cross-check; an empty result there does not turn the
 matched RÚZ observation into a definitive negative or establish closure.
+
+For investigation, RPO also documents historical-inclusive `onlyActive=false`
+and `fullName` searches. A name search can locate a candidate but cannot replace
+exact identifier binding. An empty successful search remains a data gap; a 503
+or timeout is an access failure, including when RÚZ has already returned a record.

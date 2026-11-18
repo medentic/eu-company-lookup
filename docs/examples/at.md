@@ -92,11 +92,59 @@ This adapter does not expose a definitive `not_found` outcome. For example, upst
 
 | Case | Behavior |
 | --- | --- |
-| Active-only search | An empty search is not proof that a historical or deleted company never existed. |
-| Unknown source status | Returns `unresolved_data`; `DELETED` can map to `closed` when present in a matched detail. |
+| All-status search | Explicit `state=ALL` includes deleted entries; empty or ambiguous results remain errors. |
+| Unknown source status | Returns `unresolved_data`; `DELETED` maps to `closed` when present in a matched detail. |
 | Address country | Street, city and postcode are supplied; country and original full-address text stay null. |
 | VAT | Firmenbuch registration alone leaves both VAT fields null. |
 
 ## Example basis
 
 The success output is serialized through the current decoder and common-result mapping from the `DETAIL` fixture in the [synthetic tests](../../src/at/tests.rs). Failure output is serialized from an offline loopback HTTP response through the public client and shared [error conversion](../../src/model/error.rs). Field and lifecycle rules live in the [provider mapping](../../src/at/mapping.rs). See [reading these examples](README.md#reading-the-examples) for null, failure and version semantics.
+
+## Matched deleted company
+
+The same synthetic company with native `DELETED` is a resolved record with
+`status: "closed"`. The all-status search makes this record reachable without
+using a failed or empty search as evidence of closure.
+
+```json
+{
+  "country": "AT",
+  "taxId": "00123A",
+  "vatRegistered": null,
+  "vatId": null,
+  "source": "AustrianFirmenbuch",
+  "registryUrl": null,
+  "foreignName": null,
+  "companyName": " Example GmbH ",
+  "legalForm": null,
+  "registeredOffice": {
+    "fullAddressByRegistry": null,
+    "address": "Source 1",
+    "address2": null,
+    "city": "Town",
+    "postcode": "0010",
+    "region": null,
+    "municipality": null,
+    "country": null,
+    "countryISO2": null
+  },
+  "fiscalAddress": null,
+  "status": "closed",
+  "registryDetails": {
+    "provider": "AustrianFirmenbuch",
+    "data": {
+      "nativeRegistryStatus": "DELETED",
+      "recordId": "00123a_7",
+      "domicile": null,
+      "sourceDate": null,
+      "legalForm": null,
+      "registeredOffice": {
+        "street": "Source 1",
+        "zipCode": "0010",
+        "city": "Town"
+      }
+    }
+  }
+}
+```

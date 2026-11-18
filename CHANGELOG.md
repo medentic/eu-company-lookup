@@ -18,6 +18,8 @@
   unsupported or conflicting lifecycle evidence returns `unresolved_data`, with
   native status retained in error details. Add distinct proceeding states rather
   than treating liquidation, bankruptcy or suspension as company deletion.
+- Search all Austrian Firmenbuch states explicitly so deleted companies can
+  return a confirmed closed result. Empty searches and ambiguous revisions remain errors.
 - Resolve Polish KRS P/S routing, suspension, liquidation cancellation, merger
   direction and terminal removals. Retain successor identifiers and non-finality
   separately. Polish national lookup meets the reviewed 200-distinct-ID gate.

@@ -235,7 +235,7 @@ can still pass parser regression while leaving validation incomplete.
 
 Definitive negatives require the provider's actual absence contract. Czech replay
 accepts a hash-bound `outcome: "notFound"` review only with captured HTTP 404 and
-the documented `NENALEZENO` response envelope. Empty Austrian active-only search
+the documented `NENALEZENO` response envelope. Empty Austrian search
 remains unresolved. ANAF replay distinguishes decoded `notFound` observations
 from errors and unresolved records; unreviewed observations are not verified cases.
 

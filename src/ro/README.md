@@ -105,3 +105,9 @@ current per-CUI endpoint. A snapshot can independently verify a company's status
 at its reference date; it must not silently rewrite a different-date ANAF response
 or make every fiscal transfer active. The ANAF adapter does not download ONRC bulk
 data during lookup.
+
+The distinction also applies to departure (`TRANSFER(PLECARE)`): moving a fiscal
+file does not prove that the legal entity closed. Both directions remain
+`unresolved_data` without lifecycle evidence, even when ANAF supplies a trade
+register number, a VAT flag or a fiscal-inactivity flag. A successful HTTP 200
+with such a record is a data limitation, not an access failure.

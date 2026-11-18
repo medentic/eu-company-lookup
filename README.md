@@ -185,7 +185,7 @@ column means the jurisdiction is not supported by VIES.
 
 | Country | VIES prefix | National source | Availability |
 | --- | --- | --- | --- |
-| [Austria](docs/examples/at.md) | `AT` | Firmenbuch active-record lookup | Implemented |
+| [Austria](docs/examples/at.md) | `AT` | Firmenbuch registered/deleted-record lookup | Implemented |
 | [Belgium](docs/examples/be.md) | `BE` | NBB Consult company data | Implemented |
 | [Bulgaria](docs/examples/bg.md) | `BG` | Commercial Register, BULSTAT fallback | Implemented |
 | Croatia | `HR` | — | Pending |

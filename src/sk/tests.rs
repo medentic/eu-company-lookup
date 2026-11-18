@@ -222,36 +222,51 @@ fn rpo_supplement_requires_current_identity_and_resolves_native_lifecycle() {
 }
 
 #[tokio::test]
-async fn missing_rpo_match_preserves_unresolved_accounting_record() {
+async fn missing_rpo_match_and_access_failure_remain_distinct() {
     use tokio::io::AsyncWriteExt;
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let endpoint = format!("http://{}", listener.local_addr().unwrap());
-    let task = crate::test_support::http::spawn_server(async move {
-        for body in [
-            json!({"id":[42],"existujeDalsieId":false}),
-            source(),
-            json!({"results":[]}),
-        ] {
-            let (mut socket, _) = listener.accept().await.unwrap();
-            crate::test_support::http::read_request(&mut socket)
-                .await
-                .unwrap();
-            let body = body.to_string();
-            socket.write_all(format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",body.len(),body).as_bytes()).await.unwrap();
+    for rpo_http_status in [200, 503] {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let endpoint = format!("http://{}", listener.local_addr().unwrap());
+        let task = crate::test_support::http::spawn_server(async move {
+            for (status, body) in [
+                (200, json!({"id":[42],"existujeDalsieId":false})),
+                (200, source()),
+                (rpo_http_status, json!({"results":[]})),
+            ] {
+                let (mut socket, _) = listener.accept().await.unwrap();
+                crate::test_support::http::read_request(&mut socket)
+                    .await
+                    .unwrap();
+                let body = body.to_string();
+                socket.write_all(format!("HTTP/1.1 {status} Test\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",body.len(),body).as_bytes()).await.unwrap();
+            }
+        });
+        let error = SkRegistryClient::for_test(endpoint, Default::default())
+            .lookup("00123456")
+            .await
+            .unwrap_err();
+        if rpo_http_status == 200 {
+            assert!(matches!(
+                error.kind,
+                crate::model::LookupFailure::UnresolvedData {
+                    reason: "missing_lifecycle",
+                    ..
+                }
+            ));
+            assert!(!error.is_service_unavailable);
+        } else {
+            assert!(matches!(
+                error.kind,
+                crate::model::LookupFailure::Registry {
+                    error: RegistryFailure::ServiceUnavailable { .. },
+                    ..
+                }
+            ));
+            assert!(error.is_service_unavailable);
+            assert_eq!(error.details.upstream_http_status, Some(503));
         }
-    });
-    let error = SkRegistryClient::for_test(endpoint, Default::default())
-        .lookup("00123456")
-        .await
-        .unwrap_err();
-    assert!(matches!(
-        error.kind,
-        crate::model::LookupFailure::UnresolvedData {
-            reason: "missing_lifecycle",
-            ..
-        }
-    ));
-    task.await.unwrap();
+        task.await.unwrap();
+    }
 }
 
 #[test]

@@ -5,7 +5,9 @@ source-returned company detail route. It needs no account, key or cookies.
 Search results must match the complete Firmenbuch number; a nearby number or
 similar company name cannot select a record. Leading zeroes are preserved.
 
-The current search covers active records. Empty or ambiguous search responses
+The search explicitly requests `state=ALL`, covering registered, deleted and
+historical entries according to the official [filter configuration](https://justizonline.gv.at/jop/service/fba/filterConfig).
+The portal defaults to `ACTIVE`; that default can hide a deleted company. Empty or ambiguous search responses
 are errors, not proof of absence. Paid documents and authenticated routes are
 not requested. Native status, legal form and address text remain source values.
 
@@ -31,11 +33,11 @@ retains the original observation. See the
 
 ## Access, pacing and recovery
 
-A successful lookup uses two HTTP requests: active-record search, then matched
+A successful lookup uses two HTTP requests: all-status search, then matched
 detail. The default two-second interval applies between exchanges and after the
 lookup; both requests share the 30-second deadline. This is client pacing, not a
-verified JustizOnline quota. The active-only search cannot establish absence of a
-historical or deleted entity. Access rejection must not trigger a paid-document
+verified JustizOnline quota. An empty all-status search still does not establish company closure.
+Multiple exact matches are rejected rather than selecting a historical revision. Access rejection must not trigger a paid-document
 or authenticated-route fallback.
 
 See [shared pacing and evidence rules](../README.md#registry-pacing-and-evidence)

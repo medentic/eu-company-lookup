@@ -116,3 +116,8 @@ An otherwise successful ANAF envelope with no found record and exactly the reque
 ## Example basis
 
 The success output is serialized through the current decoder and common-result mapping from `fixture` plus explicit registration wording and a fixed checked-at time in the [synthetic tests](../../src/ro/tests.rs). Failure output is serialized from an offline loopback HTTP response through the public client and shared [error conversion](../../src/model/error.rs). Field and lifecycle rules live in the [provider mapping](../../src/ro/mapping.rs). See [reading these examples](README.md#reading-the-examples) for null, failure and version semantics.
+
+A source status such as `TRANSFER(SOSIRE)` or `TRANSFER(PLECARE)` produces
+`unresolved_data`, preserving the native wording in the error. Neither transfer
+direction proves active or closed lifecycle. A separately dated ONRC snapshot
+must not be presented as part of the ANAF response.

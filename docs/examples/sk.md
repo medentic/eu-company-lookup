@@ -102,3 +102,7 @@ This adapter does not expose a definitive `not_found` outcome. For example, upst
 ## Example basis
 
 The success output is serialized through the current decoder and common-result mapping from the `source` fixture with the lifecycle change described above in the [synthetic tests](../../src/sk/tests.rs). Failure output is serialized from an offline loopback HTTP response through the public client and shared [error conversion](../../src/model/error.rs). Field and lifecycle rules live in the [provider mapping](../../src/sk/mapping.rs). See [reading these examples](README.md#reading-the-examples) for null, failure and version semantics.
+
+If an exact RÚZ record has no dissolution date and RPO returns an empty successful
+search, the result remains `unresolved_data`. HTTP 503 or a timeout while querying
+RPO is instead an operational failure. Neither outcome establishes closure.

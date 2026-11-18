@@ -55,3 +55,17 @@ The absence of a deregistration notice cannot by itself establish active status.
 
 See [shared pacing and evidence rules](../README.md#registry-pacing-and-evidence)
 for clone scope, cooldowns, error classification and complete-batch replay.
+
+## Evidence needed to resolve an ordinary registration page
+
+The government's [company-formation guidance](https://www.stjornarradid.is/verkefni/atvinnuvegir/vidskipti/felagarettur-og-skraning-i-fyrirtaekjaskra/stofnun-felaga/)
+says deregistered businesses are absent from the website, but that page was last
+updated in 2014 and discusses name availability. It does not establish a current
+lifecycle guarantee for this direct-identifier endpoint. Do not use it to turn
+an ordinary registration date into an active status.
+
+Skatturinn also offers a [free registration overview](https://www.skatturinn.is/fyrirtaekjaskra/thjonusta/upplysingar-ur-fyrirtaekjaskra/)
+through its document shop. That is a separate workflow, not a lifecycle field in
+the public HTML response. An overview or API integration must establish exact
+identity, status semantics and observation date before it can supplement this
+adapter. An unsuccessful document retrieval does not establish company closure.

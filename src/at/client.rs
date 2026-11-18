@@ -98,7 +98,7 @@ impl AtRegistryClient {
     }
     async fn send(&self, id: &AtBusinessId) -> Result<AtCompanyLookupResult, RegistryFailure> {
         let search_url = format!(
-            "{}/search?term={}&size=5&page=0",
+            "{}/search?term={}&size=5&page=0&state=ALL",
             self.endpoint,
             id.as_str().to_ascii_lowercase()
         );

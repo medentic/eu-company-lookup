@@ -99,3 +99,8 @@ This adapter does not expose a definitive `not_found` outcome. For example, upst
 ## Example basis
 
 The success output is serialized through the current decoder and common-result mapping from the `source` fixture with the lifecycle change described above in the [synthetic tests](../../src/is/tests.rs). Failure output is serialized from an offline loopback HTTP response through the public client and shared [error conversion](../../src/model/error.rs). Field and lifecycle rules live in the [provider mapping](../../src/is/mapping.rs). See [reading these examples](README.md#reading-the-examples) for null, failure and version semantics.
+
+An ordinary registration date on an identity-matched page does not produce the
+closed result shown above, nor does it establish active lifecycle. It produces
+`unresolved_data`; a separate document or API source needs its own verified
+status semantics before it can resolve that case.

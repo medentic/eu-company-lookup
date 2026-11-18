@@ -16,7 +16,10 @@ struct Hit {
 pub(super) fn select(bytes: &[u8], id: &AtBusinessId) -> Result<String, RegistryFailure> {
     let v: Search =
         serde_json::from_slice(bytes).map_err(|_| RegistryFailure::UnexpectedResponse)?;
-    if v.state != "ACTIVE" || v.num_results != v.companies.len() {
+    // Accept retained active-only captures as well as the explicit all-status search.
+    // Multiple exact matches remain ambiguous; a historical revision is not a
+    // substitute for a unique current/deleted company observation.
+    if !matches!(v.state.as_str(), "ACTIVE" | "ALL") || v.num_results != v.companies.len() {
         return Err(RegistryFailure::UnexpectedResponse);
     }
     let mut matched = v
