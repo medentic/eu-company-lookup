@@ -1,4 +1,5 @@
-use crate::{LimitScope, LookupError, VatId};
+use super::failure::Failure;
+use crate::{LimitScope, VatId};
 use chrono::NaiveDate;
 use roxmltree::Node;
 
@@ -26,15 +27,15 @@ fn one_child<'a, 'input>(
     node: Node<'a, 'input>,
     namespace: &str,
     name: &str,
-) -> Result<Node<'a, 'input>, LookupError> {
+) -> Result<Node<'a, 'input>, Failure> {
     let mut children = node
         .children()
         .filter(|n| n.has_tag_name((namespace, name)));
-    let child = children.next().ok_or(LookupError::from(
+    let child = children.next().ok_or(Failure::from(
         crate::model::LookupFailure::MalformedResponse,
     ))?;
     if children.next().is_some() {
-        return Err(LookupError::from(
+        return Err(Failure::from(
             crate::model::LookupFailure::MalformedResponse,
         ));
     }
@@ -46,7 +47,7 @@ fn field(
     namespace: Option<&str>,
     name: &str,
     optional: bool,
-) -> Result<Option<String>, LookupError> {
+) -> Result<Option<String>, Failure> {
     let mut children = node
         .children()
         .filter(|n| n.is_element() && n.tag_name().name() == name);
@@ -54,7 +55,7 @@ fn field(
         return if optional {
             Ok(None)
         } else {
-            Err(LookupError::from(
+            Err(Failure::from(
                 crate::model::LookupFailure::MalformedResponse,
             ))
         };
@@ -63,7 +64,7 @@ fn field(
         || child.tag_name().namespace() != namespace
         || child.children().any(|n| n.is_element())
     {
-        return Err(LookupError::from(
+        return Err(Failure::from(
             crate::model::LookupFailure::MalformedResponse,
         ));
     }
@@ -76,7 +77,7 @@ fn field(
         Some("true" | "1") if optional && text.is_empty() => return Ok(None),
         Some("false" | "0") | None => {}
         _ => {
-            return Err(LookupError::from(
+            return Err(Failure::from(
                 crate::model::LookupFailure::MalformedResponse,
             ));
         }
@@ -84,62 +85,56 @@ fn field(
     Ok(Some(text))
 }
 
-pub(super) fn decode(xml: &str, vat: &VatId) -> Result<Response, LookupError> {
+pub(super) fn decode(xml: &str, vat: &VatId) -> Result<Response, Failure> {
     // roxmltree defaults reject DTDs, preventing external/general entity expansion.
     let doc = roxmltree::Document::parse(xml)
-        .map_err(|_| LookupError::from(crate::model::LookupFailure::MalformedResponse))?;
+        .map_err(|_| Failure::from(crate::model::LookupFailure::MalformedResponse))?;
     let envelope = doc.root_element();
     if !envelope.has_tag_name((SOAP, "Envelope")) {
-        return Err(LookupError::from(
+        return Err(Failure::from(
             crate::model::LookupFailure::MalformedResponse,
         ));
     }
     let body = one_child(envelope, SOAP, "Body")?;
     let mut children = body.children().filter(Node::is_element);
-    let payload = children.next().ok_or(LookupError::from(
+    let payload = children.next().ok_or(Failure::from(
         crate::model::LookupFailure::MalformedResponse,
     ))?;
     if children.next().is_some() {
-        return Err(LookupError::from(
+        return Err(Failure::from(
             crate::model::LookupFailure::MalformedResponse,
         ));
     }
     if payload.has_tag_name((SOAP, "Fault")) {
-        let code = field(payload, None, "faultstring", false)?.ok_or(LookupError::from(
+        let code = field(payload, None, "faultstring", false)?.ok_or(Failure::from(
             crate::model::LookupFailure::MalformedResponse,
         ))?;
         let mut error = match code.trim() {
-            "INVALID_INPUT" => {
-                LookupError::from(crate::model::LookupFailure::ProviderRejectedInput)
-            }
+            "INVALID_INPUT" => Failure::from(crate::model::LookupFailure::ProviderRejectedInput),
             "GLOBAL_MAX_CONCURRENT_REQ" => {
-                LookupError::from(crate::model::LookupFailure::RateLimited {
+                Failure::from(crate::model::LookupFailure::RateLimited {
                     scope: LimitScope::Global,
                     retry_after: None,
                 })
             }
-            "MS_MAX_CONCURRENT_REQ" => {
-                LookupError::from(crate::model::LookupFailure::RateLimited {
-                    scope: LimitScope::MemberState,
-                    retry_after: None,
-                })
-            }
-            "SERVICE_UNAVAILABLE" => {
-                LookupError::from(crate::model::LookupFailure::ServiceUnavailable {
-                    retry_after: None,
-                })
-            }
-            "MS_UNAVAILABLE" => {
-                LookupError::from(crate::model::LookupFailure::MemberStateUnavailable {
-                    retry_after: None,
-                })
-            }
-            "TIMEOUT" => LookupError::from(crate::model::LookupFailure::ProviderTimeout {
+            "MS_MAX_CONCURRENT_REQ" => Failure::from(crate::model::LookupFailure::RateLimited {
+                scope: LimitScope::MemberState,
                 retry_after: None,
             }),
-            _ => LookupError::from(crate::model::LookupFailure::UnknownSoapFault),
+            "SERVICE_UNAVAILABLE" => {
+                Failure::from(crate::model::LookupFailure::ServiceUnavailable { retry_after: None })
+            }
+            "MS_UNAVAILABLE" => {
+                Failure::from(crate::model::LookupFailure::MemberStateUnavailable {
+                    retry_after: None,
+                })
+            }
+            "TIMEOUT" => {
+                Failure::from(crate::model::LookupFailure::ProviderTimeout { retry_after: None })
+            }
+            _ => Failure::from(crate::model::LookupFailure::UnknownSoapFault),
         };
-        error.details.upstream_code = [
+        error.upstream_code = [
             "INVALID_INPUT",
             "GLOBAL_MAX_CONCURRENT_REQ",
             "MS_MAX_CONCURRENT_REQ",
@@ -152,7 +147,7 @@ pub(super) fn decode(xml: &str, vat: &VatId) -> Result<Response, LookupError> {
         return Err(error);
     }
     if !payload.has_tag_name((NS, "checkVatResponse")) {
-        return Err(LookupError::from(
+        return Err(Failure::from(
             crate::model::LookupFailure::MalformedResponse,
         ));
     }
@@ -168,14 +163,14 @@ pub(super) fn decode(xml: &str, vat: &VatId) -> Result<Response, LookupError> {
             ]
             .contains(&n.tag_name().name())
     }) {
-        return Err(LookupError::from(
+        return Err(Failure::from(
             crate::model::LookupFailure::MalformedResponse,
         ));
     }
     let country = field(payload, Some(NS), "countryCode", false)?;
     let number = field(payload, Some(NS), "vatNumber", false)?;
     if country.as_deref() != Some(vat.prefix()) || number.as_deref() != Some(vat.number()) {
-        return Err(LookupError::from(
+        return Err(Failure::from(
             crate::model::LookupFailure::MismatchedResponse,
         ));
     }
@@ -186,16 +181,16 @@ pub(super) fn decode(xml: &str, vat: &VatId) -> Result<Response, LookupError> {
         Some("true" | "1") => true,
         Some("false" | "0") => false,
         _ => {
-            return Err(LookupError::from(
+            return Err(Failure::from(
                 crate::model::LookupFailure::MalformedResponse,
             ));
         }
     };
-    let request_date = field(payload, Some(NS), "requestDate", false)?.ok_or(LookupError::from(
+    let request_date = field(payload, Some(NS), "requestDate", false)?.ok_or(Failure::from(
         crate::model::LookupFailure::MalformedResponse,
     ))?;
     if !valid_date(request_date.trim()) {
-        return Err(LookupError::from(
+        return Err(Failure::from(
             crate::model::LookupFailure::MalformedResponse,
         ));
     }

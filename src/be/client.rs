@@ -87,7 +87,7 @@ impl BeRegistryClient {
     /// Look up the current NBB Consult observation by full enterprise number.
     pub async fn lookup(&self, value: &str) -> Result<BeCompanyLookupResult, LookupError> {
         let id = BeBusinessId::parse(value)?;
-        registry_transport::execute(
+        registry_transport::execute_company(
             &self.admission,
             &self.config.bounds(),
             Provider::BelgianNbb,

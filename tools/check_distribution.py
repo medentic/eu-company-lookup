@@ -7,6 +7,11 @@ from check_docs import ROOT, check
 CONSUMER_DOCS = {'README.md', 'CHANGELOG.md', 'docs/reference/api-stability.md',
                  'docs/reference/company-result.md', 'docs/reference/errors.md',
                  'docs/reference/bulgarian-registry.md', 'docs/reference/romanian-registry.md', 'docs/reference/vies.md'}
+# Reviewed, synthetic consumer examples; no collected records or provenance.
+CONSUMER_DOCS |= {f'docs/examples/{name}.md' for name in (
+    'README', 'vies', 'at', 'be', 'bg', 'cz', 'ee', 'fi', 'fr', 'gr',
+    'ie', 'is', 'lt', 'lv', 'no', 'pl', 'ro', 'sk',
+)}
 ROOT_FILES = {'Cargo.toml', 'Cargo.toml.orig', 'Cargo.lock', '.cargo_vcs_info.json',
               'LICENSE', 'THIRD-PARTY-LICENSE.txt'}
 SYNTHETIC_FIXTURES = {'src/vies/fixtures/valid.xml',

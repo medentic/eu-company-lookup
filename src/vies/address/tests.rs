@@ -1,4 +1,33 @@
 use super::split;
+
+#[test]
+fn polish_postcode_without_locality_preserves_explicit_fields() {
+    for (raw, details) in [
+        ("EXAMPLE 7\n12-345", None),
+        ("EXAMPLE 7\r\nBUILDING B\r\n12-345\r\n", Some("BUILDING B")),
+    ] {
+        let parsed = split("PL", Some(raw.into()));
+        assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+        assert_eq!(parsed.address.as_deref(), Some("EXAMPLE 7"));
+        assert_eq!(parsed.address2.as_deref(), details);
+        assert_eq!(parsed.postcode.as_deref(), Some("12-345"));
+        assert_eq!(parsed.city, None);
+        assert_eq!(parsed.region, None);
+    }
+    for raw in [
+        "EXAMPLE 7\n12345",
+        "EXAMPLE 7\n12-3456",
+        "EXAMPLE 7 12-345",
+        "12-345",
+    ] {
+        let parsed = split("PL", Some(raw.into()));
+        assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+        assert_eq!(parsed.address, None);
+        assert_eq!(parsed.postcode, None);
+        assert_eq!(parsed.city, None);
+    }
+}
+
 #[test]
 fn country_formats() {
     let cases = [
@@ -674,6 +703,29 @@ fn croatian_settlement_and_hungarian_numeric_boundaries() {
 }
 
 #[test]
+fn hungarian_budapest_numeric_locality_suffix_preserves_postal_boundary() {
+    for city in ["BUDAPEST 09", "Budapest 09"] {
+        let raw = format!("Example 1234 Block 7 1097 {city}");
+        let parsed = split("HU", Some(raw.clone()));
+        assert_eq!(parsed.address.as_deref(), Some("Example 1234 Block 7"));
+        assert_eq!(parsed.postcode.as_deref(), Some("1097"));
+        assert_eq!(parsed.city.as_deref(), Some(city));
+        assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw.as_str()));
+    }
+    for raw in [
+        "Example 7 BUDAPEST 09",
+        "Example 7 1097 Town 09",
+        "Example 7 1097 BUDAPEST 1234",
+    ] {
+        let parsed = split("HU", Some(raw.into()));
+        assert!(parsed.address.is_none());
+        assert!(parsed.postcode.is_none());
+        assert!(parsed.city.is_none());
+        assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+    }
+}
+
+#[test]
 fn maltese_postcode_line_preserves_multiple_delivery_lines() {
     let raw = "\nExample Centre\nRoad\nIndustrial Estate\nABC1234\nTown";
     let parsed = split("MT", Some(raw.into()));
@@ -713,5 +765,102 @@ fn portuguese_partial_delivery_never_invents_missing_locality_or_postcode() {
     ] {
         let parsed = split("PT", Some(raw.into()));
         assert!(parsed.address.is_none() && parsed.city.is_none() && parsed.postcode.is_none());
+    }
+}
+
+#[test]
+fn portuguese_wrapped_delivery_preserves_lines_and_explicit_postal_boundary() {
+    for (raw, extra) in [
+        (
+            "RUA EXEMPLO 8\nEDIFICIO MODELO\nBAIRRO\n1234-567 CIDADE",
+            "EDIFICIO MODELO\nBAIRRO",
+        ),
+        (
+            "RUA EXEMPLO 8\nEDIFICIO\nMODELO\nBAIRRO\n1234-567 CIDADE",
+            "EDIFICIO\nMODELO\nBAIRRO",
+        ),
+    ] {
+        let parsed = split("PT", Some(raw.into()));
+        assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+        assert_eq!(parsed.address.as_deref(), Some("RUA EXEMPLO 8"));
+        assert_eq!(parsed.address2.as_deref(), Some(extra));
+        assert_eq!(parsed.postcode.as_deref(), Some("1234-567"));
+        assert_eq!(parsed.city.as_deref(), Some("CIDADE"));
+    }
+    for raw in [
+        "RUA EXEMPLO 8\nEDIFICIO\nBAIRRO\n1234-56 CIDADE",
+        "RUA EXEMPLO 8\nEDIFICIO\nBAIRRO\n1234-567",
+        "RUA EXEMPLO 8\nEDIFICIO\nBAIRRO\nCIDADE",
+    ] {
+        let parsed = split("PT", Some(raw.into()));
+        assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+        assert!(parsed.address.is_none() && parsed.postcode.is_none() && parsed.city.is_none());
+    }
+}
+
+#[test]
+fn greek_postal_boundary_accepts_single_spaces_without_guessing_missing_parts() {
+    for (raw, postcode) in [
+        ("ΔΟΚΙΜΗΣ 7 12345 - ΠΟΛΗ", "12345"),
+        ("ΔΟΚΙΜΗΣ 7  12345 - ΠΟΛΗ", "12345"),
+        ("ΔΟΚΙΜΗΣ 7   12345 - ΠΟΛΗ", "12345"),
+        ("ΔΟΚΙΜΗΣ 7\n123 45 - ΠΟΛΗ", "123 45"),
+    ] {
+        let parsed = split("EL", Some(raw.into()));
+        assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+        assert_eq!(parsed.address.as_deref(), Some("ΔΟΚΙΜΗΣ 7"));
+        assert_eq!(parsed.postcode.as_deref(), Some(postcode));
+        assert_eq!(parsed.city.as_deref(), Some("ΠΟΛΗ"));
+    }
+    for raw in [
+        "ΔΟΚΙΜΗΣ 7 12345 ΠΟΛΗ",
+        "ΔΟΚΙΜΗΣ 7 123456 - ΠΟΛΗ",
+        "ΔΟΚΙΜΗΣ 7 12345 -",
+        "ΔΟΚΙΜΗΣ 7 - ΠΟΛΗ",
+    ] {
+        let parsed = split("EL", Some(raw.into()));
+        assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+        assert!(parsed.address.is_none());
+        assert!(parsed.postcode.is_none());
+        assert!(parsed.city.is_none());
+    }
+}
+
+#[test]
+fn estonian_single_space_postcodes_require_explicit_locality_labels() {
+    let raw = "Proovi tn 8 42 12345 Kesklinna linnaosa Näitelinn";
+    let parsed = split("EE", Some(raw.into()));
+    assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+    assert_eq!(parsed.address.as_deref(), Some("Proovi tn 8 42"));
+    assert_eq!(parsed.address2.as_deref(), Some("Kesklinna linnaosa"));
+    assert_eq!(parsed.city.as_deref(), Some("Näitelinn"));
+    assert_eq!(parsed.postcode.as_deref(), Some("12345"));
+
+    let village = "Proovi tee 8 42 12345 Näite küla Näite vald";
+    let parsed = crate::locations::parse_address(village, "EE");
+    assert_eq!(parsed.address.as_deref(), Some("Proovi tee 8 42"));
+    assert_eq!(parsed.city.as_deref(), Some("Näite küla"));
+    assert_eq!(parsed.municipality.as_deref(), Some("Näite vald"));
+    assert_eq!(parsed.postcode.as_deref(), Some("12345"));
+
+    let town = split(
+        "EE",
+        Some("Proovi tn 8 42 12345 Näite linn Näite linn".into()),
+    );
+    assert_eq!(town.city.as_deref(), Some("Näite linn"));
+    assert_eq!(town.postcode.as_deref(), Some("12345"));
+
+    for raw in [
+        "Proovi tn 8 42 12345 Näitelinn",
+        "Proovi tn 8 42 Kesklinna linnaosa Näitelinn",
+        "Proovi tn 8 42 123456 Kesklinna linnaosa Näitelinn",
+        "Proovi tn 8 42 12345 Näite vald",
+        "Eesti",
+    ] {
+        let parsed = split("EE", Some(raw.into()));
+        assert_eq!(parsed.full_address_by_vies.as_deref(), Some(raw));
+        assert!(parsed.address.is_none());
+        assert!(parsed.city.is_none());
+        assert!(parsed.postcode.is_none());
     }
 }

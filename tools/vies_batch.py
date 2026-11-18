@@ -1,28 +1,26 @@
 #!/usr/bin/env python3
 """Bounded, resumable VIES development collection and offline reports (stdlib only)."""
 import argparse
-import collections
 import fcntl
-import hashlib
 import json
-import math
 import os
 import re
 from pathlib import Path
-import shutil
-import statistics
 import subprocess
 import sys
 from datetime import datetime, timezone
-from vies_reporting import Facts, classify
+from vies_reporting import Facts, classify, build_report
+from vies_evidence import load_evidence, load_rows, sha, snapshot, vat_formats as read_formats
+from vies_binary import freeze_binary as store_binary
 
 ROOT = Path(__file__).resolve().parents[1]
+BINARY_CACHE = ROOT / 'target/vies-probe-binaries'
 POLICY = {"deadlineSeconds": 6, "maxAttempts": 3, "retryStatus": 502,
           "retryPausesSeconds": [0, 1], "successGapSeconds": 5, "errorGapSeconds": 60}
 
 
-def sha(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+def freeze_binary(source):
+    return store_binary(source, BINARY_CACHE)
 
 
 def write_json(path, value):
@@ -31,112 +29,30 @@ def write_json(path, value):
     temp.replace(path)
 
 
-# Read the private Rust format table so collector syntax cannot drift from the client.
-def vat_formats():
-    source = (ROOT / 'src/vies/identifiers.rs').read_text()
-    table = source.split('const FORMATS:', 1)[1].split('];', 1)[0]
-    formats = dict(re.findall(r'\("([A-Z]{2})", "([^"\n]+)"\)', table))
-    if len(formats) != 28:
-        raise ValueError('cannot read the supported VIES format table')
-    return formats
+def vat_formats(root=ROOT):
+    return read_formats(root)
 
 
-FORMATS = vat_formats()
-
-
-def selection(path, offset, count, country="BG"):
+def selection(path, offset, count, country="BG", *, formats=None):
+    formats = vat_formats() if formats is None else formats
     ids = json.loads(path.read_text())
     if not isinstance(ids, list):
         raise ValueError("queue must be a JSON array")
     if offset < 0 or not 1 <= count <= 100 or offset + count > len(ids):
         raise ValueError('offset/count outside queue; count must be 1..100')
     selected = ids[offset:offset + count]
-    if country not in FORMATS:
+    if country not in formats:
         raise ValueError('unsupported collector country')
-    if (not isinstance(ids, list) or any(not isinstance(x, str) or not x.startswith(country) or re.fullmatch(FORMATS[country], x[2:]) is None for x in ids) or len(set(ids)) != len(ids)):
+    if (not isinstance(ids, list) or any(not isinstance(x, str) or not x.startswith(country) or re.fullmatch(formats[country], x[2:]) is None for x in ids) or len(set(ids)) != len(ids)):
         raise ValueError('queue contains duplicate or malformed country identifiers')
     return selected
 
 
-def load_rows(folder):
-    paths = sorted(folder.glob('batch-*.jsonl'))
-    if (folder / 'observations.jsonl').exists():
-        paths.append(folder / 'observations.jsonl')
-    rows = []
-    for path in paths:
-        text = path.read_text()
-        if text and not text.endswith('\n'):
-            raise ValueError(f'partial journal tail: preserve and inspect {path}')
-        rows.extend(json.loads(line) for line in text.splitlines())
-    if len({r['vatId'] for r in rows}) != len(rows):
-        raise ValueError('duplicate observed IDs')
-    return rows
-
-
-def report(folder):
-    manifest_path = folder / 'manifest.json'
-    ids = json.loads(manifest_path.read_text())['ids'] if manifest_path.exists() else json.loads((folder / 'ids.json').read_text())
-    rows = load_rows(folder)
-    if any(r['vatId'] not in ids for r in rows):
-        raise ValueError('journal contains IDs outside selection')
-    country = ids[0][:2].lower()
-    if country.upper() not in FORMATS or any(i[:2].lower() != country for i in ids):
-        raise ValueError('mixed or unsupported report country')
-    country = {'el': 'gr', 'xi': 'gb'}.get(country, country)
-    fixtures_path = ROOT / f'src/vies/fixtures/countries/{country}.json'
-    fixtures = {c['vatId']: c for c in json.loads(fixtures_path.read_text())} if fixtures_path.exists() else {}
-    reviews_path = ROOT / f'src/vies/fixtures/countries/reviews/{country}.json'
-    reviews = {r['vatId']: r for r in json.loads(reviews_path.read_text())} if reviews_path.exists() else {}
-    replay_path = folder / 'offline-replay.json'
-    replay = {r['vatId']: r['actual'] for r in json.loads(replay_path.read_text())} if replay_path.exists() else {}
-    cases = []
-    for row in rows:
-        last = row['attempts'][-1]
-        response = last.get('response')
-        status, diffs = classify(Facts(observed=True)).value, []
-        review = reviews.get(row['vatId'], {})
-        if response:
-            fixture = fixtures.get(row['vatId'])
-            # Original observations are immutable. Replay results are separately labelled.
-            actual = replay.get(row['vatId'], response['address'])
-            if actual.get('fullAddressByVies') != response['address'].get('fullAddressByVies'):
-                raise ValueError('replay source differs from journal; regenerate offline replay')
-            if fixture:
-                diffs = [{'field': k, 'expected': v, 'actual': actual.get(k)}
-                         for k, v in fixture['expected']['address'].items() if actual.get(k) != v]
-            status = classify(Facts(
-                observed=True, response=True, expectation=bool(fixture),
-                validityChanged=bool(fixture and fixture['valid'] != response['valid']),
-                sourceChanged=bool(fixture and fixture['viesOutput'] != {'company': response['company'], 'address': response['address']['fullAddressByVies']}),
-                parserMismatch=bool(diffs), ambiguous=review.get('status') == 'ambiguous',
-            )).value
-        cases.append({'vatId': row['vatId'], 'status': status, 'differences': diffs,
-                      'reviewNote': review.get('note'), 'reviewVersion': review.get('reviewVersion'),
-                      'reviewedAt': review.get('reviewedAt'), 'normalizationVersion': review.get('normalizationVersion'),
-                      'error': last.get('error'),
-                      'totalMs': row['totalMs'], 'parsedFrom': 'offlineReplay' if row['vatId'] in replay else 'liveObservation'})
-    counts = collections.Counter(c['status'] for c in cases)
-    times = sorted(r['totalMs'] for r in rows)
-    passed = counts['passed']
-    result = {'selected': len(ids), 'completed': len(rows), 'pending': len(ids) - len(rows),
-              'complete': len(ids) == len(rows), 'statuses': dict(counts),
-              'passed': passed, 'failed': counts['parserMismatch'],
-              'ambiguous': counts['ambiguous'], 'needsReview': counts['needsReview'],
-              'providerErrors': counts['providerError'],
-              'sourceChanges': counts['sourceChanged'], 'validityChanges': counts['validityChanged'],
-              'overallPassPercentage': 100 * passed / len(ids),
-              'responses': sum('response' in r['attempts'][-1] for r in rows),
-              'attempts': sum(len(r['attempts']) for r in rows),
-              'validResponses': sum(r['attempts'][-1].get('response', {}).get('valid') is True for r in rows),
-              'invalidResponses': sum(r['attempts'][-1].get('response', {}).get('valid') is False for r in rows),
-              'retriedLookups': sum(len(r['attempts']) > 1 for r in rows),
-              'recoveredLookups': sum(len(r['attempts']) > 1 and 'response' in r['attempts'][-1] for r in rows),
-              'attemptHttpStatuses': dict(collections.Counter(str(a.get('httpStatus', 'none')) for r in rows for a in r['attempts'])),
-              'attemptErrors': dict(collections.Counter((a['error'].get('code', 'unknown') if isinstance(a['error'], dict) else a['error']) for r in rows for a in r['attempts'] if 'error' in a)),
-              'maxMs': max(times) if times else None,
-              'medianMs': statistics.median(times) if times else None,
-              'p95Ms': times[math.ceil(.95 * len(times)) - 1] if times else None,
-              'cases': cases}
+def report(folder, *, current=None, root=None, formats=None):
+    """Collector/report command boundary: evaluate, then explicitly save its report."""
+    root = ROOT if root is None else root
+    formats = vat_formats() if formats is None else formats
+    result = build_report(load_evidence(root, folder, formats, current=current))
     write_json(folder / 'report.json', result)
     return result
 
@@ -164,24 +80,23 @@ def collect(args):
         else:
             if list(folder.glob('*.jsonl')):
                 raise ValueError('unmanaged journals exist; choose a fresh run directory')
-            binary = args.binary.resolve()
+            binary = freeze_binary(args.binary.resolve())
             source = {str(p.relative_to(ROOT)): sha(p) for p in sorted((ROOT / 'src').rglob('*.rs'))}
             source.update({p: sha(ROOT / p) for p in ['Cargo.toml', 'Cargo.lock']})
             manifest = {'ids': selected, 'offset': args.offset, 'queueSha256': sha(args.queue),
                         'binarySha256': sha(binary), 'sourceHashes': source,
+                        'binaryPath': os.path.relpath(binary, ROOT),
                         'policy': policy, 'journalSchemaVersion': 2,
                         'reviewPolicy': json.loads((ROOT / 'src/vies/fixtures/review-policy.json').read_text()),
                         'createdAt': datetime.now(timezone.utc).isoformat(),
                         'gitHead': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
                         'dockerImage': args.docker_image}
-            shutil.copyfile(binary, folder / 'probe-bin')
-            (folder / 'probe-bin').chmod(0o700)
             write_json(manifest_path, manifest)
         current = report(folder)
         if current['complete']:
             print(json.dumps({k: v for k, v in current.items() if k != 'cases'}, indent=2))
             return 0
-        binary = folder / 'probe-bin'
+        binary = (ROOT / manifest['binaryPath']).resolve() if 'binaryPath' in manifest else folder / 'probe-bin'
         if sha(binary) != manifest['binarySha256']:
             raise ValueError('frozen binary changed')
         if args.docker_image != manifest['dockerImage']:
@@ -192,7 +107,7 @@ def collect(args):
         if args.docker_image:
             relative = folder.relative_to(ROOT)
             env['VIES_PROBE_REPORT'] = '/work/' + str(relative / journal.name)
-            cmd = ['docker', 'run', '--rm', '--pull=never', '--entrypoint', '/work/' + str(relative / 'probe-bin'),
+            cmd = ['docker', 'run', '--rm', '--pull=never', '--entrypoint', '/work/' + str(binary.relative_to(ROOT)),
                    '-v', str(ROOT) + ':/work', '-w', '/work']
             for k, v in env.items():
                 cmd += ['-e', k + '=' + v]
@@ -205,7 +120,7 @@ def collect(args):
         finally:
             current = report(folder)
             print(json.dumps({k: v for k, v in current.items() if k != 'cases'}, indent=2))
-        if current['complete']:
+        if current['complete'] and 'binaryPath' not in manifest:
             binary.unlink()  # Required only while a resumable run remains incomplete.
         return code if code else (0 if current['complete'] else 2)
 
@@ -214,7 +129,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='action', required=True)
     p = sub.add_parser('collect')
-    p.add_argument('--country', choices=sorted(FORMATS), default='BG')
+    p.add_argument('--country', choices=sorted(vat_formats()), default='BG')
     p.add_argument('--deadline-seconds', type=int, choices=[6, 25], default=6,
                    help='6-second experiment (default) or explicit 25-second recovery profile')
     p.add_argument('--queue', type=Path, default=ROOT / 'src/vies/fixtures/ids/bg.json')
@@ -226,11 +141,13 @@ def main():
     p.add_argument('--resume', action='store_true')
     p = sub.add_parser('report')
     p.add_argument('run_dir', type=Path)
+    p.add_argument('--binary-manifest', type=Path, help='current build manifest for verified counts')
     args = parser.parse_args()
     try:
         if args.action == 'collect':
             return collect(args)
-        print(json.dumps({k: v for k, v in report(args.run_dir).items() if k != 'cases'}, indent=2))
+        current = snapshot(ROOT, args.binary_manifest) if args.binary_manifest else None
+        print(json.dumps({k: v for k, v in report(args.run_dir, current=current).items() if k != 'cases'}, indent=2))
         return 0
     except (ValueError, OSError, KeyError) as error:
         print(str(error), file=sys.stderr)

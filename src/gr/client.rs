@@ -87,7 +87,7 @@ impl GrRegistryClient {
     /// Look up the current GEMI public details observation by full GEMI number.
     pub async fn lookup(&self, value: &str) -> Result<GrCompanyLookupResult, LookupError> {
         let id = GrBusinessId::parse(value)?;
-        registry_transport::execute(
+        registry_transport::execute_company(
             &self.admission,
             &self.config.bounds(),
             Provider::GreekGemi,

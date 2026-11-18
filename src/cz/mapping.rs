@@ -49,6 +49,19 @@ fn address(a: &CzRegistryAddress) -> CompanyAddress {
 impl From<CzCompanyLookupResult> for CompanyLookupResult {
     fn from(v: CzCompanyLookupResult) -> Self {
         let registered_office = v.registered_office.as_ref().map(address);
+        let status = lifecycle(&v);
+        let native_registry_status = (v.primary_source.as_deref() == Some("ros"))
+            .then(|| {
+                v.source_registrations
+                    .as_ref()
+                    .and_then(|r| r.stav_zdroje_ros.clone())
+            })
+            .flatten();
+        let legal_form = v
+            .legal_form_code
+            .as_deref()
+            .and_then(super::legal_forms::label)
+            .map(str::to_owned);
         let details = CzAresDetails {
             registered_office: v.registered_office,
             legal_form_code: v.legal_form_code,
@@ -60,9 +73,10 @@ impl From<CzCompanyLookupResult> for CompanyLookupResult {
             updated_date: v.updated_date,
             primary_source: v.primary_source,
             source_registrations: v.source_registrations,
+            ros_closure: v.ros_closure,
         };
         let registry_details = CompanyDetails::CzechAres {
-            native_registry_status: None,
+            native_registry_status,
             details: Box::new(details),
         };
         Self {
@@ -74,11 +88,51 @@ impl From<CzCompanyLookupResult> for CompanyLookupResult {
             source: registry_details.provider(),
             registry_url: None,
             foreign_name: None,
-            legal_form: None,
+            legal_form,
             registered_office,
             fiscal_address: None,
-            status: None,
+            status,
             registry_details,
         }
     }
+}
+
+fn lifecycle(v: &CzCompanyLookupResult) -> Option<crate::CompanyStatus> {
+    use crate::CompanyStatus::*;
+    if let Some(date) = v.ceased_date.as_deref() {
+        return Some(
+            if chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d")
+                .is_ok_and(|d| d.format("%Y-%m-%d").to_string() == date)
+            {
+                Closed
+            } else {
+                Unknown
+            },
+        );
+    }
+    if v.ros_closure.as_ref().is_some_and(|r| {
+        r.ico == v.tax_id.as_str()
+            && r.subject_state == "ZANIKLY"
+            && chrono::NaiveDate::parse_from_str(&r.ceased_date, "%Y-%m-%d")
+                .is_ok_and(|d| d.format("%Y-%m-%d").to_string() == r.ceased_date)
+    }) {
+        return Some(Closed);
+    }
+    // StavZdroje means the subject's state in that register. Only the primary
+    // identity register ROS establishes lifecycle; tax/licence registers cannot.
+    if v.primary_source.as_deref() != Some("ros") {
+        return None;
+    }
+    let r = v.source_registrations.as_ref()?;
+    let state = r.stav_zdroje_ros.as_deref()?;
+    Some(match state {
+        "AKTIVNI"
+            if r.stav_zdroje_ir.as_deref() == Some("NEEXISTUJICI")
+                && r.stav_zdroje_ceu.as_deref() == Some("NEEXISTUJICI") =>
+        {
+            Active
+        }
+        "ZANIKLY" => Closed,
+        _ => Unknown,
+    })
 }

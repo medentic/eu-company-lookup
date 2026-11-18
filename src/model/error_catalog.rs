@@ -22,7 +22,7 @@ macro_rules! error_catalog {
 
 error_catalog! {
     InvalidInput => ("invalid_input", "Check the identifier",
-        "Input failed local syntax validation; registration was not checked."),
+        "Input failed local syntax or supported checksum validation; registration was not checked."),
     UnsupportedIdentifier => ("unsupported_identifier", "Identifier type not supported",
         "The country, VAT jurisdiction or identifier scheme is unsupported. Greece uses the EL VAT prefix."),
     OperationDisabled => ("operation_disabled", "Lookup is disabled",
@@ -51,6 +51,8 @@ error_catalog! {
         "The response exceeded the configured transport size limit."),
     NotFound => ("not_found", "No matching company record found",
         "The identified registry sources definitively reported no matching company record. This does not establish VAT invalidity."),
+    UnresolvedData => ("unresolved_data", "Company status could not be resolved",
+        "The registry record matched, but its lifecycle is missing, unsupported or ambiguous. This is not a negative registration result."),
     UnknownError => ("unknown_error", "Verification could not be completed",
         "An unclassified failure prevented verification. No validity conclusion follows."),
 }

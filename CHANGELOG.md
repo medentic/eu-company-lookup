@@ -1,15 +1,42 @@
 # Changelog
 
-## 4.0.0 (Unreleased)
+## 4.1.0
+
+- Add national lookup for Austria, Belgium, Czechia, Estonia, Finland, France,
+  Greece, Iceland, Latvia, Lithuania, Poland and Slovakia. Implementation and
+  live-verification coverage are documented separately; incomplete coverage is
+  not advertised as country completion.
+- Require a resolved lifecycle for successful national lookups. Missing,
+  unsupported or conflicting lifecycle evidence returns `unresolved_data`, with
+  native status retained in error details. Add distinct proceeding states rather
+  than treating liquidation, bankruptcy or suspension as company deletion.
+- Resolve Polish KRS P/S routing, suspension, liquidation cancellation, merger
+  direction and terminal removals. Retain successor identifiers and non-finality
+  separately. Polish national lookup meets the reviewed 200-distinct-ID gate.
+- Supplement Czech cessation with identity-matched ROS evidence and Slovak RÚZ
+  records with RPO lifecycle data when needed. Add Latvian proceeding evidence,
+  Lithuanian status mappings and Romanian suspension/resumption/merger mappings.
+- Improve source-backed legal forms, Irish registered-office lines, Lithuanian
+  office text and Estonian addresses and record links. Keep missing facts null.
+- Add offline `VatId::validate_checksum()` with `Passed`, `Failed` and
+  `Unsupported` outcomes. Reject supported checksum failures before VIES requests;
+  parsing remains syntax-only. Enforce the Swedish VAT `01` suffix.
+- Preserve completion spacing when multi-request registry lookups are cancelled.
+  Share private transport, response-review and validation helpers without
+  conflating operational failures with negative registry observations.
+- Add executable synthetic output examples for every national adapter and VIES.
+  Require complete original selections and source-bound expectations in batch
+  validation; preserve real observations and review history outside Git/packages.
+
+## 4.0.0
 
 - Replace public error enums with one serializable `LookupError` object: stable
   IDs, English titles and administrator descriptions, availability flag and
   structured details. See the [error contract and migration](docs/reference/errors.md).
 - Add opt-in raw HTTP diagnostics with request/response header arrays, lossless
   bodies, cURL reproduction and explicit incomplete-capture reasons.
-- Add keyless national company lookup adapters for Austria, Belgium, Czechia,
-  Estonia, Finland, France, Greece, Iceland, Ireland, Latvia, Lithuania, Norway,
-  Poland and Slovakia. Native identifiers, typed provider details and explicit
+- Add keyless national company lookup for Ireland (CRO open data) and Norway
+  (Enhetsregisteret). Native identifiers, typed provider details and explicit
   capability discovery remain separate from VIES VAT verification.
 - Share bounded registry transport and CKAN wire handling while preserving
   provider-specific identity checks, absence rules, address roles and VAT scope.
@@ -18,10 +45,6 @@
   from matched negative VAT responses.
 - Add bounded, resumable multi-country verification tooling; collected identifiers
   and source observations remain excluded from the public source and package.
-
-The expansion is in release preparation. Country inclusion remains subject to
-source-reviewed verification and the release gates; this entry is not a claim
-that every implemented adapter has completed live verification.
 
 ## 3.0.0
 

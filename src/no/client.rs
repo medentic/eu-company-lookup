@@ -89,7 +89,7 @@ impl NoRegistryClient {
     /// Look up the current Norwegian public registry observation by full business ID.
     pub async fn lookup(&self, value: &str) -> Result<NoCompanyLookupResult, LookupError> {
         let id = NoBusinessId::parse(value)?;
-        registry_transport::execute(
+        registry_transport::execute_company(
             &self.admission,
             &self.config.bounds(),
             Provider::NorwegianBrreg,

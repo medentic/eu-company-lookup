@@ -77,3 +77,31 @@ use title case and recognized ISO codes use uppercase. Original address and part
 source text remain unchanged. Manager/owner countries are normalized when supplied,
 but missing party countries remain null: an address default does not establish
 a person’s country.
+
+BULSTAT status text maps exact `развиващ дейност` to active and `заличен` to
+closed; other descriptions stay unknown, and missing status stays null.
+
+After successful decoding, public lookup requires resolved lifecycle and returns
+`unresolved_data` for missing, unsupported or ambiguous lifecycle evidence.
+Missing required envelope/identity fields remain decoding errors. Pure decoding/projection
+retains the original observation. See the
+[runtime mapping audit](../../docs/development/company-mapping-audit.md#runtime-enforcement).
+
+## Access, pacing and recovery
+
+The native flow uses one Commercial Register request, followed only on its
+recognized miss by BULSTAT search and, for a match, detail. These registry stages
+share a 30-second deadline, 3-second connect timeout and 1 MiB response cap.
+`BgRegistryConfig.start_interval` defaults to zero; opt-in pacing applies per
+provider. Zero is a library default, not a claim of unlimited registry capacity.
+Clones share admission/cooldown state; independent clients and processes do not.
+The default failure cooldown is 60 seconds and can be extended by `Retry-After`.
+
+The shared BG company operation additionally uses VIES for eligible nine-digit
+identifiers, with its own limits and failure semantics. Budget that dependency as
+well as the registry flow; thirteen-digit branches are not shortened into VAT
+candidates. A Commercial Register outage or throttle never authorizes BULSTAT
+fallback. No numerical national-registry quota is established by these defaults.
+
+See [shared pacing and evidence rules](../README.md#registry-pacing-and-evidence)
+for clone scope, cooldowns, error classification and complete-batch replay.

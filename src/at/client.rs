@@ -87,7 +87,7 @@ impl AtRegistryClient {
     /// Look up the current Firmenbuch observation by full Firmenbuch number.
     pub async fn lookup(&self, value: &str) -> Result<AtCompanyLookupResult, LookupError> {
         let id = AtBusinessId::parse(value)?;
-        registry_transport::execute(
+        registry_transport::execute_company(
             &self.admission,
             &self.config.bounds(),
             Provider::AustrianFirmenbuch,

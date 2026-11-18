@@ -37,15 +37,16 @@ fn source_roles_and_leading_zeroes_are_preserved() {
     let r: CompanyLookupResult = decode::decode(&serde_json::to_vec(&source()).unwrap(), &id, 42)
         .unwrap()
         .into();
+    crate::test_support::assert_company_contract(&r);
     assert_eq!(r.tax_id, "00123456");
     assert!(
         r.registered_office.is_none()
             && r.fiscal_address.is_none()
             && r.vat_id.is_none()
             && r.vat_registered.is_none()
-            && r.legal_form.is_none()
             && r.status.is_none()
     );
+    assert_eq!(r.legal_form.as_deref(), Some("Spol. s r. o."));
     let j = serde_json::to_value(r).unwrap();
     assert_eq!(j["registryDetails"]["data"]["dic"], "0012345678");
     assert_eq!(j["registryDetails"]["data"]["ulica"], " Source street ");
@@ -56,23 +57,27 @@ fn source_roles_and_leading_zeroes_are_preserved() {
     assert!(decode::decode(&serde_json::to_vec(&minimal).unwrap(), &id, 42).is_ok());
 }
 #[tokio::test]
-async fn two_anonymous_requests_reach_shared_facade() {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+async fn four_anonymous_requests_reach_shared_facade() {
+    use tokio::io::AsyncWriteExt;
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let endpoint = format!("http://{}", listener.local_addr().unwrap());
-    let server = tokio::spawn(async move {
+    let server = crate::test_support::http::spawn_server(async move {
         for (path, body) in [
             (
                 "/uctovne-jednotky?zmenene-od=2000-01-01&ico=00123456&max-zaznamov=2",
                 json!({"id":[42],"existujeDalsieId":false}).to_string(),
             ),
             ("/uctovna-jednotka?id=42", source().to_string()),
+            ("/rpo/search?identifier=00123456&onlyActive=true", json!({"results":[{"id":99,"identifiers":[{"value":"00123456"}],"establishment":"2000-01-01"}]}).to_string()),
+            ("/rpo/entity/99?showHistoricalData=false&showOrganizationUnits=false", json!({"id":99,"identifiers":[{"value":"00123456"}],"establishment":"2000-01-01"}).to_string()),
         ] {
             let (mut socket, _) = listener.accept().await.unwrap();
-            let mut buf = [0; 4096];
-            let n = socket.read(&mut buf).await.unwrap();
+            let buf = crate::test_support::http::read_request(&mut socket)
+                .await
+                .unwrap();
+            let n = buf.len();
             let req = String::from_utf8_lossy(&buf[..n]).to_lowercase();
-            assert!(req.starts_with(&format!("get {path} ")));
+            assert!(req.starts_with(&format!("get {} ",path.to_lowercase())));
             assert!(!req.contains("authorization:") && !req.contains("cookie:"));
             socket.write_all(format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",body.len(),body).as_bytes()).await.unwrap();
         }
@@ -84,20 +89,24 @@ async fn two_anonymous_requests_reach_shared_facade() {
             .lookup_company("00123456", "SK")
             .await
             .unwrap()
-            .company_name,
-        "Synthetic s.r.o."
+            .status,
+        Some(crate::CompanyStatus::Active)
     );
     server.await.unwrap();
 }
 #[tokio::test]
 async fn source_failure_never_proves_absence() {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::io::AsyncWriteExt;
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let endpoint = format!("http://{}", listener.local_addr().unwrap());
-    let server = tokio::spawn(async move {
+    let server = crate::test_support::http::spawn_server(async move {
         let (mut s, _) = listener.accept().await.unwrap();
-        let mut b = [0; 4096];
-        assert!(s.read(&mut b).await.unwrap() > 0);
+        assert!(
+            !crate::test_support::http::read_request(&mut s)
+                .await
+                .unwrap()
+                .is_empty()
+        );
         s.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
             .await
             .unwrap();
@@ -122,4 +131,134 @@ async fn source_failure_never_proves_absence() {
             ..
         })
     ));
+}
+
+#[test]
+fn unknown_legal_form_codes_do_not_become_common_labels() {
+    assert_eq!(super::legal_forms::label("999999"), None);
+    assert_eq!(super::legal_forms::label(""), None);
+}
+
+#[test]
+fn dissolution_date_is_distinct_from_api_record_availability() {
+    use crate::CompanyStatus::*;
+    for (date, expected) in [
+        (json!("2024-02-29"), Some(Closed)),
+        (json!("2023-02-29"), Some(Unknown)),
+        (json!("2024-2-9"), Some(Unknown)),
+        (json!(""), Some(Unknown)),
+        (Value::Null, None),
+    ] {
+        let mut body = source();
+        body["datumZrusenia"] = date;
+        let result: CompanyLookupResult = decode::decode(
+            &serde_json::to_vec(&body).unwrap(),
+            &SkBusinessId::parse("00123456").unwrap(),
+            42,
+        )
+        .unwrap()
+        .into();
+        assert_eq!(result.status, expected);
+        crate::test_support::assert_company_contract(&result);
+    }
+}
+
+#[test]
+fn rpo_supplement_requires_current_identity_and_resolves_native_lifecycle() {
+    let id = SkBusinessId::parse("00123456").unwrap();
+    let base = json!({"id":99,"identifiers":[{"value":"00123456","validFrom":"2000-01-01"}],"establishment":"2000-01-01"});
+    let search = |v: serde_json::Value| serde_json::to_vec(&json!({"results":[v]})).unwrap();
+    assert_eq!(rpo::select(&search(base.clone()), &id).unwrap(), Some(99));
+    let decode = |v: &serde_json::Value| rpo::decode(&serde_json::to_vec(v).unwrap(), &id, 99);
+    assert_eq!(
+        rpo::status(&decode(&base).unwrap()),
+        crate::CompanyStatus::Active
+    );
+    for (label, expected) in [
+        ("V likvidácii", crate::CompanyStatus::Liquidation),
+        ("V konkurze", crate::CompanyStatus::Bankruptcy),
+        ("V reštrukturalizácii", crate::CompanyStatus::Restructuring),
+        ("New state", crate::CompanyStatus::Unknown),
+    ] {
+        let mut v = base.clone();
+        v["legalStatuses"] =
+            json!([{"value":{"value":label,"codelistCode":"CL010108"},"validFrom":"2020-01-01"}]);
+        assert_eq!(rpo::status(&decode(&v).unwrap()), expected);
+        let mut native = decode::decode(&serde_json::to_vec(&source()).unwrap(), &id, 42).unwrap();
+        native.details.rpo_lifecycle = Some(decode(&v).unwrap());
+        let common: crate::CompanyLookupResult = native.into();
+        assert_eq!(common.registry_details.native_status(), Some(label));
+        assert_eq!(common.status, Some(expected));
+        let details = decode(&v).unwrap();
+        assert_eq!(
+            serde_json::from_slice::<SkRpoLifecycle>(&serde_json::to_vec(&details).unwrap())
+                .unwrap(),
+            details
+        );
+    }
+    for (pointer, value) in [
+        ("/id", json!(98)),
+        ("/identifiers/0/value", json!("87654321")),
+        ("/termination", json!("2020-01-01")),
+    ] {
+        let mut v = base.clone();
+        if pointer == "/termination" {
+            v["termination"] = value;
+        } else {
+            *v.pointer_mut(pointer).unwrap() = value;
+        }
+        assert!(decode(&v).is_err());
+    }
+    let mut v = base.clone();
+    v["establishment"] = json!("invalid");
+    assert_eq!(
+        rpo::status(&decode(&v).unwrap()),
+        crate::CompanyStatus::Unknown
+    );
+    assert_eq!(rpo::select(br#"{"results":[]}"#, &id).unwrap(), None);
+    let mut v = base;
+    v["identifiers"][0]["validTo"] = json!("2020-01-01");
+    assert!(rpo::select(&search(v), &id).is_err());
+}
+
+#[tokio::test]
+async fn missing_rpo_match_preserves_unresolved_accounting_record() {
+    use tokio::io::AsyncWriteExt;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}", listener.local_addr().unwrap());
+    let task = crate::test_support::http::spawn_server(async move {
+        for body in [
+            json!({"id":[42],"existujeDalsieId":false}),
+            source(),
+            json!({"results":[]}),
+        ] {
+            let (mut socket, _) = listener.accept().await.unwrap();
+            crate::test_support::http::read_request(&mut socket)
+                .await
+                .unwrap();
+            let body = body.to_string();
+            socket.write_all(format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",body.len(),body).as_bytes()).await.unwrap();
+        }
+    });
+    let error = SkRegistryClient::for_test(endpoint, Default::default())
+        .lookup("00123456")
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        error.kind,
+        crate::model::LookupFailure::UnresolvedData {
+            reason: "missing_lifecycle",
+            ..
+        }
+    ));
+    task.await.unwrap();
+}
+
+#[test]
+fn documented_company_output_matches_synthetic_source() {
+    let mut body = source();
+    body["datumZrusenia"] = serde_json::json!("2020-01-01");
+    let id = SkBusinessId::parse("00123456").unwrap();
+    let native = decode::decode(&serde_json::to_vec(&body).unwrap(), &id, 42).unwrap();
+    crate::test_support::assert_documented_company("sk", native);
 }

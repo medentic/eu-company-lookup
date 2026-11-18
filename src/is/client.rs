@@ -89,7 +89,7 @@ impl IsRegistryClient {
     /// Look up the current Icelandic public registry observation by full business ID.
     pub async fn lookup(&self, value: &str) -> Result<IsCompanyLookupResult, LookupError> {
         let id = IsBusinessId::parse(value)?;
-        registry_transport::execute(
+        registry_transport::execute_company(
             &self.admission,
             &self.config.bounds(),
             Provider::IcelandicSkatturinn,

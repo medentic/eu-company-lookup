@@ -34,6 +34,9 @@ Converting a native result consumes it without fetching or merging other sources
   `TryFrom` and Serde input validate syntax. `AsRef<str>` borrows the normalized
   identifier; conversion to `String` consumes it. `BusinessId` additionally validates
   the country/scheme pair. Results support serialization, not general deserialization.
+- `VatId::validate_checksum()` returns the offline `VatChecksumResult` without
+  changing the identifier. `Passed`, `Failed` and `Unsupported` serialize as
+  `"passed"`, `"failed"` and `"unsupported"`; none is a registration observation.
 - Clients are cloneable, `Send + Sync`; lookup futures are `Send`. Clones share
   admission state. Debug output exposes configuration, not requests or provider bodies.
 - `RetryAfter` is exhaustive: seconds or an absolute date. Error and provider enums
@@ -43,6 +46,20 @@ The minimum Rust version is 1.98.1. Increases require a documented minor release
 never a patch release. Network lookups require Tokio with I/O and time enabled.
 CI covers Linux; no broader platform verification is claimed. See
 [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/semver.html).
+
+## Migrating from 4.0
+
+Version 4.1 adds national adapters and lifecycle variants to extensible enums.
+Successful national lookups require a resolved lifecycle. Handle `unresolved_data`
+when a matched record has missing, unsupported or conflicting lifecycle evidence;
+this is not proof of absence or closure. Pure native-to-common conversions still
+preserve `None`/`Unknown` for unresolved evidence.
+
+VIES requests reject supported checksum failures locally as `invalid_input`.
+`VatId` parsing remains syntax-only; use `validate_checksum()` to inspect the
+separate preflight result. Unsupported checksum variants remain eligible for VIES.
+New proceeding states and `details.nativeRegistryStatus` preserve source facts.
+Consumers should continue using fallback enum matches and tolerate added JSON fields.
 
 ## Migrating from 3.x
 
@@ -132,8 +149,9 @@ unsupported country/scheme pair; supported pairs with malformed values retain
 ## Company status and source values
 
 Every company result uses `status: Option<CompanyStatus>` with `Active`, `Closed`,
-or `Unknown` (JSON `active`, `closed`, `unknown`). Missing provider status remains
-null; present but unmapped values become `Unknown`. Adapters must establish
+or `Unknown` (JSON `active`, `closed`, `unknown`). Missing lifecycle evidence remains
+null; present but unmapped values become `Unknown`. Documented cessation dates
+can establish closed status without a native status label. Adapters must establish
 source-backed mappings rather than infer lifecycle from tax flags.
 
 In the shared result, `registryDetails.data.nativeRegistryStatus` is a nullable
@@ -229,3 +247,26 @@ All structured address country names use title case, retaining language and
 diacritics. `countryISO2` uses uppercase ISO codes, or null when unknown. This
 also applies to native ANAF addresses and their copies in `registryDetails`;
 original full address strings remain unchanged.
+
+## Unreleased company mapping corrections
+
+Reviewed provider statuses now map to active/closed instead of blanket unknown.
+Missing status metadata remains null unless documented cessation dates establish
+closure (CZ, LV, LT). Unknown or ambiguous statuses remain unknown. BE/GR/IE
+code-only observations retain the code as native status when no label is supplied.
+Legal-form code lists populate CZ/FR/SK labels; verified EE codes also map.
+LT registration address, IE office lines/Eircode and validated EE record links
+populate common fields.
+Native observations remain available unchanged in typed details. See the
+[mapping audit](https://github.com/medentic/eu-company-lookup/blob/main/docs/development/company-mapping-audit.md) for exact rules and limits.
+
+## Stricter lifecycle validation on main
+
+National lookups now require a resolved lifecycle, including native registry
+methods. Previously successful records with unknown/null lifecycle return the
+new `unresolved_data` error. Consumers must handle it separately from
+`not_found` and service availability. Resolved proceedings now have explicit
+`CompanyStatus` variants; match this non-exhaustive enum defensively.
+This is an intentional behavioral contract change, not a claim that missing
+facts can be inferred. Pure conversions retain nullable observations.
+See the [lifecycle contract](company-result.md#lifecycle-success-contract).

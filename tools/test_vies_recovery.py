@@ -41,15 +41,16 @@ class RecoveryTests(unittest.TestCase):
         (args.run_dir/'observations.jsonl').write_text(json.dumps(row)+'\n')
         return 0
 
-    def report(self, folder):
-        replay = (folder/'offline-replay.json').exists()
-        return {'cases': [{'status': 'passed', 'parsedFrom': 'offlineReplay' if replay else 'liveObservation'}]}
+    def evidence(self, root, folder, formats, **kwargs):
+        return SimpleNamespace(ids=json.loads((folder/'manifest.json').read_text())['ids'],
+                               rows=recovery.batch.load_rows(folder))
 
     def run_mocked(self, states=None):
         states = states or {'BG': 'Available', 'CZ': 'Available'}
         with patch.object(recovery.batch, 'ROOT', self.base), \
              patch.object(recovery.batch, 'collect', side_effect=self.collect), \
-             patch.object(recovery.batch, 'report', side_effect=self.report), \
+             patch.object(recovery, 'load_evidence', side_effect=self.evidence), \
+             patch.object(recovery, 'build_report', return_value={'cases': [{'verified': False}]}), \
              patch.object(recovery, 'availability', return_value=({'vow': {'available': True}}, states)), \
              patch.object(recovery.time, 'sleep'):
             return recovery.run(self.args)
@@ -65,7 +66,7 @@ class RecoveryTests(unittest.TestCase):
         (self.args.run_dir/'BG/0000/offline-replay.json').write_text('[]')
         self.args.execute = False
         report = self.run_mocked()
-        self.assertEqual(report['BG']['verifiedValid'], 1)
+        self.assertEqual(report['BG']['verifiedValid'], 0)
 
     def test_three_failures_defer_country_and_continue_next(self):
         self.failed.add('BG')

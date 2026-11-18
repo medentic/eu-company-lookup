@@ -41,7 +41,7 @@ and BG branch suffixes remain in the public identity.
 | `companyName` / `legalForm` | Native name / recognized abbreviation or source fallback | ANAF name / supplied legal-form text |
 | `registeredOffice` | BG registry address envelope | `adresa_sediu_social` components |
 | `fiscalAddress` | Null; no separate fiscal address is supplied | `adresa_domiciliu_fiscal` components and original `date_generale.adresa` |
-| `status` | Normalized lifecycle | Unknown for present unmapped status, null if absent |
+| `status` | Normalized lifecycle | Pure projections retain unknown/unavailable evidence; runtime lookups require a resolved status or return `unresolved_data` |
 | `registryUrl` / `foreignName` | Record link / separately registered foreign-script name | Null / null |
 | `registryDetails` | Native status plus typed Commercial Register or BULSTAT facts | Native status, fiscal date, observation time, source addresses and tax flags |
 
@@ -49,7 +49,7 @@ The RO conversion joins supplied street and number for the common delivery line;
 the separate components remain in `AnafDetails`. It does not parse raw fiscal text
 to fill missing structured values or substitute it for the registered office.
 
-`None` means no supplied value; `CompanyStatus::Unknown` means a source status
+`None` means no usable lifecycle evidence; `CompanyStatus::Unknown` means a source status
 exists but has no verified mapping. Domestic tax inactivity is not company closure.
 BG `RegistryDetails` serializes untagged and relies on the result's `source`;
 common `CompanyDetails` has its own `provider`/`data` tag. Preserve both contracts.
@@ -74,3 +74,7 @@ Keep the original source VAT flag in ANAF details for inspection.
 Private `failure.rs` and `registry_failure.rs` preserve provider policy classifications.
 They are not public error types. [HTTP capture](../http_capture.rs) owns per-lookup
 capture; [error reference](../../docs/reference/errors.md) defines the consumer contract.
+
+`company_validation.rs` enforces resolved lifecycle at public lookup boundaries.
+Unknown/null remain inspectable in pure projections but cause `unresolved_data`
+in runtime lookups; resolved proceedings have explicit status variants.

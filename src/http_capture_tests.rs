@@ -1,14 +1,18 @@
 use crate::http_capture::*;
 use crate::{ErrorId, RegistryFailure};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
-async fn endpoint(response: Vec<u8>, stall: bool) -> (String, tokio::task::JoinHandle<()>) {
+async fn endpoint(
+    response: Vec<u8>,
+    stall: bool,
+) -> (String, crate::test_support::http::ServerTask<()>) {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let url = format!("http://{}/path?q=private", listener.local_addr().unwrap());
-    let task = tokio::spawn(async move {
+    let task = crate::test_support::http::spawn_server(async move {
         let (mut socket, _) = listener.accept().await.unwrap();
-        let mut buf = [0; 4096];
-        let _ = socket.read(&mut buf).await.unwrap();
+        crate::test_support::http::read_request(&mut socket)
+            .await
+            .unwrap();
         socket.write_all(&response).await.unwrap();
         if stall {
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;

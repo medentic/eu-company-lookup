@@ -3,10 +3,21 @@
 [identifiers.rs](identifiers.rs) owns accepted VAT prefixes and syntax;
 [capabilities.rs](capabilities.rs) describes those jurisdictions. EL maps to GR,
 XI to GB/GB-NIR; EU/IM and general GB VAT IDs are not supported. National business
-identifiers remain separate. See the [consumer guide](../../docs/reference/vies.md).
+identifiers remain separate. The single country-format table is shared by local
+validation and collector queue checks. Tests cover accepted and rejected syntax
+for every prefix and rejection before either lookup method sends HTTP. See the
+[consumer guide](../../docs/reference/vies.md).
+
+[checksum.rs](checksum.rs) checks supported national checksums before lookup
+admission, using private local arithmetic and conservative variant fallbacks. It does
+not change `VatId` parsing, saved evidence or provider validity.
+`VatId::validate_checksum()` exposes the same rules offline through the public
+`VatChecksumResult` enum; request preflight rejects only `Failed`.
 
 [client.rs](client.rs) owns admission, spacing, deadlines and cooldowns across
-clones. [transport.rs](transport.rs) exchanges bounded SOAP responses at the
+clones. [failure.rs](failure.rs) retains private failure facts through SOAP/HTTP
+precedence, retry instructions and cooldown selection; the public error is built
+only after those decisions. [transport.rs](transport.rs) exchanges bounded SOAP responses at the
 configured European Commission `checkVatService` endpoint. There are no automatic
 retries. Do not copy collector retry experiments into runtime behavior implicitly.
 

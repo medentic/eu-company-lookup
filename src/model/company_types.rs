@@ -21,8 +21,9 @@ macro_rules! source_enum {
     }
 }
 /// Shared normalized company lifecycle across registry results, distinct from tax status.
-/// Provider values that cannot be mapped safely become `Unknown`; raw values live
-/// in separate source fields. Missing provider status is represented by `None`.
+/// Public lookups require a resolved variant; unresolved pure projections use
+/// `Unknown` and are rejected with `unresolved_data`. Raw values live
+/// in separate source fields. Absent lifecycle evidence is represented by `None`; documented cessation dates may establish closure.
 ///
 /// Arbitrary strings cannot be constructed as a company status:
 /// ```compile_fail
@@ -37,6 +38,24 @@ pub enum CompanyStatus {
     Active,
     /// The source explicitly identifies a closed or deleted company/record.
     Closed,
+    /// Explicit source state: liquidation.
+    Liquidation,
+    /// Explicit source state: bankruptcy.
+    Bankruptcy,
+    /// Explicit source state: receivership.
+    Receivership,
+    /// Explicit source state: liquidationAndReceivership.
+    LiquidationAndReceivership,
+    /// Explicit source state: restructuring.
+    Restructuring,
+    /// Explicit source state: pendingClosure.
+    PendingClosure,
+    /// Explicit source state: liquidationStayed.
+    LiquidationStayed,
+    /// Explicit source state: administration.
+    Administration,
+    /// Explicit source state: inactive.
+    Inactive,
     /// A source status exists but has no verified lifecycle mapping.
     Unknown,
 }
@@ -46,6 +65,15 @@ impl CompanyStatus {
         match self {
             Self::Active => "active",
             Self::Closed => "closed",
+            Self::Liquidation => "liquidation",
+            Self::Bankruptcy => "bankruptcy",
+            Self::Receivership => "receivership",
+            Self::LiquidationAndReceivership => "liquidationAndReceivership",
+            Self::Restructuring => "restructuring",
+            Self::PendingClosure => "pendingClosure",
+            Self::LiquidationStayed => "liquidationStayed",
+            Self::Administration => "administration",
+            Self::Inactive => "inactive",
             Self::Unknown => "unknown",
         }
     }

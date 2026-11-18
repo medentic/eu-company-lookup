@@ -1,6 +1,6 @@
 use super::*;
 use crate::{LookupError, Provider, RegistryFailure};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 const SEARCH: &str =
     r#"{"numResults":1,"state":"ACTIVE","companies":[{"id":"00123a_7","fnr":"00123a"}]}"#;
@@ -12,9 +12,11 @@ fn shared_mapping_keeps_unsupported_facts_unknown() {
     let common: crate::CompanyLookupResult = decode::detail(DETAIL.as_bytes(), &id, "00123a_7")
         .unwrap()
         .into();
+    crate::test_support::assert_company_contract(&common);
     assert_eq!(common.source, Provider::AustrianFirmenbuch);
     assert!(common.vat_id.is_none() && common.vat_registered.is_none());
-    assert!(common.status.is_none() && common.registry_url.is_none());
+    assert_eq!(common.status, Some(crate::CompanyStatus::Active));
+    assert!(common.registry_url.is_none());
     let address = common.registered_office.unwrap();
     assert_eq!(address.postcode.as_deref(), Some("0010"));
     assert!(address.country.is_none() && address.country_iso2.is_none());
@@ -56,14 +58,16 @@ fn search_requires_exact_identity_and_safe_source_route() {
 async fn anonymous_search_then_detail_and_capture() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
-    let server = tokio::spawn(async move {
+    let server = crate::test_support::http::spawn_server(async move {
         for (path, body) in [
             ("/search?term=00123a&size=5&page=0", SEARCH),
             ("/00123a_7", DETAIL),
         ] {
             let (mut socket, _) = listener.accept().await.unwrap();
-            let mut buf = [0; 4096];
-            let n = socket.read(&mut buf).await.unwrap();
+            let buf = crate::test_support::http::read_request(&mut socket)
+                .await
+                .unwrap();
+            let n = buf.len();
             let request = String::from_utf8_lossy(&buf[..n]);
             assert!(request.starts_with(&format!("GET {path} HTTP/1.1")));
             assert!(!request.to_ascii_lowercase().contains("authorization:"));
@@ -87,10 +91,12 @@ async fn anonymous_search_then_detail_and_capture() {
 async fn access_failure_is_never_absence() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
-    let server = tokio::spawn(async move {
+    let server = crate::test_support::http::spawn_server(async move {
         let (mut socket, _) = listener.accept().await.unwrap();
-        let mut buf = [0; 4096];
-        let n = socket.read(&mut buf).await.unwrap();
+        let buf = crate::test_support::http::read_request(&mut socket)
+            .await
+            .unwrap();
+        let n = buf.len();
         assert!(n > 0);
         socket
             .write_all(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
@@ -112,13 +118,17 @@ async fn access_failure_is_never_absence() {
     server.await.unwrap();
 }
 
-async fn raw_endpoint(reply: &'static [u8]) -> (String, tokio::task::JoinHandle<()>) {
+async fn raw_endpoint(reply: &'static [u8]) -> (String, crate::test_support::http::ServerTask<()>) {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
-    let task = tokio::spawn(async move {
+    let task = crate::test_support::http::spawn_server(async move {
         let (mut socket, _) = listener.accept().await.unwrap();
-        let mut request = [0; 4096];
-        assert!(socket.read(&mut request).await.unwrap() > 0);
+        assert!(
+            !crate::test_support::http::read_request(&mut socket)
+                .await
+                .unwrap()
+                .is_empty()
+        );
         socket.write_all(reply).await.unwrap();
     });
     (url, task)
@@ -191,4 +201,32 @@ async fn body_limits_and_non_json_never_become_records() {
         })
     ));
     task.await.unwrap();
+}
+
+#[test]
+fn active_deleted_and_unrecognized_firmenbuch_states() {
+    for (raw, expected) in [
+        ("ACTIVE", crate::CompanyStatus::Active),
+        ("DELETED", crate::CompanyStatus::Closed),
+        ("HISTORIC", crate::CompanyStatus::Unknown),
+        ("INACTIVE", crate::CompanyStatus::Unknown),
+    ] {
+        let body = DETAIL.replace("ACTIVE", raw);
+        let v: crate::CompanyLookupResult = decode::detail(
+            body.as_bytes(),
+            &AtBusinessId::parse("00123A").unwrap(),
+            "00123a_7",
+        )
+        .unwrap()
+        .into();
+        assert_eq!(v.status, Some(expected));
+        crate::test_support::assert_company_contract(&v);
+    }
+}
+
+#[test]
+fn documented_company_output_matches_synthetic_source() {
+    let id = AtBusinessId::parse("00123A").unwrap();
+    let native = decode::detail(DETAIL.as_bytes(), &id, "00123a_7").unwrap();
+    crate::test_support::assert_documented_company("at", native);
 }

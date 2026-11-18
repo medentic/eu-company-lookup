@@ -87,7 +87,7 @@ impl EeRegistryClient {
     /// Look up the current Estonian public registry observation by full business ID.
     pub async fn lookup(&self, value: &str) -> Result<EeCompanyLookupResult, LookupError> {
         let id = EeBusinessId::parse(value)?;
-        registry_transport::execute(
+        registry_transport::execute_company(
             &self.admission,
             &self.config.bounds(),
             Provider::EstonianRik,

@@ -13,6 +13,8 @@ import shutil
 import subprocess
 import sys
 
+from registry_validation import classify, unresolved_detail, RESOLVED_STATUSES
+
 ROOT = Path(__file__).resolve().parents[1]
 POLICY = {'provider': 'BulgarianCommercialRegister', 'startIntervalSeconds': 30,
           'timeoutSeconds': 30, 'retries': 0, 'bulstatFallback': False}
@@ -94,6 +96,8 @@ def field(record, path):
 
 def report(folder):
     manifest = json.loads((folder / 'manifest.json').read_text())
+    if not manifest['ids'] or len(set(manifest['ids'])) != len(manifest['ids']):
+        raise ValueError('selection must contain distinct IDs')
     rows = []
     for tax_id in manifest['ids']:
         path = folder / 'observations' / (tax_id + '.json')
@@ -149,13 +153,27 @@ def report(folder):
             else:
                 diffs = differences(review['expected'], row['record'])
                 status = 'parserMismatch' if diffs else review['status']
+        if review and row['outcome'] == 'notFoundInCommercialRegister':
+            digest = hashlib.sha256(row['rawResponse'].encode()).hexdigest()
+            status = ('passed' if review.get('schemaVersion') == 1
+                      and review.get('status') == 'passed'
+                      and review.get('sourceSha256') == digest
+                      and review.get('expected') == {'outcome': row['outcome']}
+                      else 'needsReview')
         cases.append({'taxId': row['taxId'], 'outcome': row['outcome'], 'reviewStatus': status,
                       'companyName': (row.get('record') or {}).get('companyName'), 'elapsedMs': row['elapsedMs'],
+                      'unresolvedDetail': unresolved_detail(row.get('record')) if row['outcome'] == 'found' and (row.get('record') or {}).get('status') not in RESOLVED_STATUSES else None,
+                      'validationStatus': classify(row['outcome'], row.get('record'), status,
+                          (review or {}).get('expected'), negative_outcomes=('notFoundInCommercialRegister',)),
                       'observationSchemaVersion': row['schemaVersion'], 'schedulerWaitMs': row.get('schedulerWaitMs'),
                       'transport': row.get('transport'), 'errorKind': row.get('errorKind'), 'unavailabilityReason': row.get('unavailabilityReason'), 'differences': diffs})
     result = {'schemaVersion': 1, 'selected': len(manifest['ids']), 'attempted': len(rows),
               'remaining': len(manifest['ids']) - len(rows), 'complete': len(rows) == len(manifest['ids']),
               'replayProvenance': provenance, 'initialOutcomes': dict(original_counts), 'outcomes': dict(counts), 'reviews': dict(Counter(c['reviewStatus'] for c in cases)), 'cases': cases}
+    result['validation'] = dict(Counter(c['validationStatus'] for c in cases))
+    result['validationComplete'] = bool(cases) and result['complete'] and bool(
+        provenance and provenance.get('bound')) and all(c['taxId'] in replay for c in cases) and all(
+        c['validationStatus'] in ('verifiedPositive', 'verifiedNegative') for c in cases)
     write(folder / 'report.json', result)
     return result
 

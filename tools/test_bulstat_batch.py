@@ -28,6 +28,7 @@ class BulstatBatchTests(unittest.TestCase):
             row['outcome'] = 'bulstatFound'
             path.write_text(json.dumps(row))
             self.assertTrue(report(root)['allBulstatFound'])
+            self.assertFalse(report(root)['checksPassed'])
             row['taxId'] = '000000002'
             path.write_text(json.dumps(row))
             with self.assertRaises(ValueError):
@@ -77,3 +78,23 @@ class BulstatBatchTests(unittest.TestCase):
             replay['error'] = 'parser failure'
             (root / 'replay.json').write_text(json.dumps({'rows': [replay]}))
             self.assertFalse(report(root)['checksPassed'])
+
+    def test_matching_unknown_replay_and_review_are_not_successful_validation(self):
+        from registry_batch import sha
+        for status in [None, 'unknown']:
+            with tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                (root / 'observations').mkdir()
+                (root / 'manifest.json').write_text(json.dumps({'ids': ['000000001']}))
+                path = root / 'observations/000000001.json'
+                record = {'status': status}
+                path.write_text(json.dumps({'schemaVersion': 1, 'taxId': '000000001',
+                    'outcome': 'bulstatFound', 'elapsedMs': 1, 'error': None, 'record': record}))
+                bound = {'taxId': '000000001', 'observationSha256': sha(path), 'record': record, 'error': None}
+                (root / 'replay.json').write_text(json.dumps({'rows': [bound]}))
+                (root / 'review.json').write_text(json.dumps({'000000001': {
+                    'schemaVersion': 1, 'observationSha256': sha(path), 'scope': ['status'], 'expected': record}}))
+                result = report(root)
+                self.assertEqual(result['reviews'], {'passed': 1})
+                self.assertEqual(result['validation'], {'unresolved': 1})
+                self.assertFalse(result['checksPassed'])

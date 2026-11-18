@@ -2,6 +2,7 @@
 mod client;
 mod decode;
 mod identifiers;
+mod lifecycle;
 mod mapping;
 mod model;
 pub use client::{LvRegistryClient, LvRegistryConfig};

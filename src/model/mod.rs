@@ -32,3 +32,5 @@ pub use vat::{VatAddress, VatCheck, VatLookupResult};
 
 mod business;
 pub use business::{AnafDetails, BusinessId, CompanyDetails, CompanyLookupResult};
+
+pub(crate) mod company_validation;

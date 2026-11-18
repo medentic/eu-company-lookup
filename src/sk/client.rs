@@ -57,6 +57,7 @@ pub struct SkRegistryClient {
     config: SkRegistryConfig,
     admission: Arc<Mutex<Admission>>,
     endpoint: String,
+    rpo_endpoint: String,
     #[cfg(test)]
     captured: Arc<std::sync::Mutex<serde_json::Value>>,
 }
@@ -80,6 +81,7 @@ impl SkRegistryClient {
             config,
             admission: Arc::new(Admission::new()),
             endpoint: ENDPOINT.into(),
+            rpo_endpoint: "https://api.statistics.sk/rpo/v1".into(),
             #[cfg(test)]
             captured: Arc::new(std::sync::Mutex::new(serde_json::Value::Null)),
         })
@@ -87,7 +89,7 @@ impl SkRegistryClient {
     /// Look up the current Slovak public registry observation by full business ID.
     pub async fn lookup(&self, value: &str) -> Result<SkCompanyLookupResult, LookupError> {
         let id = SkBusinessId::parse(value)?;
-        registry_transport::execute(
+        registry_transport::execute_company(
             &self.admission,
             &self.config.bounds(),
             Provider::SlovakRuz,
@@ -116,7 +118,35 @@ impl SkRegistryClient {
                 "detail",
             )
             .await?;
-        decode::decode(&detail, id, internal)
+        let mut record = decode::decode(&detail, id, internal)?;
+        if record.details.datum_zrusenia.is_none() {
+            tokio::time::sleep(self.config.start_interval).await;
+            let search = self
+                .request(
+                    &format!(
+                        "{}/search?identifier={}&onlyActive=true",
+                        self.rpo_endpoint,
+                        id.as_str()
+                    ),
+                    "rpoSearch",
+                )
+                .await?;
+            let Some(rpo_id) = super::rpo::select(&search, id)? else {
+                return Ok(record);
+            };
+            tokio::time::sleep(self.config.start_interval).await;
+            let detail = self
+                .request(
+                    &format!(
+                        "{}/entity/{rpo_id}?showHistoricalData=false&showOrganizationUnits=false",
+                        self.rpo_endpoint
+                    ),
+                    "rpoDetail",
+                )
+                .await?;
+            record.details.rpo_lifecycle = Some(super::rpo::decode(&detail, id, rpo_id)?);
+        }
+        Ok(record)
     }
     async fn request(&self, url: &str, _stage: &str) -> Result<Vec<u8>, RegistryFailure> {
         let response = self
@@ -151,6 +181,7 @@ impl SkRegistryClient {
     #[cfg(test)]
     pub(crate) fn for_test(endpoint: String, config: SkRegistryConfig) -> Self {
         let mut client = Self::with_config(config).unwrap();
+        client.rpo_endpoint = format!("{endpoint}/rpo");
         client.endpoint = endpoint;
         client
     }

@@ -37,7 +37,50 @@ also calls VIES and therefore retains that dependency.
 and check conservative national formats. Leading zeroes are retained; punctuation
 is not generally removed, although supported Irish formats contain `*` or `+`.
 Non-ASCII input and raw inputs longer than 64 bytes are rejected. Deserialization
-and `TryFrom` also validate. No checksum is calculated.
+and `TryFrom` also validate syntax; these constructors do not calculate checksums.
+
+For offline validation, parse the identifier and call `VatId::validate_checksum()`.
+It returns `VatChecksumResult::Passed`, `Failed`, or `Unsupported` synchronously,
+without constructing a client or contacting VIES:
+
+```rust
+use eu_company_lookup::{VatChecksumResult, VatId};
+
+let vat = VatId::parse("BG423456789")?;
+assert_eq!(vat.validate_checksum(), VatChecksumResult::Passed);
+# Ok::<(), eu_company_lookup::LookupError>(())
+```
+
+`Unsupported` means the parsed identifier's variant has no implemented checksum
+check; it is not a failed checksum. Malformed input or an unsupported VAT prefix
+still returns a parsing error. A passed checksum does not establish registration.
+The result serializes as `"passed"`, `"failed"`, or `"unsupported"`.
+
+Every supported VAT prefix has its own local length and character rules. Both
+`lookup_vat` and `is_vat_valid` apply them before network access; malformed input
+returns `InvalidInput`, rather than `valid: false`. Fixed format components are
+checked too, including Austria's initial `U`, the Netherlands' `B`, and Sweden's
+terminal `01`. See the Finnish Tax Administration's
+[VAT format reference](https://www.vero.fi/en/businesses-and-corporations/taxes-and-charges/vat/international-commerce/vat-number/vat-numbers-issued-by-different-eu-countries/).
+Before admission or HTTP, both lookup methods also check supported national
+checksums. A definite mismatch returns `InvalidInput`, never `valid: false`.
+Capabilities report `ChecksumSupport::SupportedFormats` for VIES. This applies to
+VAT lookup, not the syntax-only constructors or national registry identifiers.
+
+Checks are implemented in private local Rust code, adapted from
+[eu-vat 0.1.11](https://docs.rs/eu-vat/0.1.11/eu_vat/) with Apache-2.0 attribution.
+There is no checksum-library dependency. The national rules are also checked
+against [python-stdnum](https://arthurdejong.org/python-stdnum/).
+Every supported prefix has checksum coverage, but not every identifier variant
+does; see the [variant table](#checksum-coverage-by-country-and-variant).
+Checks do not validate birth dates, allocation ranges or registration.
+Identifiers are never rewritten by checksum arithmetic.
+
+Passing local checks permits a VIES request; it does not establish registration.
+Saved matched negative observations remain valid evidence even if their IDs now
+fail request preflight. Local rejections do not count toward live coverage.
+Repository-only raw transport probes deliberately bypass lookup preflight so they
+can collect matched negative responses; collector queue checks remain syntax-only.
 
 Supported prefixes are AT, BE, BG, CY, CZ, DE, DK, EE, EL, ES, FI, FR, HR, HU, IE,
 IT, LT, LU, LV, MT, NL, PL, PT, RO, SE, SI, SK and XI. EL maps to GR; XI maps to
@@ -48,6 +91,46 @@ does not verify OSS/IOSS registrations; this rejection is not an invalid-registr
 result. See the Commission's [VIES explanation](https://europa.eu/youreurope/business/finance-and-tax/vat/check-vat-number-vies/index_en.htm)
 and [SOAP contract](https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl)
 for the provider's scope and interface.
+
+### Checksum coverage by country and variant
+
+Formats below exclude the country prefix; positions are one-based within that
+national part. This table describes the implemented checks, not all numbers a
+country may issue. Syntax validation happens first: malformed input is a parsing
+error, not `Unsupported`. A checked variant returns `Passed` or `Failed`; an
+unsupported variant returns `Unsupported` and may still be sent to VIES.
+“None” means every syntax-accepted variant has a checksum check.
+
+| Country / prefix | Formats with a checksum check | Syntax-accepted variants returning `Unsupported` |
+| --- | --- | --- |
+| Austria `AT` | `U` + 8 digits | None |
+| Belgium `BE` | 10 digits beginning `0` or `1` | None |
+| Bulgaria `BG` | 9 digits; 10 digits checked against personal, foreign-person and other registration schemes (any passing scheme suffices) | None |
+| Cyprus `CY` | 8 digits + letter | None |
+| Czechia `CZ` | 8 digits not beginning `9`; 9 digits beginning `6`; 10 digits | 8 digits beginning `9`; 9 digits not beginning `6` |
+| Germany `DE` | 9 digits | None |
+| Denmark `DK` | 8 digits | None |
+| Estonia `EE` | 9 digits | None |
+| Greece `EL` | 9 digits | None |
+| Spain `ES` | 8 digits + letter; letter + 7 digits + check character, with initial letter in `ABCDEFGHJKLMNPQRSUVWXYZ` (DNI, NIE and company schemes) | Initial letter `I`, `O` or `T` |
+| Finland `FI` | 8 digits | None |
+| France `FR` | 11 digits: numeric 2-digit VAT key over the following 9 digits; no separate SIREN checksum | Either of the first 2 characters is a letter |
+| Croatia `HR` | 11 digits | None |
+| Hungary `HU` | 8 digits | None |
+| Ireland `IE` | 7 digits + 1 letter; 7 digits + 2 letters when the second letter is `A`–`W`; legacy digit + letter/`*`/`+` + 5 digits + letter | 7 digits + 2 letters when the second letter is `X`, `Y` or `Z` |
+| Italy `IT` | 11 digits with positions 8–10 equal to `001`–`100`, `120`, `121`, `888` or `999` | Other values at positions 8–10 |
+| Lithuania `LT` | 9 or 12 digits with penultimate digit `1` | Penultimate digit other than `1` |
+| Luxembourg `LU` | 8 digits | None |
+| Latvia `LV` | 11 digits: company scheme for initial `4`–`9`; personal scheme for initial `0`–`3`, except `32` | Begins `32` |
+| Malta `MT` | 8 digits | None |
+| Netherlands `NL` | 9 digits + `B` + 2 digits: old BSN-based or newer whole-ID modulo-97 check (either may pass); branch allocation is not checked | None |
+| Poland `PL` | 10 digits | None |
+| Portugal `PT` | 9 digits | None |
+| Romania `RO` | 2–10 digits | None |
+| Sweden `SE` | 10 digits + `01`; checksum covers the first 10 digits, syntax enforces `01` | None |
+| Slovenia `SI` | 8 digits | None |
+| Slovakia `SK` | 10 digits: company or historical personal-number arithmetic (either may pass) | None |
+| Northern Ireland `XI` | 9 or 12 digits; checksum covers the first 9, not the optional 3-digit branch suffix | `GD` + 3 digits; `HA` + 3 digits |
 
 ## Result and address semantics
 

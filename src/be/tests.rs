@@ -1,13 +1,15 @@
 use super::*;
 use crate::{LookupError, RegistryFailure};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 #[test]
 fn shared_view_preserves_box_and_native_status_without_vat_inference() {
     let id = BeBusinessId::parse("0012345678").unwrap();
     let raw = br#"{"cbe":"0012345678","name":"Example","streetName":"Source","streetNumber":"12A","boxNumber":"003","postalCode":"0010","countryCode":"BE","legalSituation":"Normal situation","legalSituationCode":"000"}"#;
     let common: crate::CompanyLookupResult = decode::decode(raw, &id).unwrap().into();
-    assert!(common.vat_id.is_none() && common.vat_registered.is_none() && common.status.is_none());
+    crate::test_support::assert_company_contract(&common);
+    assert!(common.vat_id.is_none() && common.vat_registered.is_none());
+    assert_eq!(common.status, Some(crate::CompanyStatus::Active));
     assert_eq!(common.source, crate::Provider::BelgianNbb);
     let a = common.registered_office.unwrap();
     assert_eq!(a.address.as_deref(), Some("Source 12A"));
@@ -47,10 +49,12 @@ fn syntax_and_exact_identity_preserve_leading_zeroes() {
 async fn anonymous_get_captures_source_and_404_remains_an_error() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
-    let task = tokio::spawn(async move {
+    let task = crate::test_support::http::spawn_server(async move {
         let (mut socket, _) = listener.accept().await.unwrap();
-        let mut request = [0; 4096];
-        let n = socket.read(&mut request).await.unwrap();
+        let request = crate::test_support::http::read_request(&mut socket)
+            .await
+            .unwrap();
+        let n = request.len();
         let request = String::from_utf8_lossy(&request[..n]);
         assert!(request.starts_with("GET /0012345678/EN HTTP/1.1"));
         assert!(!request.to_ascii_lowercase().contains("authorization:"));
@@ -60,8 +64,8 @@ async fn anonymous_get_captures_source_and_404_remains_an_error() {
     let client = BeRegistryClient::for_test(url, Default::default());
     client.begin_capture();
     assert_eq!(
-        client.lookup("0012345678").await.unwrap().tax_id.as_str(),
-        "0012345678"
+        client.lookup("0012345678").await.unwrap_err().id,
+        crate::ErrorId::UnresolvedData
     );
     assert!(
         client.take_capture()["body"]
@@ -87,13 +91,17 @@ async fn anonymous_get_captures_source_and_404_remains_an_error() {
     ));
     task.await.unwrap();
 }
-async fn raw_endpoint(reply: &'static [u8]) -> (String, tokio::task::JoinHandle<()>) {
+async fn raw_endpoint(reply: &'static [u8]) -> (String, crate::test_support::http::ServerTask<()>) {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
-    let task = tokio::spawn(async move {
+    let task = crate::test_support::http::spawn_server(async move {
         let (mut socket, _) = listener.accept().await.unwrap();
-        let mut request = [0; 4096];
-        assert!(socket.read(&mut request).await.unwrap() > 0);
+        assert!(
+            !crate::test_support::http::read_request(&mut socket)
+                .await
+                .unwrap()
+                .is_empty()
+        );
         socket.write_all(reply).await.unwrap();
     });
     (url, task)
@@ -166,4 +174,64 @@ async fn body_limits_and_non_json_never_become_records() {
         })
     ));
     task.await.unwrap();
+}
+
+#[test]
+fn absent_and_unmapped_statuses_have_distinct_common_meanings() {
+    let id = BeBusinessId::parse("0012345678").unwrap();
+    for status in [None, Some("Normal situation"), Some("Future source status")] {
+        let raw = serde_json::json!({"cbe":id.as_str(), "name":"Example", "legalSituation":status});
+        let common: crate::CompanyLookupResult =
+            decode::decode(&serde_json::to_vec(&raw).unwrap(), &id)
+                .unwrap()
+                .into();
+        crate::test_support::assert_company_contract(&common);
+        assert_eq!(
+            common.status,
+            status.map(|text| if text == "Normal situation" {
+                crate::CompanyStatus::Active
+            } else {
+                crate::CompanyStatus::Unknown
+            })
+        );
+        assert_eq!(
+            serde_json::to_value(common).unwrap()["registryDetails"]["data"]["nativeRegistryStatus"],
+            serde_json::json!(status)
+        );
+    }
+}
+
+#[test]
+fn legal_situation_codes_distinguish_liquidation_from_closure() {
+    for (code, expected) in [
+        ("000", crate::CompanyStatus::Active),
+        ("014", crate::CompanyStatus::Closed),
+        ("021", crate::CompanyStatus::Closed),
+        ("012", crate::CompanyStatus::Liquidation),
+        ("050", crate::CompanyStatus::Bankruptcy),
+        ("999", crate::CompanyStatus::Unknown),
+    ] {
+        let raw =
+            serde_json::json!({"cbe":"0012345678","name":"Synthetic","legalSituationCode":code});
+        let v: crate::CompanyLookupResult = decode::decode(
+            &serde_json::to_vec(&raw).unwrap(),
+            &BeBusinessId::parse("0012345678").unwrap(),
+        )
+        .unwrap()
+        .into();
+        assert_eq!(v.status, Some(expected));
+        crate::test_support::assert_company_contract(&v);
+        assert_eq!(
+            serde_json::to_value(v).unwrap()["registryDetails"]["data"]["nativeRegistryStatus"],
+            code
+        );
+    }
+}
+
+#[test]
+fn documented_company_output_matches_synthetic_source() {
+    let raw = r#"{"cbe":"0012345678","name":"Example","streetName":"Source","streetNumber":"12A","boxNumber":"003","postalCode":"0010","countryCode":"BE","legalSituation":"Normal situation","legalSituationCode":"000"}"#;
+    let id = BeBusinessId::parse("0012345678").unwrap();
+    let native = decode::decode(raw.as_bytes(), &id).unwrap();
+    crate::test_support::assert_documented_company("be", native);
 }

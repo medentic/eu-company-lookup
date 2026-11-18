@@ -232,7 +232,8 @@ impl<'de> Deserialize<'de> for BusinessId {
 }
 
 /// Country-independent company observation. Tax registration and VIES validity
-/// remain separate facts; missing addresses and lifecycle status remain unknown.
+/// remain separate facts. Public lookups require resolved lifecycle; pure conversions
+/// retain unresolved observations and optional facts remain nullable.
 /// Top-level fields have provider-independent meanings. Native codes, source-specific
 /// status text and other provider facts belong exclusively in `registry_details`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -486,4 +487,79 @@ pub struct AnafDetails {
     pub fiscal_address: Option<RoRegistryAddress>,
     /// Domestic fiscal flags; never substituted for VIES validity.
     pub tax_status: RoTaxStatus,
+}
+
+impl CompanyDetails {
+    pub(crate) fn native_status(&self) -> Option<&str> {
+        match self {
+            Self::BulgarianCommercialRegister {
+                native_registry_status,
+                ..
+            }
+            | Self::Bulstat {
+                native_registry_status,
+                ..
+            }
+            | Self::GreekGemi {
+                native_registry_status,
+                ..
+            }
+            | Self::FinnishPrh {
+                native_registry_status,
+                ..
+            }
+            | Self::FrenchRechercheEntreprises {
+                native_registry_status,
+                ..
+            }
+            | Self::IcelandicSkatturinn {
+                native_registry_status,
+                ..
+            }
+            | Self::IrishCro {
+                native_registry_status,
+                ..
+            }
+            | Self::LithuanianJar {
+                native_registry_status,
+                ..
+            }
+            | Self::LatvianOpenData {
+                native_registry_status,
+                ..
+            }
+            | Self::SlovakRuz {
+                native_registry_status,
+                ..
+            }
+            | Self::PolishKrs {
+                native_registry_status,
+                ..
+            }
+            | Self::NorwegianBrreg {
+                native_registry_status,
+                ..
+            }
+            | Self::EstonianRik {
+                native_registry_status,
+                ..
+            }
+            | Self::BelgianNbb {
+                native_registry_status,
+                ..
+            }
+            | Self::AustrianFirmenbuch {
+                native_registry_status,
+                ..
+            }
+            | Self::CzechAres {
+                native_registry_status,
+                ..
+            }
+            | Self::RomanianAnaf {
+                native_registry_status,
+                ..
+            } => native_registry_status.as_deref(),
+        }
+    }
 }

@@ -27,8 +27,10 @@ missing labels stay null. No caller-selected language or historical-date lookup.
 
 The common result supplies FI, the exact business ID, source company name and
 available Finnish legal-form label. PRH's Trade Register status remains the native
-status code. Lifecycle, VAT registration, VAT ID, fiscal address, foreign name
-and registry link remain null; register-entry codes are not VIES evidence.
+status code. Trade Register code 1 maps to active and 4 to closed; code 2 (removed)
+does not itself prove dissolution. Ongoing situations or a dissolution date
+prevent a registered code from asserting active.
+VAT registration, VAT ID, fiscal address, foreign name and registry link remain null; tax-entry types include special notification and group regimes; no blanket VAT inference is made.
 
 Street and postal contact-address roles do not establish the shared legal
 registered-office role. Both remain fully available in typed native addresses;
@@ -48,3 +50,26 @@ connection timeout, two-second start spacing, sixty-second failure cooldown and
 one-MiB body limit. No automatic retries, redirects or ambient proxies. HTTP and
 schema failures never become negative registration results. Tests use synthetic
 records. Collected identifiers, observations and reviewed expectations stay local.
+
+See the [mapping audit](../../docs/development/company-mapping-audit.md) for source definitions and remaining null fields.
+
+After successful decoding, public lookup requires resolved lifecycle and returns
+`unresolved_data` for missing, unsupported or ambiguous lifecycle evidence.
+Missing required envelope/identity fields remain decoding errors. Pure decoding/projection
+retains the original observation. See the
+[runtime mapping audit](../../docs/development/company-mapping-audit.md#runtime-enforcement).
+
+Ongoing SANE/SELTILA/KONK situations map to restructuring/liquidation/bankruptcy
+when the record is registered and has no conflicting dissolution evidence. Ended
+situations do not override current registration; conflicting situations are unresolved.
+
+## Access, pacing and recovery
+
+One PRH query uses the default two-second start interval. This is client policy,
+not an established PRH quota. Daily publication and a latest-version name do not
+mean the company is active: current register status, ongoing situations and
+cessation evidence must be reviewed together. A source-schema discrepancy or
+record outside open-data coverage is distinct from access failure or dissolution.
+
+See [shared pacing and evidence rules](../README.md#registry-pacing-and-evidence)
+for clone scope, cooldowns, error classification and complete-batch replay.

@@ -37,7 +37,7 @@ VIES EL maps to GR and XI maps to GB.
 
 | ID | Default title | Administrator meaning |
 | --- | --- | --- |
-| `invalid_input` | Check the identifier | Local syntax validation failed; registration was not checked. |
+| `invalid_input` | Check the identifier | Local syntax or supported checksum validation failed; registration was not checked. |
 | `unsupported_identifier` | Identifier type not supported | Unsupported country, VAT jurisdiction or identifier scheme. |
 | `operation_disabled` | Lookup is disabled | Configuration disabled the operation; no request was sent. |
 | `invalid_configuration` | Lookup configuration needs attention | Invalid client settings; inspect the reason. |
@@ -52,6 +52,7 @@ VIES EL maps to GR and XI maps to GB.
 | `response_mismatch` | Verification response could not be confirmed | Response identifies a different subject. |
 | `response_too_large` | Verification could not be completed | Response exceeded the configured transport size bound. |
 | `not_found` | No matching company record found | Identified registry sources definitively missed; not VAT invalidity. |
+| `unresolved_data` | Company status could not be resolved | Matched record has missing, unsupported or ambiguous lifecycle evidence; neither a registry miss nor an outage. |
 | `unknown_error` | Verification could not be completed | Generic fallback; no validity conclusion follows. |
 
 `service_unavailable` has `isServiceUnavailable: true`. Rate limits, local cooldowns,
@@ -145,3 +146,15 @@ operation/scheme fields into details. The old Bulgarian `NotFound` uses reason
 `both_bulgarian_registers_missed`; a single registry miss identifies its provider.
 `is_service_unavailable()` remains available as a convenience over the public flag.
 Private transport classifications are implementation details, not exported errors.
+
+## Unresolved company lifecycle
+
+All national lookup methods, including native registry clients, require a resolved
+company lifecycle before returning success. A matched record with missing lifecycle
+evidence returns `unresolved_data` with reason `missing_lifecycle`; unsupported or
+contradictory evidence uses `unmapped_or_ambiguous_lifecycle`.
+Details include the provider, country and `nativeRegistryStatus` when the source
+supplied one. Source text is preserved in explicit error serialization, while
+Display/Debug omit it. Raw HTTP diagnostics remain opt-in.
+This error has `isServiceUnavailable: false`, establishes no negative registration
+result and does not trigger registry fallback or an outage cooldown.

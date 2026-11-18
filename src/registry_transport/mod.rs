@@ -61,6 +61,21 @@ pub(crate) enum Spacing {
     // Multi-request adapters retain the gap after their final response.
     AfterCompletion,
 }
+// Dropping an admitted future must retain its completion gap, even if the
+// caller cancels during a later HTTP exchange. The admission lock is still held.
+struct CompletionSpacing<'a> {
+    state: &'a mut Admission,
+    interval: Option<Duration>,
+}
+impl Drop for CompletionSpacing<'_> {
+    fn drop(&mut self) {
+        if let Some(interval) = self.interval {
+            self.state.next = Instant::now() + interval;
+        }
+    }
+}
+
+#[cfg(test)]
 pub(crate) async fn execute<T>(
     admission: &Mutex<Admission>,
     bounds: &Bounds,
@@ -73,57 +88,97 @@ pub(crate) async fn execute<T>(
         bounds.max_response_bytes,
         bounds.timeout,
         provider,
+        execute_in_scope(admission, bounds, provider, spacing, request),
+    )
+    .await
+}
+
+// Apply company success policy inside diagnostics, after admission completes.
+// Unresolved data does not trigger a provider outage cooldown.
+pub(crate) async fn execute_company<T>(
+    admission: &Mutex<Admission>,
+    bounds: &Bounds,
+    provider: Provider,
+    spacing: Spacing,
+    request: impl Future<Output = Result<T, RegistryFailure>>,
+) -> Result<T, LookupError>
+where
+    T: Clone + Into<crate::CompanyLookupResult>,
+{
+    crate::http_capture::scope(
+        bounds.raw_debug,
+        bounds.max_response_bytes,
+        bounds.timeout,
+        provider,
         async {
-            let deadline = Instant::now() + bounds.timeout;
-            let mut state = admission
-                .try_lock()
-                .map_err(|_| LookupError::from(crate::model::LookupFailure::Busy))?;
-            if let Some(end) = state.cooldown.filter(|end| *end > Instant::now()) {
-                let left = end.saturating_duration_since(Instant::now());
-                return Err(wrap(
-                    provider,
-                    RegistryFailure::CoolingDown {
-                        retry_after_seconds: left.as_secs() + u64::from(left.subsec_nanos() > 0),
-                    },
-                ));
-            }
-            if state.next >= deadline {
-                return Err(LookupError::from(crate::model::LookupFailure::Busy));
-            }
-            tokio::time::sleep_until(state.next).await;
-            if Instant::now() >= deadline {
-                return Err(LookupError::from(crate::model::LookupFailure::Busy));
-            }
-            state.next = Instant::now() + bounds.start_interval;
-            let result = tokio::time::timeout_at(deadline, request)
+            execute_in_scope(admission, bounds, provider, spacing, request)
                 .await
-                .unwrap_or_else(|_| Err(unavailable(UnavailabilityReason::Timeout, None)));
-            if let Err(
-                RegistryFailure::ServiceUnavailable { retry_after, .. }
-                | RegistryFailure::RateLimited { retry_after },
-            ) = &result
-            {
-                let delay = retry_after
-                    .as_ref()
-                    .map(|retry| match retry {
-                        RetryAfter::Seconds(s) => Duration::from_secs(*s),
-                        RetryAfter::Date(d) => SystemTime::from(*d)
-                            .duration_since(SystemTime::now())
-                            .unwrap_or_default(),
-                    })
-                    .unwrap_or_default()
-                    .max(bounds.failure_cooldown)
-                    .min(Duration::from_secs(315_360_000));
-                state.cooldown = Some(Instant::now() + delay);
-            }
-            if spacing == Spacing::AfterCompletion {
-                state.next = Instant::now() + bounds.start_interval;
-            }
-            result.map_err(|error| wrap(provider, error))
+                .and_then(crate::model::company_validation::ensure_resolved)
         },
     )
     .await
 }
+
+// ANAF also captures validation and definitive misses in its outer request scope.
+// Keep admission reusable without nesting or replacing that diagnostic context.
+pub(crate) async fn execute_in_scope<T>(
+    admission: &Mutex<Admission>,
+    bounds: &Bounds,
+    provider: Provider,
+    spacing: Spacing,
+    request: impl Future<Output = Result<T, RegistryFailure>>,
+) -> Result<T, LookupError> {
+    let deadline = Instant::now() + bounds.timeout;
+    let mut state = admission
+        .try_lock()
+        .map_err(|_| LookupError::from(crate::model::LookupFailure::Busy))?;
+    if let Some(end) = state.cooldown.filter(|end| *end > Instant::now()) {
+        let left = end.saturating_duration_since(Instant::now());
+        return Err(wrap(
+            provider,
+            RegistryFailure::CoolingDown {
+                retry_after_seconds: left.as_secs() + u64::from(left.subsec_nanos() > 0),
+            },
+        ));
+    }
+    if state.next >= deadline {
+        return Err(LookupError::from(crate::model::LookupFailure::Busy));
+    }
+    tokio::time::sleep_until(state.next).await;
+    if Instant::now() >= deadline {
+        return Err(LookupError::from(crate::model::LookupFailure::Busy));
+    }
+    state.next = Instant::now() + bounds.start_interval;
+    // Arm only after admission: cancelling while waiting must not postpone others.
+    let completion = CompletionSpacing {
+        state: &mut state,
+        interval: (spacing == Spacing::AfterCompletion).then_some(bounds.start_interval),
+    };
+    let result = tokio::time::timeout_at(deadline, request)
+        .await
+        .unwrap_or_else(|_| Err(unavailable(UnavailabilityReason::Timeout, None)));
+    if let Err(
+        RegistryFailure::ServiceUnavailable { retry_after, .. }
+        | RegistryFailure::RateLimited { retry_after },
+    ) = &result
+    {
+        let delay = retry_after
+            .as_ref()
+            .map(|retry| match retry {
+                RetryAfter::Seconds(s) => Duration::from_secs(*s),
+                RetryAfter::Date(d) => SystemTime::from(*d)
+                    .duration_since(SystemTime::now())
+                    .unwrap_or_default(),
+            })
+            .unwrap_or_default()
+            .max(bounds.failure_cooldown)
+            .min(Duration::from_secs(315_360_000));
+        completion.state.cooldown = Some(Instant::now() + delay);
+    }
+    drop(completion);
+    result.map_err(|error| wrap(provider, error))
+}
+
 fn wrap(provider: Provider, error: RegistryFailure) -> LookupError {
     LookupError::from(crate::model::LookupFailure::Registry { provider, error })
 }

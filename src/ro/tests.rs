@@ -3,7 +3,7 @@ use crate::{LookupError, Provider, RegistryFailure, RetryAfter};
 use chrono::NaiveDate;
 use serde_json::{Value, json};
 use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 fn date() -> NaiveDate {
     NaiveDate::from_ymd_opt(2025, 2, 14).unwrap()
@@ -91,38 +91,18 @@ async fn server(
     status: &str,
     headers: &str,
     body: String,
-) -> (String, tokio::task::JoinHandle<String>) {
+) -> (String, crate::test_support::http::ServerTask<String>) {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let endpoint = format!("http://{}/tva", listener.local_addr().unwrap());
     let response = format!(
         "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n{headers}\r\n{body}",
         body.len()
     );
-    let task = tokio::spawn(async move {
+    let task = crate::test_support::http::spawn_server(async move {
         let (mut socket, _) = listener.accept().await.unwrap();
-        let mut request = Vec::new();
-        loop {
-            let mut buffer = [0; 4096];
-            let n = socket.read(&mut buffer).await.unwrap();
-            if n == 0 {
-                break;
-            }
-            request.extend_from_slice(&buffer[..n]);
-            if let Some(end) = request.windows(4).position(|w| w == b"\r\n\r\n") {
-                let header = String::from_utf8_lossy(&request[..end]);
-                let size = header
-                    .lines()
-                    .find_map(|l| {
-                        l.to_ascii_lowercase()
-                            .strip_prefix("content-length:")
-                            .map(|n| n.trim().parse::<usize>().unwrap())
-                    })
-                    .unwrap_or(0);
-                if request.len() >= end + 4 + size {
-                    break;
-                }
-            }
-        }
+        let request = crate::test_support::http::read_request(&mut socket)
+            .await
+            .unwrap();
         socket.write_all(response.as_bytes()).await.unwrap();
         String::from_utf8(request).unwrap()
     });
@@ -138,13 +118,8 @@ async fn sends_one_numeric_cui_and_requested_date() {
     .await;
     let client = RoRegistryClient::for_test(url, RoRegistryConfig::default());
     assert_eq!(
-        client
-            .lookup_at("001234", date())
-            .await
-            .unwrap()
-            .tax_id
-            .as_str(),
-        "001234"
+        client.lookup_at("001234", date()).await.unwrap_err().id,
+        crate::ErrorId::UnresolvedData
     );
     let request = task.await.unwrap();
     assert!(request.starts_with("POST /tva HTTP/1.1"));
@@ -308,7 +283,10 @@ async fn content_type_size_and_admission_are_bounded() {
     config.timeout = Duration::from_millis(500);
     config.connect_timeout = config.timeout;
     let client = RoRegistryClient::for_test(url, config);
-    client.lookup_at("1234", date()).await.unwrap();
+    assert_eq!(
+        client.lookup_at("1234", date()).await.unwrap_err().id,
+        crate::ErrorId::UnresolvedData
+    );
     task.await.unwrap();
     assert!(matches!(
         client.lookup_at("1234", date()).await,
@@ -367,14 +345,21 @@ fn http_success_envelope_may_omit_documented_status_fields() {
 #[test]
 fn company_status_is_shared_and_never_inferred_from_fiscal_inactivity() {
     assert_eq!(decode(fixture()).unwrap().unwrap().status, None);
-    for raw in ["NECUNOSCUT", "INREGISTRAT", "RADIAT"] {
+    for (raw, expected) in [
+        ("NECUNOSCUT", crate::CompanyStatus::Unknown),
+        ("INREGISTRAT", crate::CompanyStatus::Active),
+        ("RADIAT", crate::CompanyStatus::Closed),
+    ] {
         let mut value = fixture();
         value["found"][0]["date_generale"]["stare_inregistrare"] = json!(raw);
         let record = decode(value).unwrap().unwrap();
-        assert_eq!(record.status, Some(crate::CompanyStatus::Unknown));
+        assert_eq!(record.status, Some(expected));
         assert_eq!(record.registration_status.as_deref(), Some(raw));
         assert_eq!(record.tax_status.inactive, Some(true));
-        assert_eq!(serde_json::to_value(record).unwrap()["status"], "unknown");
+        assert_eq!(
+            serde_json::to_value(record).unwrap()["status"],
+            serde_json::to_value(expected).unwrap()
+        );
     }
 }
 
@@ -382,6 +367,7 @@ fn company_status_is_shared_and_never_inferred_from_fiscal_inactivity() {
 fn native_registry_status_keeps_exact_anaf_text_and_missing_value() {
     let missing = decode(fixture()).unwrap().unwrap();
     let shared: crate::CompanyLookupResult = missing.clone().into();
+    crate::test_support::assert_company_contract(&shared);
     let wire = serde_json::to_value(shared).unwrap();
     assert!(wire.get("nativeRegistryStatus").is_none());
     assert_eq!(
@@ -399,6 +385,7 @@ fn native_registry_status_keeps_exact_anaf_text_and_missing_value() {
     );
     assert_eq!(record.native_registry_status, record.registration_status);
     let shared: crate::CompanyLookupResult = record.clone().into();
+    crate::test_support::assert_company_contract(&shared);
     let wire = serde_json::to_value(shared).unwrap();
     assert!(wire.get("nativeRegistryStatus").is_none());
     assert_eq!(
@@ -425,6 +412,7 @@ fn explicit_null_status_metadata_is_not_treated_as_omission() {
 fn shared_company_preserves_fiscal_semantics_and_source_components() {
     let native = decode(fixture()).unwrap().unwrap();
     let shared: crate::CompanyLookupResult = native.clone().into();
+    crate::test_support::assert_company_contract(&shared);
     assert_eq!(shared.tax_id, "001234");
     assert_eq!(shared.country, "RO");
     assert!(shared.registered_office.is_none());
@@ -508,10 +496,9 @@ async fn shared_dispatch_uses_anaf_and_preserves_negative_observations() {
                 })
             ));
         } else {
-            let result = result.unwrap();
-            assert_eq!(result.tax_id, id.as_str());
-            assert_eq!(result.country, id.country());
-            assert!(result.status.is_none());
+            let error = result.unwrap_err();
+            assert_eq!(error.id, crate::ErrorId::UnresolvedData);
+            assert_eq!(error.details.country.as_deref(), Some(id.country()));
         }
         assert!(task.await.unwrap().starts_with("POST /tva HTTP/1.1"));
     }
@@ -537,6 +524,7 @@ fn address_countries_have_shared_display_casing_and_iso_codes() {
             assert_eq!(address.country_iso2.as_deref(), code);
         }
         let shared: crate::CompanyLookupResult = native.into();
+        crate::test_support::assert_company_contract(&shared);
         for address in [&shared.registered_office, &shared.fiscal_address] {
             let address = address.as_ref().unwrap();
             assert_eq!(address.country.as_deref(), Some(name));
@@ -582,6 +570,7 @@ fn shared_vat_fields_require_matched_anaf_registration_and_preserve_tax_id() {
             .unwrap()
             .unwrap();
             let shared: crate::CompanyLookupResult = native.into();
+            crate::test_support::assert_company_contract(&shared);
             assert_eq!(shared.tax_id, raw_id);
             assert_eq!(shared.vat_registered, expected);
             let vat = if expected == Some(true) {
@@ -601,6 +590,7 @@ fn shared_vat_fields_require_matched_anaf_registration_and_preserve_tax_id() {
         .unwrap()
         .remove("inregistrare_scop_Tva");
     let shared: crate::CompanyLookupResult = decode(source).unwrap().unwrap().into();
+    crate::test_support::assert_company_contract(&shared);
     assert!(shared.vat_registered.is_none());
     assert!(shared.vat_id.is_none());
 }
@@ -620,6 +610,7 @@ fn vat_id_is_not_invented_for_nonstandard_numeric_identity() {
         .unwrap()
         .unwrap();
         let shared: crate::CompanyLookupResult = native.into();
+        crate::test_support::assert_company_contract(&shared);
         assert_eq!(shared.tax_id, raw);
         assert_eq!(shared.vat_registered, Some(true));
         assert!(shared.vat_id.is_none());
@@ -631,6 +622,7 @@ fn shared_mapping_derives_source_from_anaf_details() {
     let mut native = decode(fixture()).unwrap().unwrap();
     native.source = Provider::Vies;
     let shared: crate::CompanyLookupResult = native.into();
+    crate::test_support::assert_company_contract(&shared);
     let wire = serde_json::to_value(shared).unwrap();
     assert_eq!(wire["source"], "RomanianAnaf");
     assert_eq!(wire["source"], wire["registryDetails"]["provider"]);
@@ -649,6 +641,7 @@ fn missing_anaf_address_countries_default_to_romania() {
             assert_eq!(address.country_iso2.as_deref(), Some("RO"));
         }
         let shared: crate::CompanyLookupResult = native.into();
+        crate::test_support::assert_company_contract(&shared);
         for address in [&shared.registered_office, &shared.fiscal_address] {
             let address = address.as_ref().unwrap();
             assert_eq!(address.country.as_deref(), Some("Romania"));
@@ -658,6 +651,7 @@ fn missing_anaf_address_countries_default_to_romania() {
     let mut native = decode(fixture()).unwrap().unwrap();
     native.fiscal_address = None;
     let shared: crate::CompanyLookupResult = native.into();
+    crate::test_support::assert_company_contract(&shared);
     assert!(shared.registered_office.is_none());
     let fiscal = shared.fiscal_address.unwrap();
     assert_eq!(fiscal.country.as_deref(), Some("Romania"));
@@ -699,4 +693,129 @@ async fn raw_registry_errors_use_the_common_object_and_capture_post_body() {
     );
     assert!(debug.exchanges[0].response.as_ref().unwrap().complete);
     task.await.unwrap();
+}
+
+#[tokio::test]
+async fn shared_transport_preserves_miss_and_validation_diagnostics() {
+    let body = json!({"found":[], "notFound":[1234]}).to_string();
+    let (url, task) = server("200 OK", "Content-Type: application/json\r\n", body.clone()).await;
+    let client = RoRegistryClient::for_test(
+        url,
+        RoRegistryConfig {
+            raw_debug: true,
+            ..Default::default()
+        },
+    );
+    let error = client.lookup_at("1234", date()).await.unwrap_err();
+    assert_eq!(error.id, crate::ErrorId::NotFound);
+    assert_eq!(error.details.provider, Some(Provider::RomanianAnaf));
+    assert_eq!(error.details.country.as_deref(), Some("RO"));
+    assert_eq!(error.details.upstream_http_status, Some(200));
+    assert_eq!(
+        error.details.response_content_type.as_deref(),
+        Some("application/json")
+    );
+    let exchanges = &error.details.debug.as_ref().unwrap().exchanges;
+    assert_eq!(exchanges.len(), 1);
+    assert_eq!(exchanges[0].response.as_ref().unwrap().body.data, body);
+    task.await.unwrap();
+    let error = client.lookup_at("invalid", date()).await.unwrap_err();
+    assert_eq!(error.id, crate::ErrorId::InvalidInput);
+    assert_eq!(error.details.country.as_deref(), Some("RO"));
+    assert!(error.details.upstream_http_status.is_none());
+    assert!(error.details.debug.unwrap().exchanges.is_empty());
+}
+
+#[test]
+fn anaf_company_status_phrases_require_an_exact_label_and_valid_date() {
+    for (text, expected) in [
+        (
+            "INREGISTRAT din data 01.02.2000",
+            crate::CompanyStatus::Active,
+        ),
+        ("RADIERE din data 01.02.2000", crate::CompanyStatus::Closed),
+        ("RADIERE din data 99.99.2000", crate::CompanyStatus::Unknown),
+        (
+            "INREGISTRAT IN SCOPURI DE TVA",
+            crate::CompanyStatus::Unknown,
+        ),
+    ] {
+        let mut raw = fixture();
+        raw["found"][0]["date_generale"]["stare_inregistrare"] = json!(text);
+        let native = decode(raw).unwrap().unwrap();
+        assert_eq!(native.status, Some(expected));
+        assert_eq!(native.native_registry_status.as_deref(), Some(text));
+        assert_eq!(native.tax_status.inactive, Some(true));
+    }
+}
+
+#[tokio::test]
+async fn lifecycle_quality_gate_preserves_source_and_distinguishes_negative_results() {
+    for (status, expected) in [
+        (Some("INREGISTRAT"), Some(crate::CompanyStatus::Active)),
+        (Some("RADIAT"), Some(crate::CompanyStatus::Closed)),
+        (Some("FUTURE SOURCE STATE"), None),
+        (None, None),
+    ] {
+        let mut body = fixture();
+        if let Some(text) = status {
+            body["found"][0]["date_generale"]["stare_inregistrare"] = json!(text);
+        }
+        let (url, task) = server(
+            "200 OK",
+            "Content-Type: application/json\r\n",
+            body.to_string(),
+        )
+        .await;
+        let config = RoRegistryConfig {
+            raw_debug: true,
+            ..Default::default()
+        };
+        let result = RoRegistryClient::for_test(url, config)
+            .lookup_at("001234", date())
+            .await;
+        if let Some(expected) = expected {
+            assert_eq!(result.unwrap().status, Some(expected));
+        } else {
+            let error = result.unwrap_err();
+            assert_eq!(error.id, crate::ErrorId::UnresolvedData);
+            assert_eq!(error.details.native_registry_status.as_deref(), status);
+            assert_eq!(error.details.provider, Some(Provider::RomanianAnaf));
+            assert!(!error.is_service_unavailable);
+            assert!(error.details.debug.is_some());
+            let json = serde_json::to_value(&error).unwrap();
+            assert_eq!(json["id"], "unresolved_data");
+            assert!(!format!("{error:?}").contains("FUTURE SOURCE STATE"));
+        }
+        task.await.unwrap();
+    }
+}
+
+#[test]
+fn lifecycle_activity_and_merger_phrases_are_exact() {
+    use crate::CompanyStatus::*;
+    for (text, expected) in [
+        ("SUSPENDARE ACTIVITATE din data 10.01.2025", Inactive),
+        ("RELUARE ACTIVITATE din data 01.11.2016", Active),
+        (
+            "DIZOLVARE FARA LICHIDARE(FUZIUNE) din data 18.02.2015",
+            Closed,
+        ),
+        ("TRANSFER(SOSIRE) din data 22.07.2021", Unknown),
+        ("SUSPENDARE ACTIVITATE din data 31.02.2025", Unknown),
+        ("RELUARE ACTIVITATE din data 1.1.2025", Unknown),
+        ("DIZOLVARE", Unknown),
+    ] {
+        assert_eq!(mapping::lifecycle(text), expected, "{text}");
+    }
+}
+
+#[test]
+fn documented_company_output_matches_synthetic_source() {
+    let mut body = fixture();
+    body["found"][0]["date_generale"]["stare_inregistrare"] =
+        json!("INREGISTRAT DIN DATA 01.01.2000");
+    let mut native = decode(body).unwrap().unwrap();
+    native.checked_at = "2025-02-14T12:00:00Z".parse().unwrap();
+    crate::test_support::assert_documented_company("ro", native);
 }

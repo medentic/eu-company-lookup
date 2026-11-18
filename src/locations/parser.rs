@@ -1,4 +1,4 @@
-use super::{Address, normalize, rules};
+use super::{Address, estonian, normalize, rules};
 
 pub(super) fn split_fields(prefix: &str, raw: &str) -> Address {
     let mut result = Address::default();
@@ -16,6 +16,7 @@ pub(super) fn split_fields(prefix: &str, raw: &str) -> Address {
     let Some(captures) = regex.captures(&normalized) else {
         return match prefix {
             "BG" => bulgarian_locality_only(&normalized).unwrap_or(result),
+            "EE" => estonian::labelled_postal(&normalized).unwrap_or(result),
             "PT" => portuguese_delivery_only(&normalized).unwrap_or(result),
             _ => result,
         };
@@ -75,7 +76,7 @@ pub(super) fn split_fields(prefix: &str, raw: &str) -> Address {
         });
     }
     if prefix == "EE" {
-        estonian_locality(&mut result);
+        estonian::split_locality(&mut result);
     }
     result
 }
@@ -99,33 +100,6 @@ fn bulgarian_locality_only(value: &str) -> Option<Address> {
         postcode: captures.name("postcode").map(|m| m.as_str().to_owned()),
         ..Address::default()
     })
-}
-
-// Estonian source labels distinguish city districts from settlements and municipalities.
-// Keep the labels in their own fields rather than merging the hierarchy into city.
-fn estonian_locality(result: &mut Address) {
-    let Some(locality) = result.city.clone() else {
-        return;
-    };
-    if let Some((district, city)) = locality.split_once(" linnaosa ") {
-        if !district.is_empty() && !city.is_empty() {
-            result.address2 = Some(format!("{district} linnaosa"));
-            result.city = Some(city.to_owned());
-        }
-    } else {
-        // Explicit settlement labels delimit a following rural or city municipality.
-        // Preserve both labels; never fold the municipality into the settlement.
-        for label in ["küla", "alevik", "alev", "linn"] {
-            if let Some((settlement, municipality)) = locality.split_once(&format!(" {label} "))
-                && !settlement.is_empty()
-                && (municipality.ends_with(" vald") || municipality.ends_with(" linn"))
-            {
-                result.city = Some(format!("{settlement} {label}"));
-                result.municipality = Some(municipality.to_owned());
-                break;
-            }
-        }
-    }
 }
 
 // A labelled Portuguese street plus an unclassified delivery line can be

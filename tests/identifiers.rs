@@ -1,5 +1,39 @@
 //! External consumers cannot bypass identifier validation through conversions.
-use eu_company_lookup::{BgBusinessId, VatId};
+use eu_company_lookup::{BgBusinessId, VatChecksumResult, VatId};
+
+#[test]
+fn offline_checksum_outcomes_need_no_client_or_async_runtime() {
+    for (raw, expected) in [
+        ("BG423456789", VatChecksumResult::Passed),
+        ("BG423456780", VatChecksumResult::Failed),
+        ("FRAB123456789", VatChecksumResult::Unsupported),
+        ("XIGD001", VatChecksumResult::Unsupported),
+    ] {
+        // A failed checksum is still a syntax-valid, serializable identifier.
+        let vat = VatId::parse(raw).unwrap();
+        assert_eq!(vat.validate_checksum(), expected);
+        assert_eq!(vat.as_str(), raw);
+        let restored: VatId = serde_json::from_str(&serde_json::to_string(&vat).unwrap()).unwrap();
+        assert_eq!(restored.validate_checksum(), expected);
+    }
+    let vat = VatId::parse(" fi 02345678 ").unwrap();
+    assert_eq!(vat.validate_checksum(), VatChecksumResult::Passed);
+    assert_eq!(vat.as_str(), "FI02345678");
+    // Bad syntax or an unsupported jurisdiction fails parsing, not the checksum.
+    assert!(VatId::parse("BG123").is_err());
+    assert!(VatId::parse("GB123456789").is_err());
+}
+
+#[test]
+fn offline_checksum_outcomes_have_explicit_serialized_values() {
+    for (result, expected) in [
+        (VatChecksumResult::Passed, "\"passed\""),
+        (VatChecksumResult::Failed, "\"failed\""),
+        (VatChecksumResult::Unsupported, "\"unsupported\""),
+    ] {
+        assert_eq!(serde_json::to_string(&result).unwrap(), expected);
+    }
+}
 
 #[test]
 fn identifier_conversions_preserve_normalization_and_leading_zeroes() {
@@ -28,7 +62,13 @@ fn deserialization_validates_identifiers_instead_of_trusting_wire_values() {
         let json = serde_json::to_string(invalid).unwrap();
         assert!(serde_json::from_str::<BgBusinessId>(&json).is_err());
     }
-    for invalid in ["", "123456789", "GB123456789", "BG123-456-789"] {
+    for invalid in [
+        "",
+        "123456789",
+        "GB123456789",
+        "BG123-456-789",
+        "SE123456789012",
+    ] {
         let json = serde_json::to_string(invalid).unwrap();
         assert!(serde_json::from_str::<VatId>(&json).is_err());
     }

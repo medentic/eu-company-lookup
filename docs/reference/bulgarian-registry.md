@@ -52,7 +52,7 @@ A closed main record, explicit deletion field or recognized deleted-company stat
 maps to `closed`, overriding an open subrecord. Recognized open states map to
 `active`; unknown Commercial Register codes map to `unknown` and are retained in
 `registryDetails.statusCode`. BULSTAT `развиващ дейност` maps to the typed `CompanyStatus::Active`
-(JSON `active`); unrecognized descriptions map to `CompanyStatus::Unknown` (JSON `unknown`).
+(JSON `active`); exact `заличен` maps to closed; unrecognized descriptions map to `CompanyStatus::Unknown` (JSON `unknown`).
 The original BULSTAT status is retained in `registryDetails.statusText`. These values do not establish a universal business status.
 
 ### Commercial Register details

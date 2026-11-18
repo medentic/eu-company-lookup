@@ -1,10 +1,10 @@
 [package]
 name = "eu-company-lookup"
-version = "4.0.0"
+version = "4.1.0"
 edition = "2024"
 rust-version = "1.98.1"
 description = "Typed EU VAT verification and national company/taxpayer lookup with explicit provider capabilities"
-license = "MIT AND BSD-3-Clause"
+license = "MIT AND BSD-3-Clause AND Apache-2.0"
 repository = "https://github.com/medentic/eu-company-lookup"
 documentation = "https://docs.rs/eu-company-lookup"
 readme = "README.md"
@@ -23,6 +23,7 @@ include = [
     "docs/reference/bulgarian-registry.md",
     "docs/reference/romanian-registry.md",
     "docs/reference/vies.md",
+    "docs/examples/*.md",
     "/Cargo.toml",
     "/Cargo.lock",
     "/README.md",

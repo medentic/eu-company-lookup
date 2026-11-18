@@ -91,6 +91,18 @@ fn typed_registry_values_preserve_wire_strings_and_unknown_source_values() {
     for (value, expected) in [
         (CompanyStatus::Active, "active"),
         (CompanyStatus::Closed, "closed"),
+        (CompanyStatus::Liquidation, "liquidation"),
+        (CompanyStatus::Bankruptcy, "bankruptcy"),
+        (CompanyStatus::Receivership, "receivership"),
+        (
+            CompanyStatus::LiquidationAndReceivership,
+            "liquidationAndReceivership",
+        ),
+        (CompanyStatus::Restructuring, "restructuring"),
+        (CompanyStatus::PendingClosure, "pendingClosure"),
+        (CompanyStatus::LiquidationStayed, "liquidationStayed"),
+        (CompanyStatus::Administration, "administration"),
+        (CompanyStatus::Inactive, "inactive"),
         (CompanyStatus::Unknown, "unknown"),
     ] {
         assert_eq!(serde_json::to_value(value).unwrap(), expected);

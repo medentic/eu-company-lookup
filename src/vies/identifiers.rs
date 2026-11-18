@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr, sync::LazyLock};
 
 // Conservative national format checks; deliberately not checksum algorithms.
-// Sources and limitations are documented in README.
+// Sources and limitations are documented in docs/reference/vies.md.
 pub(super) const FORMATS: &[(&str, &str)] = &[
     ("AT", "U[0-9]{8}"),
     ("BE", "[01][0-9]{9}"),
@@ -30,7 +30,7 @@ pub(super) const FORMATS: &[(&str, &str)] = &[
     ("PL", "[0-9]{10}"),
     ("PT", "[0-9]{9}"),
     ("RO", "[0-9]{2,10}"),
-    ("SE", "[0-9]{12}"),
+    ("SE", "[0-9]{10}01"),
     ("SI", "[0-9]{8}"),
     ("SK", "[0-9]{10}"),
     ("XI", "([0-9]{9}|[0-9]{12}|GD[0-9]{3}|HA[0-9]{3})"),

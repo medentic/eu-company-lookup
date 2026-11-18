@@ -1,4 +1,4 @@
-//! NBB observations retain their source; no VAT or lifecycle inference.
+//! NBB observations retain their source; no VAT inference.
 use super::BeCompanyLookupResult;
 use crate::{CompanyAddress, CompanyDetails, CompanyLookupResult};
 
@@ -24,8 +24,14 @@ impl From<BeCompanyLookupResult> for CompanyLookupResult {
             full_address_by_registry: None,
             fields,
         });
+        let status = lifecycle(
+            v.details.legal_situation_code.as_deref(),
+            v.native_registry_status.as_deref(),
+        );
         let registry_details = CompanyDetails::BelgianNbb {
-            native_registry_status: v.native_registry_status,
+            native_registry_status: v
+                .native_registry_status
+                .or(v.details.legal_situation_code.clone()),
             registered_office: v.registered_office,
             details: Box::new(v.details),
         };
@@ -40,9 +46,28 @@ impl From<BeCompanyLookupResult> for CompanyLookupResult {
             registry_url: None,
             foreign_name: None,
             fiscal_address: None,
-            status: None,
+            status,
             source: registry_details.provider(),
             registry_details,
         }
+    }
+}
+
+fn lifecycle(code: Option<&str>, label: Option<&str>) -> Option<crate::CompanyStatus> {
+    use crate::CompanyStatus::{Active, Bankruptcy, Closed, Liquidation, Restructuring, Unknown};
+    // FPS Economy distinguishes completed liquidation from its opening.
+    match code.map(str::trim) {
+        Some("000") => Some(Active),
+        Some("012" | "013") => Some(Liquidation),
+        Some("048" | "049" | "050") => Some(Bankruptcy),
+        Some("040" | "041" | "091") => Some(Restructuring),
+        Some(
+            "014" | "015" | "016" | "017" | "021" | "022" | "023" | "024" | "025" | "026" | "111",
+        ) => Some(Closed),
+        Some(_) => Some(Unknown),
+        None => label.map(|s| match s.trim().to_ascii_lowercase().as_str() {
+            "normal situation" => Active,
+            _ => Unknown,
+        }),
     }
 }

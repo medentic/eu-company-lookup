@@ -25,7 +25,7 @@ pub struct LtCompanyDetails {
     pub ja_kodas: String,
     /// Published name, possibly anonymized by the source.
     pub ja_pavadinimas: String,
-    /// Source full address text, without inferred common role.
+    /// Source registration-address text, preserved verbatim.
     pub pilnas_adresas: Option<String>,
     /// Native address reference.
     pub adresas: Option<LtSourceReference>,

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "normalizationVersion": "address-rules-v19",
+  "normalizationVersion": "address-rules-v24",
   "expectationHash": "SHA-256 of UTF-8 JSON expected object; sorted keys, compact separators, unescaped Unicode",
   "versionRule": "Bump normalizationVersion for deliberate parsing behavior changes. Update only independently re-reviewed expectations, increment their reviewVersion and record reason/date. Structural refactors without behavior changes keep the version.",
   "knownNormalizationVersions": [
@@ -22,7 +22,12 @@
     "address-rules-v16",
     "address-rules-v17",
     "address-rules-v18",
-    "address-rules-v19"
+    "address-rules-v19",
+    "address-rules-v20",
+    "address-rules-v21",
+    "address-rules-v22",
+    "address-rules-v23",
+    "address-rules-v24"
   ],
   "changes": [
     {
@@ -38,7 +43,7 @@
     {
       "version": "address-rules-v3",
       "date": "2026-11-13",
-      "reason": "Space recognized Bulgarian quarter marker кв. before its value while preserving embedded ordinary words and original provider text."
+      "reason": "Space recognized Bulgarian quarter marker \u043a\u0432. before its value while preserving embedded ordinary words and original provider text."
     },
     {
       "version": "address-rules-v4",
@@ -48,17 +53,17 @@
     {
       "version": "address-rules-v5",
       "date": "2026-11-13",
-      "reason": "Move explicitly labelled сграда/стая components with values at start or comma boundary into address2; protect street names and empty labels."
+      "reason": "Move explicitly labelled \u0441\u0433\u0440\u0430\u0434\u0430/\u0441\u0442\u0430\u044f components with values at start or comma boundary into address2; protect street names and empty labels."
     },
     {
       "version": "address-rules-v6",
       "date": "2026-11-13",
-      "reason": "Repair lowercase ул./бул. glued to uppercase complex name under explicit жк. prefix; preserve ordinary embedded markers."
+      "reason": "Repair lowercase \u0443\u043b./\u0431\u0443\u043b. glued to uppercase complex name under explicit \u0436\u043a. prefix; preserve ordinary embedded markers."
     },
     {
       "version": "address-rules-v7",
       "date": "2026-11-13",
-      "reason": "User-approved BG structured-address presentation: strip double quotation glyphs, canonical жк., uppercase single entrance letters, omit explicit delivery post-box components; preserve raw text, apostrophes and four-digit postcodes."
+      "reason": "User-approved BG structured-address presentation: strip double quotation glyphs, canonical \u0436\u043a., uppercase single entrance letters, omit explicit delivery post-box components; preserve raw text, apostrophes and four-digit postcodes."
     },
     {
       "version": "address-rules-v8",
@@ -83,7 +88,7 @@
     {
       "version": "address-rules-v12",
       "date": "2026-11-13",
-      "reason": "Move comma-delimited explicit Bulgarian кабинет components with nonempty values into address2; preserve embedded street names, empty labels and original source text."
+      "reason": "Move comma-delimited explicit Bulgarian \u043a\u0430\u0431\u0438\u043d\u0435\u0442 components with nonempty values into address2; preserve embedded street names, empty labels and original source text."
     },
     {
       "version": "address-rules-v13",
@@ -119,6 +124,31 @@
       "version": "address-rules-v19",
       "date": "2026-11-13",
       "reason": "Retain explicitly labelled Portuguese two-line delivery text when postcode is missing, without inferring city or importing external address data."
+    },
+    {
+      "version": "address-rules-v20",
+      "date": "2026-11-17",
+      "reason": "Accept Greek single-space and two-space boundaries before an explicit five-digit postcode followed by a hyphen and locality; preserve raw text and leave missing postal/locality boundaries unparsed."
+    },
+    {
+      "version": "address-rules-v21",
+      "date": "2026-11-17",
+      "reason": "Accept Estonian single-space postal boundaries only when a five-digit postcode precedes explicitly labelled district or settlement text. Preserve delivery numbers and existing locality/municipality separation; leave unlabelled or postcode-free layouts unknown."
+    },
+    {
+      "version": "address-rules-v22",
+      "date": "2026-11-17",
+      "reason": "Preserve Polish delivery lines and explicit postcode when the final postcode line omits locality; leave city unknown and retain original text."
+    },
+    {
+      "version": "address-rules-v23",
+      "date": "2026-11-18",
+      "reason": "Preserve Hungarian delivery and postcode when the supplied locality is Budapest followed by two digits. Retain the locality suffix as source text; other numeric locality endings and missing postal boundaries remain unparsed."
+    },
+    {
+      "version": "address-rules-v24",
+      "date": "2026-11-18",
+      "reason": "Preserve wrapped Portuguese delivery lines before a separate locality and explicit postcode/locality boundary; retain raw source and reject incomplete postal boundaries."
     }
   ]
 }

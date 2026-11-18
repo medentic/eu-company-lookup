@@ -46,6 +46,8 @@ pub struct LookupError {
     pub is_service_unavailable: bool,
     /// Optional context and explicitly enabled raw HTTP diagnostics.
     pub details: Box<ErrorDetails>,
+    // Retained only for private policy regression tests and evidence probes.
+    #[cfg(test)]
     #[serde(skip)]
     pub(crate) kind: super::LookupFailure,
 }
@@ -61,6 +63,8 @@ pub struct ErrorDetails {
     pub country: Option<String>,
     /// Specific sanitized reason within the common error category.
     pub reason: Option<&'static str>,
+    /// Original source lifecycle text/code for unresolved company data. Not a negative result.
+    pub native_registry_status: Option<String>,
     /// Recognized upstream protocol fault code; arbitrary body text is never copied here.
     pub upstream_code: Option<&'static str>,
     /// Actual upstream HTTP status, never an application HTTP response recommendation.
@@ -108,6 +112,18 @@ impl From<super::LookupFailure> for LookupError {
         let mut details = ErrorDetails::default();
         let id = match &kind {
             F::Unknown => I::UnknownError,
+            F::UnresolvedData {
+                provider,
+                country,
+                native_status,
+                reason,
+            } => {
+                details.provider = Some(*provider);
+                details.country = Some(country.clone());
+                details.native_registry_status = native_status.clone();
+                details.reason = Some(reason);
+                I::UnresolvedData
+            }
             F::InvalidInput => I::InvalidInput,
             F::UnsupportedJurisdiction => {
                 details.reason = Some("unsupported_vat_jurisdiction");
@@ -245,6 +261,7 @@ impl From<super::LookupFailure> for LookupError {
             description: id.description(),
             is_service_unavailable: id == I::ServiceUnavailable,
             details: Box::new(details),
+            #[cfg(test)]
             kind,
         }
     }

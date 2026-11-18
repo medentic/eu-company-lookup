@@ -1,5 +1,5 @@
 use super::FrCompanyLookupResult;
-use crate::{CompanyAddress, CompanyDetails, CompanyLookupResult, CompanyStatus};
+use crate::{CompanyAddress, CompanyDetails, CompanyLookupResult};
 impl From<FrCompanyLookupResult> for CompanyLookupResult {
     fn from(v: FrCompanyLookupResult) -> Self {
         let registered_office = v.details.siege.as_ref().map(|s| {
@@ -39,9 +39,13 @@ impl From<FrCompanyLookupResult> for CompanyLookupResult {
             }
         });
         let native_registry_status = v.details.etat_administratif.clone();
-        let status = native_registry_status
-            .as_ref()
-            .map(|_| CompanyStatus::Unknown);
+        let status = native_registry_status.as_deref().map(lifecycle);
+        let legal_form = v
+            .details
+            .nature_juridique
+            .as_deref()
+            .and_then(super::legal_forms::label)
+            .map(str::to_owned);
         let registry_details = CompanyDetails::FrenchRechercheEntreprises {
             native_registry_status,
             details: Box::new(v.details),
@@ -50,7 +54,7 @@ impl From<FrCompanyLookupResult> for CompanyLookupResult {
             country: "FR".into(),
             tax_id: v.tax_id.into(),
             company_name: v.company_name,
-            legal_form: None,
+            legal_form,
             registered_office,
             fiscal_address: None,
             vat_registered: None,
@@ -61,5 +65,15 @@ impl From<FrCompanyLookupResult> for CompanyLookupResult {
             source: registry_details.provider(),
             registry_details,
         }
+    }
+}
+
+// Exact provider states; insolvency/proceedings and future values remain distinguishable.
+fn lifecycle(value: &str) -> crate::CompanyStatus {
+    use crate::CompanyStatus::{Active, Closed, Unknown};
+    match value.trim().to_uppercase().as_str() {
+        "A" => Active,
+        "C" => Closed,
+        _ => Unknown,
     }
 }

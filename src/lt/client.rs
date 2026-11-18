@@ -89,7 +89,7 @@ impl LtRegistryClient {
     /// Look up the current Lithuanian public registry observation by full business ID.
     pub async fn lookup(&self, value: &str) -> Result<LtCompanyLookupResult, LookupError> {
         let id = LtBusinessId::parse(value)?;
-        registry_transport::execute(
+        registry_transport::execute_company(
             &self.admission,
             &self.config.bounds(),
             Provider::LithuanianJar,

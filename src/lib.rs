@@ -35,7 +35,7 @@ pub use model::{
     RegistryDocumentType, RegistryMoney, RegistryPerson, RegistryRole, RetryAfter,
     UnavailabilityReason, VatAddress, VatCheck, VatLookupResult,
 };
-pub use vies::{ClientConfig, VatId, validate_vat_syntax};
+pub use vies::{ClientConfig, VatChecksumResult, VatId, validate_vat_syntax};
 
 pub use ro::{
     RoBusinessId, RoCompanyLookupResult, RoRegistryAddress, RoRegistryClient, RoRegistryConfig,
@@ -44,7 +44,7 @@ pub use ro::{
 
 pub use cz::{
     CzAresDetails, CzBusinessId, CzCompanyLookupResult, CzRegistryAddress, CzRegistryClient,
-    CzRegistryConfig, CzSourceRegistrations, validate_cz_business_id_syntax,
+    CzRegistryConfig, CzRosClosure, CzSourceRegistrations, validate_cz_business_id_syntax,
 };
 
 pub use at::{
@@ -80,8 +80,8 @@ pub use ee::{
 };
 
 pub use no::{
-    NoBusinessId, NoCompanyDetails, NoCompanyLookupResult, NoRegistryClient, NoRegistryConfig,
-    validate_no_business_id_syntax,
+    NoAnnotation, NoBusinessId, NoCompanyDetails, NoCompanyLookupResult, NoRegistryClient,
+    NoRegistryConfig, validate_no_business_id_syntax,
 };
 
 pub use no::{NoClassification, NoRegistryAddress};
@@ -92,16 +92,20 @@ pub use pl::{
 };
 
 pub use pl::{
-    PlAddress, PlExtractHeader, PlRegisteredOffice, PlSeat, PlSourceIdentifiers, PlSubject,
+    PlAddress, PlBankruptcy, PlCorporateEvent, PlDissolution, PlExtractHeader, PlLifecycleSection,
+    PlLiquidation, PlMergerKrs, PlMergerParty, PlProceedingEnd, PlProceedingOrder,
+    PlRegisteredOffice, PlRemoval, PlReorganization, PlReorganizationRole, PlRestructuring, PlSeat,
+    PlSourceIdentifiers, PlSubject, PlSuspension,
 };
 
 pub use sk::{
     SkBusinessId, SkCompanyDetails, SkCompanyLookupResult, SkRegistryClient, SkRegistryConfig,
-    validate_sk_business_id_syntax,
+    SkRpoCode, SkRpoLegalState, SkRpoLifecycle, SkRpoValue, validate_sk_business_id_syntax,
 };
 
 pub use lv::{
-    LvBusinessId, LvCompanyDetails, LvCompanyLookupResult, LvRegistryClient, LvRegistryConfig,
+    LvBusinessId, LvCompanyDetails, LvCompanyLookupResult, LvInsolvency, LvLifecycleDetails,
+    LvLiquidation, LvRegistryClient, LvRegistryConfig, LvSuspension,
     validate_lv_business_id_syntax,
 };
 
@@ -128,3 +132,6 @@ pub use model::{
     CapturedBytes, CapturedHeader, CapturedRequest, CapturedResponse, ErrorDetails, ErrorId,
     HttpDiagnostics, HttpExchange,
 };
+
+#[cfg(test)]
+mod test_support;

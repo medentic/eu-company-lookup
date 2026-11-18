@@ -36,7 +36,10 @@ async fn live_registry_batch() {
         let failed = result.is_err();
         match result {
             Ok(value) => row["result"] = serde_json::to_value(value).unwrap(),
-            Err(e) => row["error"] = json!(format!("{e:?}")),
+            Err(e) => {
+                row["error"] = json!(format!("{e:?}"));
+                row["lookupError"] = serde_json::to_value(e).unwrap();
+            }
         }
         writeln!(output, "{}", serde_json::to_string(&row).unwrap()).unwrap();
         output.sync_all().unwrap();
@@ -54,6 +57,9 @@ async fn live_registry_batch() {
 #[ignore = "offline replay only; requires retained EE_RUN_DIR source observations"]
 fn replay_registry_batch() {
     let folder = PathBuf::from(std::env::var("EE_RUN_DIR").unwrap());
+    let manifest: Value =
+        serde_json::from_slice(&std::fs::read(folder.join("manifest.json")).unwrap()).unwrap();
+    let selected: Vec<String> = serde_json::from_value(manifest["ids"].clone()).unwrap();
     let source = std::fs::read_to_string(folder.join("observations.jsonl")).unwrap();
     assert!(source.ends_with('\n'), "preserve incomplete journal");
     let expectations: Value =
@@ -77,11 +83,37 @@ fn replay_registry_batch() {
                 id.as_str()
             );
         }
-        replay.push(json!({"id":id.as_str(),"actual":actual}));
+        let validation_status =
+            crate::test_support::company_validation::classify(&actual, &review["fields"]);
+        replay.push(json!({"id":id.as_str(),"actual":actual,"validationStatus":validation_status,"unresolvedDetail": if validation_status == "unresolved" { crate::test_support::company_validation::unresolved_detail(&actual) } else { Value::Null }}));
     }
+    std::fs::write(
+        folder.join("validation-summary.json"),
+        serde_json::to_vec_pretty(&crate::test_support::company_validation::summary(
+            &replay, &selected,
+        ))
+        .unwrap(),
+    )
+    .unwrap();
     std::fs::write(
         folder.join("offline-replay.json"),
         serde_json::to_vec_pretty(&replay).unwrap(),
     )
     .unwrap();
+}
+
+#[test]
+#[ignore = "offline audit of explicitly selected retained responses; never collects"]
+fn audit_retained_registry_responses() {
+    crate::test_support::retained_registry::run("EE", |row| {
+        let id = EeBusinessId::parse(row["id"].as_str().ok_or("missingIdentity")?)
+            .map_err(|e| e.to_string())?;
+        let raw = crate::test_support::retained_registry::body(row, "/capture/body", "bodySha256")?;
+        if row["capture"]["httpStatus"] != 200 {
+            return Err("nonSuccessHttpStatus".into());
+        }
+        decode::decode(raw.as_bytes(), &id)
+            .map(|v| Some(v.into()))
+            .map_err(|e| e.to_string())
+    });
 }

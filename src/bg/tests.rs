@@ -10,7 +10,7 @@ use std::{
     time::Duration,
 };
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
+    io::AsyncWriteExt,
     net::TcpListener,
     task::{JoinHandle, JoinSet},
 };
@@ -77,11 +77,7 @@ impl Server {
                         let (mut socket, _) = connection.unwrap();
                         let (counter, captured, queue) = (counter.clone(), captured.clone(), queue.clone());
                         connections.spawn(async move {
-                            let mut request = Vec::new(); let mut buf = [0;2048];
-                            while !request.windows(4).any(|w| w == b"\r\n\r\n") {
-                                let n = socket.read(&mut buf).await.unwrap_or(0); if n == 0 { return; }
-                                request.extend_from_slice(&buf[..n]); assert!(request.len() < 16384);
-                            }
+                            let Ok(request) = crate::test_support::http::read_request(&mut socket).await else { return; };
                             captured.lock().unwrap().push(String::from_utf8(request).unwrap());
                             counter.fetch_add(1, Ordering::SeqCst);
                             let response = queue.lock().unwrap().pop_front().unwrap_or_else(|| http(500,"", ""));
@@ -206,6 +202,7 @@ async fn definitive_commercial_miss_falls_back_to_exact_bulstat_record() {
     assert_eq!(record.address.country.as_deref(), Some("България"));
     assert_eq!(record.status, Some(crate::CompanyStatus::Active));
     let shared: crate::CompanyLookupResult = record.clone().into();
+    crate::test_support::assert_company_contract(&shared);
     assert!(shared.vat_registered.is_none());
     assert!(shared.vat_id.is_none());
     let wire = serde_json::to_value(shared).unwrap();
@@ -1006,6 +1003,7 @@ fn closed_joint_stock_records_and_full_branch_identifiers_keep_contract() {
         assert_eq!(parsed.legal_form.as_deref(), Some(abbreviation));
         assert_eq!(parsed.tax_id.as_str(), id);
         let shared: crate::CompanyLookupResult = parsed.clone().into();
+        crate::test_support::assert_company_contract(&shared);
         assert_eq!(shared.tax_id, id);
         assert!(shared.vat_registered.is_none());
         assert!(shared.vat_id.is_none());
@@ -1166,6 +1164,7 @@ fn bulstat_status_is_typed_without_discarding_unknown_or_original_text() {
     let id = BgBusinessId::parse("123456789").unwrap();
     for (text, expected) in [
         ("развиващ дейност", Some(crate::CompanyStatus::Active)),
+        ("заличен", Some(crate::CompanyStatus::Closed)),
         ("непознато състояние", Some(crate::CompanyStatus::Unknown)),
         ("", None),
     ] {
@@ -1203,6 +1202,7 @@ fn commercial_native_registry_status_preserves_known_and_unknown_source_codes() 
         assert_eq!(record.status, Some(expected));
         assert_eq!(record.native_registry_status, Some(code.to_string()));
         let shared: crate::CompanyLookupResult = record.clone().into();
+        crate::test_support::assert_company_contract(&shared);
         let wire = serde_json::to_value(shared).unwrap();
         assert!(wire.get("nativeRegistryStatus").is_none());
         assert_eq!(
@@ -1225,6 +1225,7 @@ fn shared_company_retains_registry_identity_and_details() {
     )
     .unwrap();
     let shared: crate::CompanyLookupResult = native.clone().into();
+    crate::test_support::assert_company_contract(&shared);
     assert!(shared.vat_registered.is_none());
     assert!(shared.vat_id.is_none());
     assert_eq!(shared.country, "BG");
@@ -1277,7 +1278,11 @@ async fn shared_dispatch_uses_bg_and_preserves_provider_failures() {
             vec![if failure {
                 http(503, "", "")
             } else {
-                http(200, &deed().to_string(), "application/json")
+                http(
+                    200,
+                    &deed().to_string().replace("123456789", "123456786"),
+                    "application/json",
+                )
             }],
             Duration::ZERO,
         )
@@ -1293,7 +1298,7 @@ async fn shared_dispatch_uses_bg_and_preserves_provider_failures() {
         .await;
         let client = crate::Client::with_test_registries(server.client(), unused_ro)
             .with_test_vies(vies.base.clone());
-        let id = crate::BusinessId::from(BgBusinessId::parse("123456789").unwrap());
+        let id = crate::BusinessId::from(BgBusinessId::parse("123456786").unwrap());
         let result = client.lookup_company(id.as_str(), id.country()).await;
         if failure {
             assert!(matches!(
@@ -1329,6 +1334,7 @@ fn shared_mapping_derives_source_from_typed_details() {
     // Native structs are mutable consumer data; their redundant label is not authority.
     native.source = Provider::Vies;
     let shared: crate::CompanyLookupResult = native.into();
+    crate::test_support::assert_company_contract(&shared);
     let wire = serde_json::to_value(shared).unwrap();
     assert_eq!(wire["source"], "BulgarianCommercialRegister");
     assert_eq!(wire["source"], wire["registryDetails"]["provider"]);
@@ -1373,6 +1379,7 @@ fn shared_bg_details_normalize_party_country_names_without_changing_source() {
         )
         .unwrap();
         let shared: crate::CompanyLookupResult = native.into();
+        crate::test_support::assert_company_contract(&shared);
         let wire = serde_json::to_value(shared).unwrap();
         for key in ["managers", "owners"] {
             let party = &wire["registryDetails"]["data"][key][0];
@@ -1393,7 +1400,7 @@ fn enriched_client(registry: &Server, vies: &Server) -> crate::Client {
 
 fn vat_response(valid: bool, name: &str) -> String {
     format!(
-        "<s:Envelope xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><checkVatResponse xmlns='urn:ec.europa.eu:taxud:vies:services:checkVat:types'><countryCode>BG</countryCode><vatNumber>123456789</vatNumber><requestDate>2026-11-14</requestDate><valid>{valid}</valid><name>{name}</name><address>София 1000</address></checkVatResponse></s:Body></s:Envelope>"
+        "<s:Envelope xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><checkVatResponse xmlns='urn:ec.europa.eu:taxud:vies:services:checkVat:types'><countryCode>BG</countryCode><vatNumber>123456786</vatNumber><requestDate>2026-11-14</requestDate><valid>{valid}</valid><name>{name}</name><address>София 1000</address></checkVatResponse></s:Body></s:Envelope>"
     )
 }
 
@@ -1407,7 +1414,11 @@ async fn bg_facade_enriches_only_valid_name_matched_vat_and_retains_evidence() {
         (true, "ПРИМЕРЕООД", None),
     ] {
         let registry = Server::new(
-            vec![http(200, &deed().to_string(), "application/json")],
+            vec![http(
+                200,
+                &deed().to_string().replace("123456789", "123456786"),
+                "application/json",
+            )],
             Duration::ZERO,
         )
         .await;
@@ -1418,25 +1429,25 @@ async fn bg_facade_enriches_only_valid_name_matched_vat_and_retains_evidence() {
         .await;
         let client = enriched_client(&registry, &vies);
         assert!(matches!(
-            client.lookup_vat("BG123456789").await,
+            client.lookup_vat("BG123456786").await,
             Err(LookupError {
                 kind: crate::model::LookupFailure::OperationDisabled { .. },
                 ..
             })
         ));
-        let result = client.lookup_company("123456789", "BG").await.unwrap();
+        let result = client.lookup_company("123456786", "BG").await.unwrap();
         assert_eq!(result.vat_registered, expected);
         assert_eq!(
             result.vat_id.as_ref().map(|id| id.as_str()),
-            expected.map(|_| "BG123456789")
+            expected.map(|_| "BG123456786")
         );
         assert_eq!(result.source, Provider::BulgarianCommercialRegister);
-        assert_eq!(result.tax_id, "123456789");
+        assert_eq!(result.tax_id, "123456786");
         assert_eq!(result.company_name, "\"ПРИМЕР\" ЕООД");
         let wire = serde_json::to_value(result).unwrap();
         let evidence = &wire["registryDetails"]["data"]["vatVerification"];
         assert_eq!(evidence["source"], "Vies");
-        assert_eq!(evidence["vatId"], "BG123456789");
+        assert_eq!(evidence["vatId"], "BG123456786");
         assert_eq!(evidence["valid"], valid);
         assert_eq!(evidence["address"]["countryISO2"], "BG");
         assert_eq!(registry.calls.load(Ordering::SeqCst), 1);
@@ -1450,19 +1461,23 @@ async fn bg_facade_propagates_vies_failure_and_mismatched_identity() {
         http(503, "", "text/xml"),
         http(
             200,
-            &vat_response(true, "ПРИМЕР ЕООД").replace("123456789", "987654321"),
+            &vat_response(true, "ПРИМЕР ЕООД").replace("123456786", "987654321"),
             "text/xml",
         ),
     ] {
         let registry = Server::new(
-            vec![http(200, &deed().to_string(), "application/json")],
+            vec![http(
+                200,
+                &deed().to_string().replace("123456789", "123456786"),
+                "application/json",
+            )],
             Duration::ZERO,
         )
         .await;
         let vies = Server::new(vec![response], Duration::ZERO).await;
         assert!(
             enriched_client(&registry, &vies)
-                .lookup_company("123456789", "BG")
+                .lookup_company("123456786", "BG")
                 .await
                 .is_err()
         );
@@ -1514,8 +1529,16 @@ async fn bg_facade_enriches_bulstat_after_definitive_commercial_miss() {
     let registry = Server::new(
         vec![
             http(200, "", "application/json"),
-            http(200, &search(), "text/html"),
-            http(200, &detail(), "text/html"),
+            http(
+                200,
+                &search().replace("123456789", "123456786"),
+                "text/html",
+            ),
+            http(
+                200,
+                &detail().replace("123456789", "123456786"),
+                "text/html",
+            ),
         ],
         Duration::ZERO,
     )
@@ -1526,7 +1549,7 @@ async fn bg_facade_enriches_bulstat_after_definitive_commercial_miss() {
     )
     .await;
     let result = enriched_client(&registry, &vies)
-        .lookup_company("123456789", "BG")
+        .lookup_company("123456786", "BG")
         .await
         .unwrap();
     assert_eq!(result.source, Provider::Bulstat);
@@ -1551,4 +1574,80 @@ fn bg_vat_candidates_preserve_zeroes_and_never_strip_branch_suffixes() {
     assert_eq!(vat::vat_candidate(&shared).unwrap().as_str(), "BG001234567");
     shared.tax_id = "0012345670001".into();
     assert!(vat::vat_candidate(&shared).is_none());
+}
+
+#[tokio::test]
+async fn documented_company_output_matches_synthetic_source() {
+    let registry = Server::new(
+        vec![http(
+            200,
+            &deed().to_string().replace("123456789", "123456786"),
+            "application/json",
+        )],
+        Duration::ZERO,
+    )
+    .await;
+    let vies = Server::new(
+        vec![http(200, &vat_response(true, "ПРИМЕР ЕООД"), "text/xml")],
+        Duration::ZERO,
+    )
+    .await;
+    let result = enriched_client(&registry, &vies)
+        .lookup_company("123456786", "BG")
+        .await
+        .unwrap();
+    crate::test_support::assert_documented_company("bg", result);
+}
+
+#[tokio::test]
+async fn documented_bulstat_and_negative_vat_outputs_match_synthetic_transport() {
+    let registry = Server::new(
+        vec![
+            http(200, "", "application/json"),
+            http(
+                200,
+                &search().replace("123456789", "123456786"),
+                "text/html",
+            ),
+            http(
+                200,
+                &detail().replace("123456789", "123456786"),
+                "text/html",
+            ),
+        ],
+        Duration::ZERO,
+    )
+    .await;
+    let vies = Server::new(
+        vec![http(200, &vat_response(false, ""), "text/xml")],
+        Duration::ZERO,
+    )
+    .await;
+    let result = enriched_client(&registry, &vies)
+        .lookup_company("123456786", "BG")
+        .await
+        .unwrap();
+    let actual = serde_json::to_value(result).unwrap();
+    assert_eq!(actual, crate::test_support::documentation::example("bg", 3));
+    let excerpt = crate::test_support::documentation::example("bg", 2);
+    for (key, value) in excerpt.as_object().unwrap() {
+        assert_eq!(&actual[key], value);
+    }
+    let registry = Server::new(
+        vec![
+            http(200, "", "application/json"),
+            http(
+                200,
+                &report("<div>Няма намерен резултат!</div>"),
+                "text/html",
+            ),
+        ],
+        Duration::ZERO,
+    )
+    .await;
+    let error = registry.client().lookup("123456786").await.unwrap_err();
+    assert_eq!(
+        serde_json::to_value(error).unwrap(),
+        crate::test_support::documentation::example("bg", 1)
+    );
 }

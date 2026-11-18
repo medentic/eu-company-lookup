@@ -24,7 +24,7 @@ pub(super) fn decode(
     if d.id != internal || d.ico != id.as_str() {
         return Err(RegistryFailure::MismatchedResponse);
     }
-    if d.nazov_uj.trim().is_empty() || d.stav.is_some() {
+    if d.nazov_uj.trim().is_empty() || d.stav.is_some() || d.rpo_lifecycle.is_some() {
         return Err(RegistryFailure::UnexpectedResponse);
     }
     Ok(SkCompanyLookupResult {

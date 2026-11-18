@@ -6,10 +6,16 @@ are retained locally for separate opt-in regressions. The complete check command
 
 ## Country completion minimum
 
-Before declaring a country's VAT and company-lookup work complete, verify at least
-200 distinct VAT IDs and 200 distinct national company/tax IDs live. This is a
-minimum sample per operation, not permission for unbounded collection or proof of
-exhaustive national coverage. Select sourced identifiers and retain provenance.
+Before declaring a country's VIES work complete, verify at least 200 distinct VAT
+IDs with matched valid responses and at least one distinct VAT ID with a matched
+invalid response. These are separate thresholds: invalid results cannot substitute
+for the 200 valid results, and provider failures count toward neither threshold.
+Syntax rejection alone is not a matched invalid VIES response.
+
+National company/tax lookup separately requires live verification of at least 200
+distinct IDs. These are minimum samples per operation, not permission for unbounded
+collection or proof of exhaustive national coverage. Select sourced identifiers
+and retain provenance.
 
 Report matched positives, matched negatives, provider failures, parser failures
 and unresolved ambiguities separately. Repeated attempts do not increase distinct
@@ -49,6 +55,33 @@ cargo test --locked vies::tests::probe
 The last command tests the retry experiment offline. Ignored tests include both
 live collection and offline replay: invoke specific tests, never all ignored tests.
 See [live collectors](collectors.md) when new source observations are needed.
+
+## Independent checksum comparison
+
+For changes to VAT checksum arithmetic, run the repository-only differential
+check with the pinned Rust toolchain and Python 3.9+. Install the reference library
+in an isolated development environment (installation needs package access):
+
+```sh
+python3 -m venv target/checksum-oracle-venv
+target/checksum-oracle-venv/bin/python -m pip install python-stdnum==2.2
+target/checksum-oracle-venv/bin/python tools/check_vat_checksums.py
+```
+
+The check itself is offline. It compiles the actual private Rust rules with
+`rustc` in a temporary directory, compares synthetic seeds and deterministic
+check-character mutations across all 28 prefixes, and removes its temporary
+files. Disagreements, missing results, unsupported local verdicts or an unexpected
+oracle version fail the command. Neither Cargo dependencies nor the public API
+change; the Python dependency is used only by this explicit development check.
+
+Inputs cover supported checksum variants rather than all national validation
+rules. In particular, Dutch branch `00` is excluded because python-stdnum rejects
+its format while our preflight defers that constraint to VIES. Birth dates and
+other body constraints are preserved when generating mutations. Deliberate
+unsupported-variant fallbacks remain covered by Rust unit tests. This comparison
+does not contact VIES, read or modify collected evidence, or count toward country
+completion. Normal Python tool tests do not require python-stdnum or a compiler.
 
 ## Local collected-data checks
 
@@ -140,6 +173,32 @@ with reviewed expectations, not universal address correctness or legal verificat
 VIES reports distinguish pending, provider error, missing review, validity change,
 source change, parser mismatch, ambiguity and pass. The overall pass percentage
 uses all selected IDs; a negative VAT response is a response, not a provider error.
+Python reports require dated, versioned reviews with matching expectation hashes
+before reporting a pass. `verifiedValid` and `verifiedInvalid` additionally require
+an explicit current binary manifest, a matching offline replay proof and a binding
+to the original source or source-review journal. Without the manifest, verified
+counts are zero. A parser regression pass alone is not country acceptance.
+
+The checked-in offline country gate accepts one or more local batch directories:
+
+```sh
+python3 tools/vies_verification.py --country EL \
+  --binary-manifest "$BINARY_MANIFEST" --run-dir "$BATCH_DIR"
+```
+
+Repeat `--run-dir` for additional batches. The command makes no network calls and
+exits 0 only with at least 200 distinct verified valid IDs, one distinct verified
+invalid ID, and no unresolved review/replay or conflicting-validity observations.
+It exits 1 when the acceptance gate is unmet and 2 for invalid input. Provider failures are
+reported separately and never count as negatives. Proofs bind source and executable
+hashes, exact observation/replay bytes and the offline test log; changed inputs
+require another offline verification. Paths in existing manifests and proofs are
+relative to the repository root unless absolute. Original evidence is preserved. Country audits and recovery summaries are read-only
+with respect to batch files, including existing `report.json`. Use the explicit
+`vies_batch.py report` command to save a refreshed batch report. Evidence loading,
+pure report evaluation and command output have separate owners in the
+[tooling guide](../../tools/README.md).
+
 Reports identify original versus replayed parsing. The reader accepts supported
 older journals without rewriting them and rejects conflicting or mismatched records.
 
@@ -154,3 +213,60 @@ Keep scheduler wait, client admission wait, HTTP/body time and total duration
 separate. Never infer missing timings/status codes or backfill older observations.
 Raw evidence and versioned reviews are retained; derived reports and completed
 executable copies are disposable when no longer needed.
+
+## Registry validation outcomes
+
+Parser agreement and successful company validation are separate checks. A replay
+may correctly reproduce a missing or unknown lifecycle, but that case is
+`unresolved`: it counts as neither a verified positive nor a verified negative.
+A matched company with a resolved lifecycle (including closed or documented
+proceedings) is a positive identity match, provided its
+lifecycle is explicitly reviewed against source evidence. Missing optional facts
+(such as a separately registered foreign name) do not establish a negative case.
+
+National company replays write `validationStatus` per case and a separate
+`validation-summary.json`. `validationComplete` means every selected case has a
+resolved, reviewed outcome, not that a country's 200-ID coverage gate is met.
+Summaries compare the original manifest with replay identities. Missing, duplicate
+or unexpected IDs prevent batch and validation completion; partial journals remain
+retained recovery evidence, never completed batches. Duplicate identities cannot
+increase qualifying coverage. A reviewed null status
+can still pass parser regression while leaving validation incomplete.
+
+Definitive negatives require the provider's actual absence contract. Czech replay
+accepts a hash-bound `outcome: "notFound"` review only with captured HTTP 404 and
+the documented `NENALEZENO` response envelope. Empty Austrian active-only search
+remains unresolved. ANAF replay distinguishes decoded `notFound` observations
+from errors and unresolved records; unreviewed observations are not verified cases.
+
+Commercial Register reports expose `validation` counts and `validationComplete`
+separately from request completion and parser review. A definitive Commercial
+Register miss is a `negativeObservation` within that register's scope, not proof
+that both Bulgarian registers missed. BULSTAT `checksPassed` requires explicit
+lifecycle review and successful bound replay; unreviewed or unresolved records
+cannot pass it. Raw observations and review history remain unchanged.
+
+Unresolved cases include the source, preserved native lifecycle text and a reason:
+`missingSourceStatus` or `unmappedSourceStatus`. These are review leads, not guessed
+translations. Romania accepts optional `expectations.json` keyed by requested ID,
+with `bodySha256` and either reviewed JSON-pointer `fields` or
+`outcome: "notFound"`; the decoder must independently confirm the exact miss.
+Commercial Register negative reviews use the existing source-hash-bound review
+contract with `expected: {"outcome": "notFoundInCommercialRegister"}`.
+Successful bound replay is still required for validation completion. This verifies
+only the Commercial Register miss, never absence from both Bulgarian registers.
+
+
+## Read-only retained-response audit
+
+For diagnosis without changing existing expectations, set `REGISTRY_AUDIT_INPUT`
+to a local JSON array of `{ "country": "PL", "path": "/absolute/observations.jsonl" }`
+entries and `REGISTRY_AUDIT_OUTPUT` to a separate derived-output folder. Run only
+`cargo test --locked --lib audit_retained_registry_responses -- --ignored`.
+The audit verifies captured body hashes and identity, reports every observation,
+and records old-review differences and unresolved-data errors. It makes no network
+requests and never rewrites observations or expectations. Reports are local-only.
+This diagnostic is not a completion certificate: original selection manifests,
+missing observations, duplicate IDs and source-bound review coverage must still
+be checked by the batch validation workflow. A passing audit test means the audit
+finished, not that every reported case resolved or passed its existing review.

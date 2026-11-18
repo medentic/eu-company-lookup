@@ -181,7 +181,9 @@ impl BgRegistryClient {
                     if response.content_type != "application/json" {
                         return Err(wrap(provider, RegistryFailure::UnexpectedResponse));
                     }
-                    return commercial::decode(&response.body, &id).map_err(|e| wrap(provider, e));
+                    return commercial::decode(&response.body, &id)
+                        .map_err(|e| wrap(provider, e))
+                        .and_then(crate::model::company_validation::ensure_resolved);
                 }
                 // The portal's getDeed UI treats an empty HTTP 200 response as no result.
                 // Whitespace, JSON null, 404, HTML, and all operational failures are not misses.
@@ -217,7 +219,9 @@ impl BgRegistryClient {
                 if detail.content_type != "text/html" {
                     return Err(wrap(provider, RegistryFailure::UnexpectedResponse));
                 }
-                bulstat::detail(&detail.body, &id, name).map_err(|e| wrap(provider, e))
+                bulstat::detail(&detail.body, &id, name)
+                    .map_err(|e| wrap(provider, e))
+                    .and_then(crate::model::company_validation::ensure_resolved)
             },
         )
         .await

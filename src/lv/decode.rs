@@ -6,10 +6,16 @@ pub(super) fn decode(
     id: &LvBusinessId,
 ) -> Result<LvCompanyLookupResult, RegistryFailure> {
     let d: LvCompanyDetails = crate::registry_transport::ckan::single_record(bytes, RESOURCE)?;
+    record(d, id)
+}
+pub(super) fn record(
+    d: LvCompanyDetails,
+    id: &LvBusinessId,
+) -> Result<LvCompanyLookupResult, RegistryFailure> {
     if d.regcode != id.as_str() {
         return Err(RegistryFailure::MismatchedResponse);
     }
-    if d.name.trim().is_empty() {
+    if d.name.trim().is_empty() || d.lifecycle.is_some() {
         return Err(RegistryFailure::UnexpectedResponse);
     }
     Ok(LvCompanyLookupResult {

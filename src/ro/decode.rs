@@ -139,7 +139,7 @@ pub(super) fn decode(
     // No verified ANAF lifecycle mapping yet. Fiscal inactivity is not closure.
     let status = registration_status
         .as_ref()
-        .map(|_| crate::CompanyStatus::Unknown);
+        .map(|s| super::mapping::lifecycle(s));
     Ok(Some(RoCompanyLookupResult {
         tax_id: id.clone(),
         source: Provider::RomanianAnaf,

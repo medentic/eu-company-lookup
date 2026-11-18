@@ -235,6 +235,9 @@ pub enum IdentifierScheme {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[non_exhaustive]
 pub enum ChecksumSupport {
+    /// Lookup checks supported national checksum variants before sending HTTP.
+    /// Other variants remain syntax-only; this never proves registration.
+    SupportedFormats,
     /// No checksum verification is performed.
     NotImplemented,
 }

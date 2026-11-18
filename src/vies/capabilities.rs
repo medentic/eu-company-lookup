@@ -25,7 +25,7 @@ pub(crate) fn catalog() -> Vec<JurisdictionCapabilities> {
                 .into_iter()
                 .map(|op| crate::OperationCapabilities::new(op, IdentifierScheme::Vat))
                 .collect(),
-                checksum: ChecksumSupport::NotImplemented,
+                checksum: ChecksumSupport::SupportedFormats,
                 languages: LanguageSupport {
                     available: vec![],
                     default: None,

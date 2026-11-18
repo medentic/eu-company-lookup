@@ -8,7 +8,7 @@ pub(super) fn fault(code: &str) -> String {
     )
 }
 fn decode(xml: &str) -> Result<soap::Response, LookupError> {
-    soap::decode(xml, &VatId::parse("BG123456789").unwrap())
+    soap::decode(xml, &VatId::parse("BG123456786").unwrap()).map_err(LookupError::from)
 }
 
 #[test]
@@ -103,8 +103,8 @@ fn malformed_ambiguous_and_wrong_namespace_responses_cannot_validate() {
 fn exact_requested_identity_is_required_even_for_negative_results() {
     for xml in [
         VALID.replace("BG", "EL"),
-        VALID.replace("123456789", "987654321"),
-        VALID.replace("123456789", " 123456789 "),
+        VALID.replace("123456786", "987654321"),
+        VALID.replace("123456786", " 123456786 "),
     ] {
         assert!(matches!(
             decode(&xml),
@@ -243,7 +243,7 @@ fn every_jurisdiction_round_trips_identity_and_explicit_validity() {
                     &format!("<countryCode>{}</countryCode>", vat.prefix()),
                 )
                 .replace(
-                    "<vatNumber>123456789</vatNumber>",
+                    "<vatNumber>123456786</vatNumber>",
                     &format!("<vatNumber>{}</vatNumber>", vat.number()),
                 )
                 .replace("<valid>true</valid>", &format!("<valid>{valid}</valid>"));
@@ -256,7 +256,7 @@ fn every_jurisdiction_round_trips_identity_and_explicit_validity() {
             let wrong = xml.replace("</vatNumber>", "0</vatNumber>");
             assert!(
                 matches!(
-                    soap::decode(&wrong, &vat),
+                    soap::decode(&wrong, &vat).map_err(LookupError::from),
                     Err(LookupError {
                         kind: crate::model::LookupFailure::MismatchedResponse,
                         ..

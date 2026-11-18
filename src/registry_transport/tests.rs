@@ -198,3 +198,79 @@ fn status_policy_preserves_provider_owned_misses_and_operational_failures() {
         );
     }
 }
+
+#[tokio::test(start_paused = true)]
+async fn cancelling_second_exchange_retains_completion_gap_across_clones() {
+    for provider in [Provider::AustrianFirmenbuch, Provider::SlovakRuz] {
+        let admission = std::sync::Arc::new(Admission::new());
+        let clone = admission.clone();
+        let (second_started, started) = tokio::sync::oneshot::channel();
+        let task = tokio::spawn(async move {
+            execute(
+                &clone,
+                &bounds(),
+                provider,
+                Spacing::AfterCompletion,
+                async {
+                    // First exchange and inter-request spacing have consumed the original gap.
+                    tokio::time::sleep(Duration::from_secs(4)).await;
+                    second_started.send(()).unwrap();
+                    std::future::pending::<Result<(), RegistryFailure>>().await
+                },
+            )
+            .await
+        });
+        started.await.unwrap();
+        task.abort();
+        assert!(task.await.unwrap_err().is_cancelled());
+        let cancelled = Instant::now();
+        execute(
+            &admission,
+            &bounds(),
+            provider,
+            Spacing::AfterCompletion,
+            async {
+                assert_eq!(Instant::now() - cancelled, Duration::from_secs(2));
+                Ok(())
+            },
+        )
+        .await
+        .unwrap();
+    }
+}
+
+#[tokio::test(start_paused = true)]
+async fn cancelling_admission_wait_does_not_extend_spacing() {
+    let admission = Admission::new();
+    let limits = bounds();
+    let start = Instant::now();
+    admission.lock().await.next = start + Duration::from_secs(2);
+    let waiting = execute(
+        &admission,
+        &limits,
+        Provider::AustrianFirmenbuch,
+        Spacing::AfterCompletion,
+        async {
+            panic!("cancelled admission must not send");
+            #[allow(unreachable_code)]
+            Ok(())
+        },
+    );
+    assert!(
+        tokio::time::timeout(Duration::from_secs(1), waiting)
+            .await
+            .is_err()
+    );
+    execute(
+        &admission,
+        &limits,
+        Provider::AustrianFirmenbuch,
+        Spacing::AfterCompletion,
+        async {
+            assert_eq!(Instant::now() - start, Duration::from_secs(2));
+            Ok(())
+        },
+    )
+    .await
+    .unwrap();
+}

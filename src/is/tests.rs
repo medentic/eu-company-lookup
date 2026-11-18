@@ -11,6 +11,7 @@ fn legal_and_postal_addresses_remain_distinct_and_lossless() {
     )
     .unwrap()
     .into();
+    crate::test_support::assert_company_contract(&r);
     assert_eq!(r.company_name, "Synthetic ehf.");
     assert_eq!(
         r.registered_office
@@ -50,14 +51,16 @@ fn identity_table_labels_and_legal_entity_syntax_are_required() {
 }
 #[tokio::test]
 async fn anonymous_exact_query_reaches_shared_facade() {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::io::AsyncWriteExt;
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let endpoint = format!("http://{}", listener.local_addr().unwrap());
     let body = source().to_string();
-    let server = tokio::spawn(async move {
+    let server = crate::test_support::http::spawn_server(async move {
         let (mut socket, _) = listener.accept().await.unwrap();
-        let mut buffer = [0; 4096];
-        let n = socket.read(&mut buffer).await.unwrap();
+        let buffer = crate::test_support::http::read_request(&mut socket)
+            .await
+            .unwrap();
+        let n = buffer.len();
         let request = String::from_utf8_lossy(&buffer[..n]).to_lowercase();
         assert!(request.starts_with("get /4101000000 "));
         assert!(!request.contains("authorization:") && !request.contains("cookie:"));
@@ -65,8 +68,9 @@ async fn anonymous_exact_query_reaches_shared_facade() {
     });
     let native = IsRegistryClient::for_test(endpoint, Default::default());
     let client = crate::Client::with_test_icelandic(native);
-    let result = client.lookup_company("4101000000", "IS").await.unwrap();
-    assert_eq!(result.company_name, "Synthetic ehf.");
+    let result = client.lookup_company("4101000000", "IS").await.unwrap_err();
+    assert_eq!(result.id, crate::ErrorId::UnresolvedData);
+    assert_eq!(result.details.reason, Some("missing_lifecycle"));
     server.await.unwrap();
 }
 
@@ -94,13 +98,15 @@ async fn invalid_configuration_and_identifier_fail_locally() {
 
 #[tokio::test]
 async fn endpoint_404_is_an_operational_error_not_registry_absence() {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::io::AsyncWriteExt;
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let endpoint = format!("http://{}", listener.local_addr().unwrap());
-    let server = tokio::spawn(async move {
+    let server = crate::test_support::http::spawn_server(async move {
         let (mut socket, _) = listener.accept().await.unwrap();
-        let mut buffer = [0; 4096];
-        let n = socket.read(&mut buffer).await.unwrap();
+        let buffer = crate::test_support::http::read_request(&mut socket)
+            .await
+            .unwrap();
+        let n = buffer.len();
         assert!(n > 0);
         socket.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Type: text/html\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}").await.unwrap();
     });
@@ -118,4 +124,53 @@ async fn endpoint_404_is_an_operational_error_not_registry_absence() {
         })
     ));
     server.await.unwrap();
+}
+
+#[test]
+fn only_explicit_company_deregistration_resolves_lifecycle() {
+    use crate::CompanyStatus::*;
+    for (subtitle, expected) in [
+        (
+            "Stofnað/Skráð: 01.01.2000(Félag afskráð 13.12.2018)",
+            Some(Closed),
+        ),
+        (
+            "Stofnað/Skráð: 01.01.2000 (Félag afskráð 31.02.2018)",
+            Some(Unknown),
+        ),
+        (
+            "Stofnað/Skráð: 01.01.2000(Félag afskráð 13.12.2018) extra",
+            Some(Unknown),
+        ),
+        ("Stofnað/Skráð: 01.01.2000", None),
+        ("Stofnað/Skráð: 01.01.2000 (VSK afskráð 13.12.2018)", None),
+    ] {
+        let page = source().replace("Stofnað/Skráð: 01.01.2000", subtitle);
+        let result: CompanyLookupResult =
+            decode::decode(page.as_bytes(), &IsBusinessId::parse("4101000000").unwrap())
+                .unwrap()
+                .into();
+        assert_eq!(result.status, expected, "{subtitle}");
+        crate::test_support::assert_company_contract(&result);
+    }
+    let page = source().replace(
+        "</div>",
+        "<table><tr><td>Félag afskráð 13.12.2018</td></tr></table></div>",
+    );
+    let result: CompanyLookupResult =
+        decode::decode(page.as_bytes(), &IsBusinessId::parse("4101000000").unwrap())
+            .unwrap()
+            .into();
+    assert_eq!(result.status, None);
+}
+
+#[test]
+fn documented_company_output_matches_synthetic_source() {
+    let body = source().replace(
+        "Stofnað/Skráð: 01.01.2000",
+        "Stofnað/Skráð: 01.01.2000(Félag afskráð 13.12.2018)",
+    );
+    let native =
+        decode::decode(body.as_bytes(), &IsBusinessId::parse("4101000000").unwrap()).unwrap();
+    crate::test_support::assert_documented_company("is", native);
 }

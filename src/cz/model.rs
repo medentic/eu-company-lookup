@@ -27,8 +27,11 @@ pub struct CzCompanyLookupResult {
     pub updated_date: Option<String>,
     /// Original ARES `primarniZdroj` value; no inferred semantics.
     pub primary_source: Option<String>,
-    /// Status in each source register, not company lifecycle.
+    /// Native source-register states; lifecycle interpretation is limited to documented primary-ROS rules.
     pub source_registrations: Option<CzSourceRegistrations>,
+    /// Matched supplemental ROS cessation evidence, separate from the aggregate.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ros_closure: Option<CzRosClosure>,
 }
 /// Typed ARES Adresa source fields.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -201,6 +204,9 @@ pub struct CzAresDetails {
     pub primary_source: Option<String>,
     /// Per-source registration states, not normalized lifecycle.
     pub source_registrations: Option<CzSourceRegistrations>,
+    /// Matched supplemental ROS cessation evidence, separate from the aggregate.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ros_closure: Option<CzRosClosure>,
 }
 /// Matched ARES economic-subject observation; not a certified registry extract.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -239,7 +245,7 @@ pub(super) struct Wire {
     /// Original ARES `primarniZdroj` value; no inferred semantics.
     #[serde(rename = "primarniZdroj")]
     pub primary_source: Option<String>,
-    /// Status in each source register, not company lifecycle.
+    /// Native source-register states; lifecycle interpretation is limited to documented primary-ROS rules.
     #[serde(rename = "seznamRegistraci")]
     pub source_registrations: Option<CzSourceRegistrations>,
 }
@@ -258,6 +264,20 @@ impl From<Wire> for CzCompanyLookupResult {
             updated_date: v.updated_date,
             primary_source: v.primary_source,
             source_registrations: v.source_registrations,
+            ros_closure: None,
         }
     }
+}
+
+/// Selected ROS closure facts; personal and representative data are excluded.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[non_exhaustive]
+pub struct CzRosClosure {
+    /// Exact matched IČO.
+    pub ico: String,
+    /// Original ROS cessation date.
+    pub ceased_date: String,
+    /// Original ROS subject state.
+    pub subject_state: String,
 }

@@ -74,3 +74,28 @@ impl From<RoCompanyLookupResult> for CompanyLookupResult {
         }
     }
 }
+
+/// ANAF company-registration wording, not the separate fiscal-inactivity flag.
+pub(super) fn lifecycle(value: &str) -> crate::CompanyStatus {
+    use crate::CompanyStatus::{Active, Closed, Inactive, Unknown};
+    let value = value.trim().to_uppercase();
+    for (label, status) in [
+        ("INREGISTRAT", Active),
+        ("RADIERE", Closed),
+        ("RADIAT", Closed),
+        ("RELUARE ACTIVITATE", Active),
+        ("SUSPENDARE ACTIVITATE", Inactive),
+        ("DIZOLVARE FARA LICHIDARE(FUZIUNE)", Closed),
+    ] {
+        if value == label {
+            return status;
+        }
+        if let Some(date) = value.strip_prefix(&format!("{label} DIN DATA "))
+            && chrono::NaiveDate::parse_from_str(date, "%d.%m.%Y")
+                .is_ok_and(|d| d.format("%d.%m.%Y").to_string() == date)
+        {
+            return status;
+        }
+    }
+    Unknown
+}

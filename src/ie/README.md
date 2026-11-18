@@ -16,10 +16,13 @@ contains dissolved companies as well as current ones.
 
 Map the published name and `company_type` description. Keep native status text,
 status/type codes, dates, company-address lines and Eircode in typed details.
-Lifecycle remains unknown when source status is present. No tax status or VAT
-identifier is inferred. The dataset's generically labelled address lines remain
-native until their exact common office/fiscal role is established; shared address
-fields, VAT fields, foreign name and company link remain null. Source dates do
+Normal/reinstated states map to active; terminal dissolved, struck-off and
+ceased states map to closed. Official CRO codes also work without labels;
+contradictory code/label pairs remain unresolved; documented proceedings map to distinct states. No tax status or VAT
+identifier is inferred. CRO's company-address lines describe the statutory registered office. Map
+nonblank lines in order and Eircode as postcode, without inventing city/county,
+country or full-address text. Fiscal address, VAT fields, foreign name and company
+link remain null. Source dates do
 not add a historical lookup operation.
 
 Use the shared bounded transport: thirty-second deadline, three-second connect
@@ -30,3 +33,22 @@ and source-reviewed expectations stay local-only.
 
 The private shared CKAN helper owns filter encoding and envelope uniqueness.
 This adapter retains the resource constant, native identity/name checks and field mapping.
+
+See the [mapping audit](../../docs/development/company-mapping-audit.md) for source definitions and remaining null fields.
+
+After successful decoding, public lookup requires resolved lifecycle and returns
+`unresolved_data` for missing, unsupported or ambiguous lifecycle evidence.
+Missing required envelope/identity fields remain decoding errors. Pure decoding/projection
+retains the original observation. See the
+[runtime mapping audit](../../docs/development/company-mapping-audit.md#runtime-enforcement).
+
+## Access, pacing and recovery
+
+One filtered CKAN request uses the default two-second start interval. No
+numerical CRO open-data quota has been established here; do not apply limits or
+credentials from the separate Open Services product. A complete exact-identity
+result can be dissolved or in proceedings. Missing rows, truncated envelopes and
+contradictory status code/label pairs cannot become negative registry cases.
+
+See [shared pacing and evidence rules](../README.md#registry-pacing-and-evidence)
+for clone scope, cooldowns, error classification and complete-batch replay.

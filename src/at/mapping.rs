@@ -14,6 +14,7 @@ impl From<AtCompanyLookupResult> for CompanyLookupResult {
             },
         });
         let legal_form = v.legal_form.as_ref().and_then(|f| f.name.clone());
+        let status = Some(lifecycle(&v.native_registry_status));
         let registry_details = CompanyDetails::AustrianFirmenbuch {
             native_registry_status: Some(v.native_registry_status),
             details: Box::new(AtFirmenbuchDetails {
@@ -36,8 +37,18 @@ impl From<AtCompanyLookupResult> for CompanyLookupResult {
             legal_form,
             registered_office,
             fiscal_address: None,
-            status: None,
+            status,
             registry_details,
         }
+    }
+}
+
+// Exact provider states; insolvency/proceedings and future values remain distinguishable.
+fn lifecycle(value: &str) -> crate::CompanyStatus {
+    use crate::CompanyStatus::{Active, Closed, Unknown};
+    match value.trim().to_uppercase().as_str() {
+        "ACTIVE" => Active,
+        "DELETED" => Closed,
+        _ => Unknown,
     }
 }

@@ -2,6 +2,9 @@
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[non_exhaustive]
 pub struct SkCompanyDetails {
+    /// Identity-checked public RPO lifecycle supplement, following an exact active-only search.
+    #[serde(rename = "rpoLifecycle")]
+    pub rpo_lifecycle: Option<SkRpoLifecycle>,
     /// Original source `id` field.
     #[serde(rename = "id")]
     pub id: u64,
@@ -71,4 +74,57 @@ pub struct SkCompanyLookupResult {
     pub company_name: String,
     /// Native source observations.
     pub details: SkCompanyDetails,
+}
+
+/// Selected facts from the public RPO source, separate from RÚZ accounting fields.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[non_exhaustive]
+pub struct SkRpoLifecycle {
+    /// Native RPO record identifier, not a RÚZ internal identifier.
+    pub id: u64,
+    /// Native dated IČO values.
+    pub identifiers: Vec<SkRpoValue>,
+    /// Establishment of the registered entity.
+    pub establishment: Option<String>,
+    /// Termination of the registered entity.
+    pub termination: Option<String>,
+    /// Native dated legal states from classification CL010108.
+    pub legal_statuses: Option<Vec<SkRpoLegalState>>,
+}
+/// Native dated RPO text value.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[non_exhaustive]
+pub struct SkRpoValue {
+    /// Original value.
+    pub value: String,
+    /// Start of validity.
+    pub valid_from: Option<String>,
+    /// End of validity, absent for a current entry.
+    pub valid_to: Option<String>,
+}
+/// Native RPO legal-state classification.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[non_exhaustive]
+pub struct SkRpoCode {
+    /// Original label.
+    pub value: String,
+    /// Original classification code.
+    pub code: Option<String>,
+    /// Classification namespace.
+    pub codelist_code: String,
+}
+/// Dated native RPO legal state.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[non_exhaustive]
+pub struct SkRpoLegalState {
+    /// Original classified value.
+    pub value: SkRpoCode,
+    /// Start of validity.
+    pub valid_from: Option<String>,
+    /// End of validity.
+    pub valid_to: Option<String>,
 }

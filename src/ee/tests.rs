@@ -10,10 +10,13 @@ fn exact_match_preserves_original_fields_and_unknowns() {
     let v: CompanyLookupResult = decode::decode(&serde_json::to_vec(&source()).unwrap(), &id)
         .unwrap()
         .into();
+    crate::test_support::assert_company_contract(&v);
     assert_eq!(v.tax_id, "00123456");
     assert_eq!(v.source, Provider::EstonianRik);
-    assert_eq!(v.status, Some(crate::CompanyStatus::Unknown));
-    assert!(v.vat_id.is_none() && v.vat_registered.is_none() && v.legal_form.is_none());
+    assert_eq!(v.status, Some(crate::CompanyStatus::Active));
+    assert!(v.vat_id.is_none() && v.vat_registered.is_none());
+    assert_eq!(v.legal_form.as_deref(), Some("Osaühing"));
+    assert!(v.registry_url.is_some());
     let a = v.registered_office.unwrap();
     assert_eq!(
         a.full_address_by_registry.as_deref(),
@@ -66,18 +69,21 @@ fn missing_optional_address_stays_missing() {
     )
     .unwrap()
     .into();
+    crate::test_support::assert_company_contract(&v);
     assert!(v.registered_office.is_none() && v.status.is_none());
 }
 #[tokio::test]
 async fn anonymous_exact_query_reaches_shared_facade() {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::io::AsyncWriteExt;
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let endpoint = format!("http://{}", listener.local_addr().unwrap());
     let body = source().to_string();
-    let server = tokio::spawn(async move {
+    let server = crate::test_support::http::spawn_server(async move {
         let (mut socket, _) = listener.accept().await.unwrap();
-        let mut buffer = [0; 4096];
-        let n = socket.read(&mut buffer).await.unwrap();
+        let buffer = crate::test_support::http::read_request(&mut socket)
+            .await
+            .unwrap();
+        let n = buffer.len();
         let request = String::from_utf8_lossy(&buffer[..n]).to_lowercase();
         assert!(request.starts_with("get /?q=00123456&results=10 "));
         assert!(!request.contains("authorization:") && !request.contains("cookie:"));
@@ -114,13 +120,15 @@ async fn invalid_configuration_and_identifier_fail_locally() {
 
 #[tokio::test]
 async fn endpoint_404_is_an_operational_error_not_registry_absence() {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::io::AsyncWriteExt;
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let endpoint = format!("http://{}", listener.local_addr().unwrap());
-    let server = tokio::spawn(async move {
+    let server = crate::test_support::http::spawn_server(async move {
         let (mut socket, _) = listener.accept().await.unwrap();
-        let mut buffer = [0; 4096];
-        let n = socket.read(&mut buffer).await.unwrap();
+        let buffer = crate::test_support::http::read_request(&mut socket)
+            .await
+            .unwrap();
+        let n = buffer.len();
         assert!(n > 0);
         socket.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Type: application/json\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}").await.unwrap();
     });
@@ -138,4 +146,62 @@ async fn endpoint_404_is_an_operational_error_not_registry_absence() {
         })
     ));
     server.await.unwrap();
+}
+
+#[test]
+fn lifecycle_maps_source_states_and_preserves_original_text() {
+    for (raw, expected) in [
+        (Some("R"), Some(crate::CompanyStatus::Active)),
+        (Some("K"), Some(crate::CompanyStatus::Closed)),
+        (Some("L"), Some(crate::CompanyStatus::Liquidation)),
+        (Some("N"), Some(crate::CompanyStatus::Bankruptcy)),
+        (Some("R extra"), Some(crate::CompanyStatus::Unknown)),
+        (None, None),
+    ] {
+        let mut value = source();
+        *value.pointer_mut("/data/0/status").unwrap() = json!(raw);
+        let result: CompanyLookupResult = decode::decode(
+            &serde_json::to_vec(&value).unwrap(),
+            &EeBusinessId::parse("00123456").unwrap(),
+        )
+        .unwrap()
+        .into();
+        crate::test_support::assert_company_contract(&result);
+        assert_eq!(result.status, expected, "{raw:?}");
+        let wire = serde_json::to_value(result).unwrap();
+        assert_eq!(
+            wire["registryDetails"]["data"]["nativeRegistryStatus"],
+            json!(raw)
+        );
+    }
+}
+
+#[test]
+fn registry_links_must_be_official_and_identity_bound() {
+    for raw in [
+        "https://example.org/eng/company/00123456",
+        "https://ariregister.rik.ee/eng/company/99999999",
+        "https://ariregister.rik.ee/eng/company/00123456?token=secret",
+        "https://user@ariregister.rik.ee/eng/company/00123456",
+        "http://ariregister.rik.ee/eng/company/00123456",
+    ] {
+        let mut value = source();
+        value["data"][0]["url"] = json!(raw);
+        let v: CompanyLookupResult = decode::decode(
+            &serde_json::to_vec(&value).unwrap(),
+            &EeBusinessId::parse("00123456").unwrap(),
+        )
+        .unwrap()
+        .into();
+        assert!(v.registry_url.is_none(), "{raw}");
+    }
+}
+
+#[test]
+fn documented_company_output_matches_synthetic_source() {
+    let body = source();
+
+    let id = EeBusinessId::parse("00123456").unwrap();
+    let native = decode::decode(&serde_json::to_vec(&body).unwrap(), &id).unwrap();
+    crate::test_support::assert_documented_company("ee", native);
 }

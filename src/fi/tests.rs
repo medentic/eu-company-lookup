@@ -23,6 +23,8 @@ fn source_identity_name_history_and_missing_timestamp_are_preserved() {
         Some("2020-01-01")
     );
     let result: CompanyLookupResult = result.into();
+    crate::test_support::assert_company_contract(&result);
+    assert_eq!(result.status, Some(crate::CompanyStatus::Closed));
     assert_eq!(result.source, Provider::FinnishPrh);
     assert_eq!(result.tax_id, "0012345-6");
     assert_eq!(result.legal_form.as_deref(), Some("Osakeyhtiö"));
@@ -68,14 +70,16 @@ fn ambiguous_names_wrong_ids_and_empty_results_are_not_records() {
 
 #[tokio::test]
 async fn anonymous_exact_query_reaches_shared_facade() {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::io::AsyncWriteExt;
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let endpoint = format!("http://{}", listener.local_addr().unwrap());
     let body = source().to_string();
-    let server = tokio::spawn(async move {
+    let server = crate::test_support::http::spawn_server(async move {
         let (mut socket, _) = listener.accept().await.unwrap();
-        let mut buffer = [0; 4096];
-        let n = socket.read(&mut buffer).await.unwrap();
+        let buffer = crate::test_support::http::read_request(&mut socket)
+            .await
+            .unwrap();
+        let n = buffer.len();
         let request = String::from_utf8_lossy(&buffer[..n]).to_lowercase();
         assert!(request.starts_with("get /?businessid=0012345-6 "));
         assert!(!request.contains("authorization:") && !request.contains("cookie:"));
@@ -112,13 +116,15 @@ async fn invalid_configuration_and_identifier_fail_locally() {
 
 #[tokio::test]
 async fn endpoint_404_is_an_operational_error_not_registry_absence() {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::io::AsyncWriteExt;
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let endpoint = format!("http://{}", listener.local_addr().unwrap());
-    let server = tokio::spawn(async move {
+    let server = crate::test_support::http::spawn_server(async move {
         let (mut socket, _) = listener.accept().await.unwrap();
-        let mut buffer = [0; 4096];
-        let n = socket.read(&mut buffer).await.unwrap();
+        let buffer = crate::test_support::http::read_request(&mut socket)
+            .await
+            .unwrap();
+        let n = buffer.len();
         assert!(n > 0);
         socket.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Type: application/json\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}").await.unwrap();
     });
@@ -136,4 +142,93 @@ async fn endpoint_404_is_an_operational_error_not_registry_absence() {
         })
     ));
     server.await.unwrap();
+}
+
+#[test]
+fn lifecycle_maps_source_states_and_preserves_original_text() {
+    for (raw, expected) in [
+        (Some("1"), Some(crate::CompanyStatus::Active)),
+        (Some("4"), Some(crate::CompanyStatus::Closed)),
+        (Some("2"), Some(crate::CompanyStatus::Unknown)),
+        (Some("0"), Some(crate::CompanyStatus::Unknown)),
+        (Some("3"), Some(crate::CompanyStatus::Unknown)),
+        (Some("999"), Some(crate::CompanyStatus::Unknown)),
+    ] {
+        let mut value = source();
+        *value
+            .pointer_mut("/companies/0/tradeRegisterStatus")
+            .unwrap() = json!(raw);
+        let result: CompanyLookupResult = decode::decode(
+            &serde_json::to_vec(&value).unwrap(),
+            &FiBusinessId::parse("0012345-6").unwrap(),
+        )
+        .unwrap()
+        .into();
+        crate::test_support::assert_company_contract(&result);
+        assert_eq!(result.status, expected, "{raw:?}");
+        let wire = serde_json::to_value(result).unwrap();
+        assert_eq!(
+            wire["registryDetails"]["data"]["nativeRegistryStatus"],
+            json!(raw)
+        );
+    }
+}
+
+#[test]
+fn registration_does_not_hide_dissolution_or_ongoing_proceedings() {
+    for (field, value) in [
+        ("endDate", json!("2020-01-01")),
+        (
+            "companySituations",
+            json!([{"type":"unrecognized","endDate":null}]),
+        ),
+    ] {
+        let mut raw = source();
+        raw["companies"][0]["tradeRegisterStatus"] = json!("1");
+        raw["companies"][0][field] = value;
+        let v: CompanyLookupResult = decode::decode(
+            &serde_json::to_vec(&raw).unwrap(),
+            &FiBusinessId::parse("0012345-6").unwrap(),
+        )
+        .unwrap()
+        .into();
+        assert_eq!(v.status, Some(crate::CompanyStatus::Unknown));
+    }
+}
+
+#[test]
+fn current_proceedings_map_but_ended_and_conflicting_situations_do_not_override() {
+    use crate::CompanyStatus::*;
+    for (situations, expected) in [
+        (json!([{"type":"SANE","endDate":null}]), Restructuring),
+        (json!([{"type":"SELTILA","endDate":null}]), Liquidation),
+        (json!([{"type":"KONK","endDate":null}]), Bankruptcy),
+        (json!([{"type":"KONK","endDate":"2020-01-01"}]), Active),
+        (json!([{"type":"KONK","endDate":"invalid"}]), Unknown),
+        (
+            json!([{"type":"KONK","endDate":null},{"type":"SELTILA","endDate":null}]),
+            Unknown,
+        ),
+        (json!([{"type":"future","endDate":null}]), Unknown),
+    ] {
+        let mut raw = source();
+        raw["companies"][0]["tradeRegisterStatus"] = json!("1");
+        raw["companies"][0]["companySituations"] = situations;
+        let common: CompanyLookupResult = decode::decode(
+            &serde_json::to_vec(&raw).unwrap(),
+            &FiBusinessId::parse("0012345-6").unwrap(),
+        )
+        .unwrap()
+        .into();
+        assert_eq!(common.status, Some(expected));
+    }
+}
+
+#[test]
+fn documented_company_output_matches_synthetic_source() {
+    let body = source();
+
+    let id = FiBusinessId::parse("0012345-6").unwrap();
+    let native = decode::decode(&serde_json::to_vec(&body).unwrap(), &id).unwrap();
+    crate::test_support::assert_documented_company("fi", native);
 }

@@ -5,6 +5,13 @@ use super::{LimitScope, RetryAfter};
 pub(crate) enum LookupFailure {
     #[error("unclassified lookup failure")]
     Unknown,
+    #[error("registry lifecycle could not be resolved")]
+    UnresolvedData {
+        provider: super::Provider,
+        country: String,
+        native_status: Option<String>,
+        reason: &'static str,
+    },
     /// Malformed input or unsupported national syntax.
     #[error("identifier has invalid syntax")]
     InvalidInput,

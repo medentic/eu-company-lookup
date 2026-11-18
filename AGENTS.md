@@ -21,8 +21,8 @@ Do not introduce universal prefix inference or undocumented address substitution
 
 ## Scope and invariants
 
-- Version 3.0 covers VIES, Bulgarian Commercial Register/BULSTAT lookup and
-  Romanian ANAF taxpayer lookup. The README priority table describes further work.
+- Version 4.1 source covers VIES and the national adapters in the README support
+  table. Implementation, reviewed live coverage and publication are separate gates.
 - Preserve full identifiers and leading zeroes. Syntax is not checksum or registration.
 - `valid: false` requires a matched negative VIES response. `NotFound` requires both
   Bulgarian registers to miss definitively. `RegistryNotFound` identifies an ANAF
@@ -39,10 +39,13 @@ Do not introduce universal prefix inference or undocumented address substitution
   overlapping changes with other active tasks under the user's standing authorization.
 - Use the contributor check commands. CI remains Linux-only; do not add other OS jobs
   without an explicit change to that preference.
-- Country completion requires live verification of at least 200 distinct VAT IDs
-  and 200 distinct company/tax IDs, with reviewed source-bound expectations and
-  passing offline replay. Report negative observations, provider failures and
-  ambiguities separately; request counts alone do not establish completion.
+- VIES country completion requires at least 200 distinct VAT IDs with matched
+  valid responses and at least one distinct VAT ID with a matched invalid response.
+  National company/tax lookup separately requires 200 distinct IDs. Both require
+  live observations, reviewed source-bound expectations and passing offline replay.
+  Provider failures do not count toward either VIES threshold. Report negative
+  observations, provider failures and ambiguities separately; request counts alone
+  do not establish completion.
 - Default to offline tests. Live calls require explicit identifiers or a bounded
   selection authorized by the user. Never run every ignored test as a shortcut.
 - Collected records, identifier queues and their provenance stay local-only. Do not
@@ -52,6 +55,14 @@ Do not introduce universal prefix inference or undocumented address substitution
   fixture provenance, review revisions and append-only journals.
 - Keep current behavior in docs; keep run-specific IDs, timing tables and batch
   summaries in local evidence. Do not copy chat transcripts or local paths into docs.
+- Keep the [country and VIES output examples](docs/examples/README.md) current.
+  Before editing an example page, check the latest provider code and shared contracts.
+  When fields, mappings, validation, errors or lookup behavior change, refresh the
+  affected JSON and positive, negative and edge-case notes in the same change.
+  Before release, review every example against the exact candidate and regenerate
+  any stale output offline from synthetic fixtures through the current serializers
+  and client error paths. Update version notes, the example index and README links
+  as needed; never substitute collected production records or imply live coverage.
 - Run documentation and distribution checks after changing Markdown or package scope.
 - Before/after builds, inspect free space and affected caches. Keep at least 50 GiB
   free, reuse one development cache, and retain evidence separately from disposable

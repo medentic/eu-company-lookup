@@ -251,6 +251,10 @@ pub(super) fn write_json(path: &std::path::Path, value: &Value) {
 pub(super) fn error_kind(error: &LookupError) -> &'static str {
     match error {
         LookupError {
+            id: crate::ErrorId::UnresolvedData,
+            ..
+        } => "unresolvedData",
+        LookupError {
             kind: crate::model::LookupFailure::Registry { error, .. },
             ..
         } => match error {

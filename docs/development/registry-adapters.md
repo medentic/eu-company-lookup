@@ -32,7 +32,8 @@ publicly mutable result structs tamper-proof or general validation boundaries.
 and bounded response bodies. Adapters explicitly choose accepted HTTP statuses
 and media types. In particular, only ARES accepts a 404 body for its own typed
 miss validation; the shared helper never decides that a company is absent.
-Multi-request adapters retain completion-based spacing.
+Multi-request adapters retain completion-based spacing even when an admitted
+lookup is cancelled. Cancelling while waiting for admission does not extend the gap.
 
 The private CKAN helper shares exact-filter URL encoding and the single-record
 response envelope used by Ireland and Latvia. Each adapter supplies its resource
@@ -84,7 +85,7 @@ A reusable field-mapping row is:
 
 | Shared field | Source field | Transformation | Unknown/negative behavior | Evidence | Regression |
 | --- | --- | --- | --- | --- | --- |
-| `status` | Provider status field | Map only reviewed lifecycle values | Missing -> null; present/unmapped -> unknown | Official specification and reviewed synthetic case | Known, missing and unmapped cases |
+| `status` | Provider status field | Map only reviewed lifecycle values | No evidence -> null; present/unmapped -> unknown; documented cessation -> closed | Official specification and reviewed synthetic case | Known, missing and unmapped cases |
 
 Do not infer VAT IDs by concatenating ISO country and national ID. VAT prefixes
 can differ from ISO codes, fiscal registrations can have different identifiers,
@@ -158,3 +159,6 @@ After the planned keyless country coverage is released, credential-based sources
 may be considered as optional enhancements. Callers must explicitly supply any
 credentials; the existing keyless lookup remains available. Such optional sources
 require their own evidence-backed contracts and are outside the current expansion.
+
+Consult the [mapping audit](company-mapping-audit.md) before adding or changing
+common projections; it records the supported values and intentional nulls.

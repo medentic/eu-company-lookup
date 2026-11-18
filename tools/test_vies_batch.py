@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 import vies_batch as batch
+from test_vies_verification import write_review
 
 
 class BatchTests(unittest.TestCase):
@@ -11,7 +12,7 @@ class BatchTests(unittest.TestCase):
         import re
         examples = re.findall(r'"([A-Z]{2}[A-Z0-9]+)"',
             (batch.ROOT / 'src/vies/tests/identifiers.rs').read_text().split('];', 1)[0])
-        self.assertEqual({v[:2] for v in examples}, set(batch.FORMATS))
+        self.assertEqual({v[:2] for v in examples}, set(batch.vat_formats()))
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'ids.json'
             for vat in examples:
@@ -33,7 +34,7 @@ class BatchTests(unittest.TestCase):
             args = argparse.Namespace(queue=queue, offset=0, count=1,
                 run_dir=root/'run', binary=binary, docker_image=None,
                 resume=False, deadline_seconds=25)
-            with patch.object(batch.subprocess, 'call', return_value=0) as call, patch('builtins.print'):
+            with patch.object(batch, 'BINARY_CACHE', root/'cache'), patch.object(batch.subprocess, 'call', return_value=0) as call, patch('builtins.print'):
                 self.assertEqual(batch.collect(args), 2)
             self.assertIn('live_extended_probe', call.call_args.args[0])
             manifest = json.loads((args.run_dir/'manifest.json').read_text())
@@ -42,25 +43,29 @@ class BatchTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'policy changed'):
                 batch.collect(args)
 
-    def test_greek_report_reads_iso_country_fixture(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            fixtures = root / 'src/vies/fixtures/countries'
-            fixtures.mkdir(parents=True)
-            vat = 'EL123456789'
-            (root / 'ids.json').write_text(json.dumps([vat]))
-            address = {'fullAddressByVies': None, 'city': None}
-            (root / 'observations.jsonl').write_text(json.dumps({
-                'vatId': vat, 'totalMs': 1, 'attempts': [{'response': {
-                    'valid': False, 'company': None, 'address': address}}]}) + '\n')
-            (fixtures / 'gr.json').write_text(json.dumps([{
-                'vatId': vat, 'valid': False,
-                'viesOutput': {'company': None, 'address': None},
-                'expected': {'address': {'city': None}}}]))
-            with patch.object(batch, 'ROOT', root):
-                result = batch.report(root)
-            self.assertEqual(result['passed'], 1)
-            self.assertEqual(result['invalidResponses'], 1)
+    def test_vat_prefix_aliases_read_iso_fixtures_without_rewriting_ids(self):
+        for vat, country in [('EL123456789', 'gr'), ('XI012345678', 'gb'), ('XI012345678901', 'gb')]:
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                fixtures = root / 'src/vies/fixtures/countries'
+                fixtures.mkdir(parents=True)
+                (root / 'ids.json').write_text(json.dumps([vat]))
+                address = {'fullAddressByVies': None, 'city': None}
+                (root / 'observations.jsonl').write_text(json.dumps({
+                    'vatId': vat, 'totalMs': 1, 'attempts': [{'response': {
+                        'valid': False, 'company': None, 'address': address}}]}) + '\n')
+                (fixtures / f'{country}.json').write_text(json.dumps([{
+                    'vatId': vat, 'valid': False,
+                    'viesOutput': {'company': None, 'address': None},
+                    'expected': {'address': {'city': None}}}]))
+                write_review(root, country)
+                with patch.object(batch, 'ROOT', root):
+                    result = batch.report(root)
+                self.assertEqual(result['passed'], 1)
+                self.assertEqual(result['invalidResponses'], 1)
+
+                self.assertEqual(result['cases'][0]['vatId'], vat)
+                self.assertEqual(result['verifiedInvalid'], 0)
 
     def test_public_checkout_reports_unreviewed_responses_without_local_corpus(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -93,7 +98,7 @@ class BatchTests(unittest.TestCase):
             (fixtures / 'reviews').mkdir(parents=True)
             address = {'fullAddressByVies': 'raw', 'city': 'Place'}
             (fixtures / 'bg.json').write_text(json.dumps([{'vatId':'BG1','valid':True,'viesOutput':{'company':'Co','address':'raw'},'expected':{'address':{'city':'Place'}}}]))
-            (fixtures / 'reviews/bg.json').write_text(json.dumps([{'vatId':'BG1','status':'ambiguous','note':'uncertain'}]))
+            write_review(root, 'bg', 'ambiguous')
             (root / 'ids.json').write_text(json.dumps(['BG1','BG2','BG3']))
             rows = [{'vatId':'BG1','totalMs':20,'attempts':[{'response':{'valid':True,'company':'Co','address':address}}]}, {'vatId':'BG2','totalMs':6000,'attempts':[{'error':'timeout'}]}]
             (root / 'batch-00.jsonl').write_text(''.join(json.dumps(r)+'\n' for r in rows))
@@ -113,6 +118,49 @@ class BatchTests(unittest.TestCase):
 
 
 class ResumeIntegration(unittest.TestCase):
+    def test_docker_batches_reuse_and_retain_the_same_executable(self):
+        import argparse
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d).resolve()
+            (root/'src/vies/fixtures').mkdir(parents=True)
+            (root/'src/vies/fixtures/review-policy.json').write_text('{}')
+            for name in ['Cargo.toml', 'Cargo.lock']:
+                (root/name).write_text('synthetic')
+            queue, source = root/'queue.json', root/'source'
+            queue.write_text(json.dumps(['BG123456789']))
+            source.write_bytes(b'synthetic executable')
+            args = argparse.Namespace(queue=queue, offset=0, count=1,
+                run_dir=root/'first', binary=source, docker_image='synthetic-image', resume=False)
+            with patch.object(batch, 'ROOT', root), patch.object(batch, 'BINARY_CACHE', root/'target/binaries'), patch.object(batch, 'report', side_effect=[{'complete': False}, {'complete': True}]*2), patch.object(batch.subprocess, 'check_output', return_value='head'), patch.object(batch.subprocess, 'call', return_value=0) as call, patch('builtins.print'):
+                self.assertEqual(batch.collect(args), 0)
+                args.run_dir = root/'second'
+                self.assertEqual(batch.collect(args), 0)
+            commands = [c.args[0] for c in call.call_args_list]
+            self.assertEqual(commands[0][commands[0].index('--entrypoint')+1], commands[1][commands[1].index('--entrypoint')+1])
+            manifests = [json.loads((root/name/'manifest.json').read_text()) for name in ['first', 'second']]
+            self.assertEqual(manifests[0]['binaryPath'], manifests[1]['binaryPath'])
+            self.assertTrue((root/manifests[0]['binaryPath']).is_file())
+            self.assertFalse(list(root.glob('*/probe-bin')))
+
+    def test_frozen_binary_is_shared_without_linking_mutable_source(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            source = root/'source'
+            source.write_bytes(b'original executable')
+            with patch.object(batch, 'BINARY_CACHE', root/'cache'):
+                first = batch.freeze_binary(source)
+                inode = first.stat().st_ino
+                self.assertEqual(batch.freeze_binary(source).stat().st_ino, inode)
+                source.write_bytes(b'new executable')
+                second = batch.freeze_binary(source)
+                self.assertNotEqual(first, second)
+                self.assertEqual(first.read_bytes(), b'original executable')
+                first.chmod(0o700)
+                first.write_bytes(b'tampered')
+                source.write_bytes(b'original executable')
+                with self.assertRaisesRegex(ValueError, 'cached frozen binary changed'):
+                    batch.freeze_binary(source)
+
     def test_resume_uses_frozen_binary_and_does_not_repeat_errors(self):
         import argparse
         with tempfile.TemporaryDirectory() as d:
@@ -130,7 +178,11 @@ sys.exit(3 if not rows else 0)
 ''')
             binary.chmod(0o700)
             args = argparse.Namespace(queue=queue, offset=0, count=2, run_dir=root/'run', binary=binary, docker_image=None, resume=False)
-            self.assertEqual(batch.collect(args), 3)
+            with patch.object(batch, 'BINARY_CACHE', root/'cache'):
+                self.assertEqual(batch.collect(args), 3)
+            manifest = json.loads((args.run_dir/'manifest.json').read_text())
+            frozen = (batch.ROOT / manifest['binaryPath']).resolve()
+            frozen_bytes = frozen.read_bytes()
             binary.write_text('changed source binary; frozen copy must be used')
             args.resume = True
             args.deadline_seconds = 25
@@ -140,7 +192,30 @@ sys.exit(3 if not rows else 0)
             self.assertEqual(batch.collect(args), 0)
             self.assertEqual(len(batch.load_rows(args.run_dir)), 2)
             self.assertFalse((args.run_dir/'probe-bin').exists())
+            self.assertEqual(frozen.read_bytes(), frozen_bytes)
             self.assertEqual(batch.collect(args), 0)  # Completed resume is a no-op.
+
+    def test_legacy_incomplete_manifest_keeps_its_frozen_copy(self):
+        import argparse
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            queue, source = root/'queue.json', root/'source'
+            queue.write_text(json.dumps(['BG123456789']))
+            source.write_bytes(b'legacy executable')
+            args = argparse.Namespace(queue=queue, offset=0, count=1,
+                run_dir=root/'run', binary=source, docker_image=None, resume=False)
+            with patch.object(batch, 'BINARY_CACHE', root/'cache'), patch.object(batch.subprocess, 'call', return_value=0), patch('builtins.print'):
+                self.assertEqual(batch.collect(args), 2)
+                path = args.run_dir/'manifest.json'
+                manifest = json.loads(path.read_text())
+                del manifest['binaryPath']
+                path.write_text(json.dumps(manifest))
+                (args.run_dir/'probe-bin').write_bytes(source.read_bytes())
+                source.write_bytes(b'changed input')
+                args.resume = True
+                with patch.object(batch.subprocess, 'call', return_value=0) as call:
+                    self.assertEqual(batch.collect(args), 2)
+                self.assertEqual(call.call_args.args[0][0], str(args.run_dir.resolve()/'probe-bin'))
 
 class ReportContractTests(unittest.TestCase):
     def test_shared_rust_python_status_vectors(self):

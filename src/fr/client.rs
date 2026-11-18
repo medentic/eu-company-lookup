@@ -87,7 +87,7 @@ impl FrRegistryClient {
     /// Look up the current API Recherche Entreprises observation by full business ID.
     pub async fn lookup(&self, value: &str) -> Result<FrCompanyLookupResult, LookupError> {
         let id = FrBusinessId::parse(value)?;
-        registry_transport::execute(
+        registry_transport::execute_company(
             &self.admission,
             &self.config.bounds(),
             Provider::FrenchRechercheEntreprises,

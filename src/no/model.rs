@@ -42,6 +42,15 @@ pub struct NoRegistryAddress {
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct NoCompanyDetails {
+    /// Official response discriminator: Enhet or SlettetEnhet.
+    #[serde(rename = "respons_klasse")]
+    pub response_class: Option<String>,
+    /// Date the entity was registered under reconstruction proceedings.
+    pub under_rekonstruksjonsforhandling_dato: Option<String>,
+    /// Date the entity was registered under foreign insolvency proceedings.
+    pub under_utenlandsk_insolvensbehandling_dato: Option<String>,
+    /// Source annotations; unreviewed annotations prevent an ordinary active inference.
+    pub paategninger: Option<Vec<NoAnnotation>>,
     /// Original source `organisasjonsnummer` value.
     #[serde(rename = "organisasjonsnummer")]
     pub organisasjonsnummer: String,
@@ -111,4 +120,17 @@ pub struct NoCompanyLookupResult {
     pub company_name: String,
     /// Typed native source fields.
     pub details: NoCompanyDetails,
+}
+
+/// Native Brreg annotation, retained without interpreting arbitrary text.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[non_exhaustive]
+pub struct NoAnnotation {
+    /// Native information-type code.
+    pub infotype: Option<String>,
+    /// Native annotation text.
+    pub tekst: Option<String>,
+    /// Date entered into the source register.
+    pub innfoert_dato: Option<String>,
 }

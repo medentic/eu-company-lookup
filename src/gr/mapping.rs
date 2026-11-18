@@ -12,8 +12,18 @@ impl From<GrCompanyLookupResult> for CompanyLookupResult {
             "https://publicity.businessportal.gr/company/{}",
             v.tax_id.as_str()
         ));
+        let status = v
+            .native_registry_status
+            .as_deref()
+            .map(lifecycle)
+            .or_else(|| {
+                v.details
+                    .status_code
+                    .as_ref()
+                    .map(|_| crate::CompanyStatus::Unknown)
+            });
         let registry_details = CompanyDetails::GreekGemi {
-            native_registry_status: v.native_registry_status,
+            native_registry_status: v.native_registry_status.or(v.details.status_code.clone()),
             details: Box::new(v.details),
         };
         Self {
@@ -27,9 +37,28 @@ impl From<GrCompanyLookupResult> for CompanyLookupResult {
             vat_registered: None,
             vat_id: None,
             fiscal_address: None,
-            status: None,
+            status,
             source: registry_details.provider(),
             registry_details,
         }
+    }
+}
+
+// Exact provider states; insolvency/proceedings and future values remain distinguishable.
+fn lifecycle(value: &str) -> crate::CompanyStatus {
+    use crate::CompanyStatus::{Active, Bankruptcy, Closed, Liquidation, Unknown};
+    match value.trim().to_uppercase().as_str() {
+        "ΕΝΕΡΓΗ" | "ΕΝΕΡΓΉ" => Active,
+        "ΔΙΑΓΡΑΦΗ" | "ΔΙΑΓΡΑΦΉ" => Closed,
+        "ΛΥΣΗ - ΕΚΚΑΘΑΡΙΣΗ"
+        | "ΛΎΣΗ - ΕΚΚΑΘΆΡΙΣΗ"
+        | "ΛΥΣΗ-ΕΚΚΑΘΑΡΙΣΗ"
+        | "ΛΎΣΗ-ΕΚΚΑΘΆΡΙΣΗ"
+        | "ΥΠΟ ΕΚΚΑΘΑΡΙΣΗ"
+        | "ΥΠΌ ΕΚΚΑΘΆΡΙΣΗ"
+        | "ΕΚΚΑΘΑΡΙΣΗ"
+        | "ΕΚΚΑΘΆΡΙΣΗ" => Liquidation,
+        "ΠΤΩΧΕΥΣΗ" | "ΠΤΏΧΕΥΣΗ" => Bankruptcy,
+        _ => Unknown,
     }
 }

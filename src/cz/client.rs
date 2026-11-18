@@ -15,7 +15,7 @@ pub struct CzRegistryConfig {
     pub timeout: Duration,
     /// Connection timeout. Default: 3 seconds.
     pub connect_timeout: Duration,
-    /// Request start spacing. Default: 2 seconds; minimum: 1 second (library policy).
+    /// Gap after completion and between aggregate/ROS requests. Default: 2 seconds; minimum: 1 second (library policy).
     pub start_interval: Duration,
     /// Cooldown on availability failures or throttling. Default: 60 seconds.
     pub failure_cooldown: Duration,
@@ -57,6 +57,7 @@ pub struct CzRegistryClient {
     config: CzRegistryConfig,
     admission: Arc<Mutex<Admission>>,
     endpoint: String,
+    ros_endpoint: String,
     #[cfg(test)]
     captured: Arc<std::sync::Mutex<serde_json::Value>>,
 }
@@ -80,6 +81,7 @@ impl CzRegistryClient {
             config,
             admission: Arc::new(Admission::new()),
             endpoint: ENDPOINT.into(),
+            ros_endpoint: format!("{ENDPOINT}-ros"),
             #[cfg(test)]
             captured: Arc::new(std::sync::Mutex::new(serde_json::Value::Null)),
         })
@@ -87,20 +89,31 @@ impl CzRegistryClient {
     /// Look up the current ARES observation by full IČO.
     pub async fn lookup(&self, value: &str) -> Result<CzCompanyLookupResult, LookupError> {
         let id = CzBusinessId::parse(value)?;
-        registry_transport::execute(
-            &self.admission,
-            &self.config.bounds(),
+        crate::http_capture::scope(
+            self.config.raw_debug,
+            self.config.max_response_bytes,
+            self.config.timeout,
             Provider::CzechAres,
-            Spacing::FromStart,
-            self.send(&id),
-        )
-        .await?
-        .ok_or(LookupError::from(
-            crate::model::LookupFailure::RegistryNotFound {
-                provider: Provider::CzechAres,
+            async {
+                registry_transport::execute_in_scope(
+                    &self.admission,
+                    &self.config.bounds(),
+                    Provider::CzechAres,
+                    Spacing::AfterCompletion,
+                    self.send(&id),
+                )
+                .await?
+                .ok_or_else(|| {
+                    LookupError::from(crate::model::LookupFailure::RegistryNotFound {
+                        provider: Provider::CzechAres,
+                    })
+                })
+                .and_then(crate::model::company_validation::ensure_resolved)
             },
-        ))
+        )
+        .await
     }
+
     async fn send(
         &self,
         id: &CzBusinessId,
@@ -136,11 +149,41 @@ impl CzRegistryClient {
             }
             return Err(RegistryFailure::Http { status });
         }
-        decode::decode(&bytes, id)
+        let mut value = decode::decode(&bytes, id)?;
+        if let Some(value) = value.as_mut().filter(|v| decode::needs_ros_closure(v)) {
+            tokio::time::sleep(self.config.start_interval).await;
+            let response = self
+                .http
+                .get(format!("{}/{}", self.ros_endpoint, id.as_str()))
+                .header("Accept", "application/json")
+                .send_traced()
+                .await
+                .map_err(network)?;
+            #[cfg(test)]
+            {
+                self.captured.lock().unwrap()["ros"] =
+                    serde_json::json!({"httpStatus":response.status().as_u16()});
+            }
+            registry_transport::check_status(
+                response.status().as_u16(),
+                registry_transport::retry_after(&response),
+                &[200],
+            )?;
+            let bytes =
+                registry_transport::json_body(response, self.config.max_response_bytes).await?;
+            #[cfg(test)]
+            {
+                self.captured.lock().unwrap()["ros"]["body"] =
+                    serde_json::json!(String::from_utf8_lossy(&bytes));
+            }
+            value.ros_closure = decode::ros_closure(&bytes, id)?;
+        }
+        Ok(value)
     }
     #[cfg(test)]
     pub(crate) fn for_test(endpoint: String, config: CzRegistryConfig) -> Self {
         let mut client = Self::with_config(config).unwrap();
+        client.ros_endpoint = format!("{endpoint}/ros");
         client.endpoint = endpoint;
         client
     }

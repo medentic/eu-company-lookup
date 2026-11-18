@@ -97,9 +97,11 @@ No credentials, database, bulk collection or ONRC fallback are added.
 
 ## Shared company lifecycle
 
-`status` uses the same `CompanyStatus` enum as Bulgarian registry results. Until
-ANAF registration descriptions have verified lifecycle mappings, a supplied
-`registrationStatus` yields `Unknown` (JSON `unknown`); absent status yields null.
+`status` uses the shared `CompanyStatus` enum. Exact `INREGISTRAT` and `RELUARE ACTIVITATE` map to active;
+`SUSPENDARE ACTIVITATE` maps to inactive. `RADIERE`, `RADIAT` and
+`DIZOLVARE FARA LICHIDARE(FUZIUNE)` map to closed. An optional `din data` suffix
+must contain a strict day.month.year date. `TRANSFER(SOSIRE)` does not establish
+a company lifecycle. Other descriptions remain unknown; absent status is null.
 `registryDetails.data.nativeRegistryStatus` in the shared result exposes the original ANAF status text,
 including when normalized; it is null when absent. `registrationStatus` retains
 the same original text for compatibility. Lower-level native results retain

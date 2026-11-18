@@ -26,11 +26,82 @@ pub(super) const EXAMPLES: &[&str] = &[
     "PL1234567890",
     "PT123456789",
     "RO12",
-    "SE123456789012",
+    "SE123456789001",
     "SI12345678",
     "SK1234567890",
     "XI123456789",
 ];
+
+// One malformed national structure per supported prefix; all values are synthetic.
+pub(super) const INVALID_EXAMPLES: &[&str] = &[
+    "ATA12345678",
+    "BE2123456789",
+    "BG12345678",
+    "CY123456789",
+    "CZ1234567",
+    "DE12345678",
+    "DK1234567",
+    "EE12345678",
+    "EL12345678",
+    "ES123456789",
+    "FI1234567",
+    "FRAB12345678",
+    "HR1234567890",
+    "HU1234567",
+    "IE12345678",
+    "IT1234567890",
+    "LT1234567890",
+    "LU1234567",
+    "LV1234567890",
+    "MT1234567",
+    "NL123456789A01",
+    "PL123456789",
+    "PT12345678",
+    "RO1",
+    "SE123456789012",
+    "SI1234567",
+    "SK123456789",
+    "XI12345678",
+];
+
+#[test]
+fn malformed_national_formats_cover_every_supported_prefix() {
+    let prefixes: std::collections::BTreeSet<_> = super::super::identifiers::FORMATS
+        .iter()
+        .map(|(prefix, _)| *prefix)
+        .collect();
+    assert_eq!(INVALID_EXAMPLES.len(), prefixes.len());
+    assert_eq!(
+        INVALID_EXAMPLES
+            .iter()
+            .map(|raw| &raw[..2])
+            .collect::<std::collections::BTreeSet<_>>(),
+        prefixes
+    );
+    for raw in INVALID_EXAMPLES {
+        assert!(
+            matches!(
+                VatId::parse(raw),
+                Err(LookupError {
+                    kind: crate::model::LookupFailure::InvalidInput,
+                    ..
+                })
+            ),
+            "{raw}"
+        );
+    }
+}
+
+#[test]
+fn swedish_suffix_is_checked_without_losing_leading_zeroes() {
+    let vat = VatId::parse(" se 0001234567 01 ").unwrap();
+    assert_eq!(vat.as_str(), "SE000123456701");
+    assert_eq!(vat.number(), "000123456701");
+    for raw in ["SE000123456700", "SE000123456702", "SE000123456799"] {
+        assert!(VatId::parse(raw).is_err());
+        assert!(serde_json::from_str::<VatId>(&format!("\"{raw}\"")).is_err());
+    }
+}
 
 #[test]
 fn formats_and_capabilities_cover_the_same_jurisdictions() {
@@ -65,7 +136,7 @@ fn formats_and_capabilities_cover_the_same_jurisdictions() {
                 selectable: false
             }
         );
-        assert_eq!(provider.checksum, ChecksumSupport::NotImplemented);
+        assert_eq!(provider.checksum, ChecksumSupport::SupportedFormats);
         assert!(!provider.requires_credentials);
         assert_eq!(
             VatId::parse(&format!("{}!", raw)).unwrap_err().to_string(),

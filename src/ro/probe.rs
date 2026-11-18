@@ -82,6 +82,7 @@ async fn live_anaf_batch() {
             }
             Err(error) => {
                 row["error"] = json!({"message":error.to_string(),"debug":format!("{error:?}")});
+                row["lookupError"] = serde_json::to_value(error).unwrap();
                 true
             }
         };
@@ -109,12 +110,23 @@ async fn live_anaf_batch() {
 #[ignore = "offline replay of local ANAF observations"]
 fn replay_anaf_batch() {
     let folder = PathBuf::from(std::env::var("RO_RUN_DIR").unwrap());
+    let manifest: Value =
+        serde_json::from_slice(&std::fs::read(folder.join("manifest.json")).unwrap()).unwrap();
+    let selected: Vec<String> = serde_json::from_value(manifest["ids"].clone()).unwrap();
+    let reviews: Value = match std::fs::read(folder.join("expectations.json")) {
+        Ok(bytes) => serde_json::from_slice(&bytes).unwrap(),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Value::Null,
+        Err(e) => panic!("cannot read reviews: {e}"),
+    };
     let mut rows = Vec::new();
-    for line in std::fs::read_to_string(folder.join("observations.jsonl"))
-        .unwrap()
-        .lines()
-    {
+    let journal = std::fs::read_to_string(folder.join("observations.jsonl")).unwrap();
+    assert!(
+        journal.is_empty() || journal.ends_with('\n'),
+        "preserve partial journal"
+    );
+    for line in journal.lines() {
         let row: Value = serde_json::from_str(line).unwrap();
+        assert_eq!(row["requestDate"], manifest["requestDate"]);
         if let Some(body) = row["transport"]["body"].as_str() {
             assert_eq!(
                 row["bodySha256"],
@@ -125,21 +137,59 @@ fn replay_anaf_batch() {
                 &RoBusinessId::parse(row["taxId"].as_str().unwrap()).unwrap(),
                 row["requestDate"].as_str().unwrap().parse().unwrap(),
             );
-            let mut replay = json!({"taxId":row["taxId"],"bodySha256":row["bodySha256"]});
+            let review = &reviews[row["taxId"].as_str().unwrap()];
+            if !review.is_null() {
+                assert_eq!(review["bodySha256"], row["bodySha256"]);
+            }
+            let mut replay =
+                json!({"id":row["taxId"],"taxId":row["taxId"],"bodySha256":row["bodySha256"]});
             match result {
                 Ok(Some(value)) => {
                     replay["response"] = serde_json::to_value(value).unwrap();
+                    if !review.is_null() {
+                        for (pointer, expected) in review["fields"]
+                            .as_object()
+                            .expect("review fields required")
+                        {
+                            assert_eq!(replay["response"].pointer(pointer), Some(expected));
+                        }
+                    }
+                    replay["validationStatus"] =
+                        json!(crate::test_support::company_validation::classify(
+                            &replay["response"],
+                            &review["fields"]
+                        ));
                 }
                 Ok(None) => {
                     replay["notFound"] = json!(true);
+                    replay["validationStatus"] = json!(if review["outcome"] == "notFound" {
+                        "verifiedNegative"
+                    } else {
+                        "negativeObservation"
+                    });
                 }
                 Err(e) => {
                     replay["error"] = json!(e.to_string());
+                    replay["validationStatus"] = json!("failed");
                 }
             }
+            if replay["validationStatus"] == "unresolved" {
+                replay["unresolvedDetail"] =
+                    crate::test_support::company_validation::unresolved_detail(&replay["response"]);
+            }
             rows.push(replay);
+        } else {
+            rows.push(json!({"id":row["taxId"],"taxId":row["taxId"],"validationStatus":"failed","error":"missing captured body"}));
         }
     }
+    std::fs::write(
+        folder.join("validation-summary.json"),
+        serde_json::to_vec_pretty(&crate::test_support::company_validation::summary(
+            &rows, &selected,
+        ))
+        .unwrap(),
+    )
+    .unwrap();
     std::fs::write(
         folder.join("offline-replay.json"),
         serde_json::to_vec_pretty(&rows).unwrap(),
@@ -179,6 +229,17 @@ fn reviewed_anaf_corpus() {
         .unwrap();
         match result {
             Some(result) => {
+                if let Some(reviewed) = case["review"]["validationStatus"].as_str() {
+                    let common: crate::CompanyLookupResult = result.clone().into();
+                    let resolved =
+                        crate::model::company_validation::ensure_resolved(common).is_ok();
+                    assert_eq!(
+                        resolved,
+                        reviewed == "verifiedPositive",
+                        "{id}: lifecycle review qualification"
+                    );
+                    assert!(matches!(reviewed, "verifiedPositive" | "unresolved"));
+                }
                 let mut actual = serde_json::to_value(result).unwrap();
                 actual.as_object_mut().unwrap().remove("checkedAt");
                 assert_eq!(actual, case["review"]["expected"], "{id}");
@@ -186,4 +247,50 @@ fn reviewed_anaf_corpus() {
             None => assert_eq!(case["review"]["notFound"], true),
         }
     }
+}
+
+#[test]
+#[ignore = "read-only offline audit of the retained ANAF corpus"]
+fn audit_retained_anaf_corpus() {
+    let path =
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/ro/fixtures/anaf/ro.json");
+    let cases: Vec<Value> = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+    let mut rows = Vec::new();
+    for case in cases {
+        let raw = case["rawResponse"].as_str().unwrap();
+        assert_eq!(
+            case["bodySha256"],
+            format!("{:x}", Sha256::digest(raw.as_bytes()))
+        );
+        let id = RoBusinessId::parse(case["taxId"].as_str().unwrap()).unwrap();
+        let result = decode::decode(
+            raw.as_bytes(),
+            &id,
+            case["requestDate"].as_str().unwrap().parse().unwrap(),
+        )
+        .unwrap();
+        if let Some(native) = result {
+            let common: crate::CompanyLookupResult = native.clone().into();
+            let mut actual = serde_json::to_value(native).unwrap();
+            actual.as_object_mut().unwrap().remove("checkedAt");
+            let expected = &case["review"]["expected"];
+            let differences: Vec<_> = expected
+                .as_object()
+                .unwrap()
+                .iter()
+                .filter(|(k, v)| actual[*k] != **v)
+                .map(|(k, v)| json!({"field":k,"expected":v,"actual":actual[k]}))
+                .collect();
+            rows.push(json!({"id":id.as_str(),"bodySha256":case["bodySha256"],"differences":differences,"actual":actual,"resolved":crate::model::company_validation::ensure_resolved(common).is_ok()}));
+        } else {
+            rows.push(json!({"id":id.as_str(),"negative":true,"reviewMatches":case["review"]["notFound"]==true}));
+        }
+    }
+    let dir = std::env::var("REGISTRY_AUDIT_OUTPUT").unwrap();
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        std::path::Path::new(&dir).join("RO-corpus.json"),
+        serde_json::to_vec_pretty(&rows).unwrap(),
+    )
+    .unwrap();
 }

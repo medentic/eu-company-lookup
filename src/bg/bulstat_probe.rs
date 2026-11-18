@@ -74,7 +74,7 @@ async fn live_bulstat_batch() {
                     ..
                 })
             );
-        let cooldown = if failed {
+        let cooldown = if failed && outcome != "unresolvedData" {
             let minimum = chrono::Utc::now() + chrono::Duration::seconds(60);
             let retry = match &result {
                 Err(LookupError {
@@ -101,7 +101,7 @@ async fn live_bulstat_batch() {
         };
         write_json(
             &path,
-            &json!({"schemaVersion":1,"taxId":id,"checkedAt":start,"elapsedMs":elapsed,"outcome":outcome,"record":record,"error":error,"requests":requests,"resumeNotBefore":cooldown}),
+            &json!({"schemaVersion":1,"taxId":id,"checkedAt":start,"elapsedMs":elapsed,"outcome":outcome,"record":record,"error":error,"lookupError":result.as_ref().err().map(|e| serde_json::to_value(e).unwrap()),"requests":requests,"resumeNotBefore":cooldown}),
         );
         write_json(
             &state_path,

@@ -87,7 +87,7 @@ impl IeRegistryClient {
     /// Look up the current Irish public registry observation by full business ID.
     pub async fn lookup(&self, value: &str) -> Result<IeCompanyLookupResult, LookupError> {
         let id = IeBusinessId::parse(value)?;
-        registry_transport::execute(
+        registry_transport::execute_company(
             &self.admission,
             &self.config.bounds(),
             Provider::IrishCro,

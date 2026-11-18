@@ -33,8 +33,13 @@ def selection(queue):
     return ids
 
 
+from registry_validation import classify, unresolved_detail
+
+
 def report(folder):
     manifest = json.loads((folder / 'manifest.json').read_text())
+    if not manifest['ids'] or len(set(manifest['ids'])) != len(manifest['ids']):
+        raise ValueError('selection must contain distinct IDs')
     rows = []
     reviews_path = folder / 'review.json'
     reviews = json.loads(reviews_path.read_text()) if reviews_path.exists() else {}
@@ -68,6 +73,13 @@ def report(folder):
                 actual = replay['record'] if replay and replay['error'] is None else row['record']
                 summary['differences'] = differences(review['expected'], actual)
                 summary['reviewStatus'] = 'mismatch' if summary['differences'] else 'passed'
+            actual = replay['record'] if replay and replay['error'] is None else row.get('record')
+            summary['validationStatus'] = classify(row['outcome'], actual,
+                summary['reviewStatus'], (review or {}).get('expected'),
+                found_outcomes=('bulstatFound',))
+            summary['unresolvedDetail'] = unresolved_detail(actual) if summary['validationStatus'] == 'unresolved' else None
+            if row['outcome'] == 'unresolvedData':
+                summary['unresolvedDetail'] = (row.get('lookupError') or {}).get('details')
             rows.append(summary)
     counts = Counter(row['outcome'] for row in rows)
     result = {'selected': len(manifest['ids']), 'attempted': len(rows),
@@ -75,9 +87,12 @@ def report(folder):
               'allBulstatFound': counts['bulstatFound'] == len(manifest['ids']),
               'outcomes': dict(counts), 'reviews': dict(Counter(r['reviewStatus'] for r in rows)), 'cases': rows}
     result['checksPassed'] = (result['complete'] and result['allBulstatFound']
-                              and all(r['reviewStatus'] != 'mismatch'
+                              and bool(rows)
+                              and all(r['validationStatus'] == 'verifiedPositive'
+                                      and 'replayMatchesLive' in r
                                       and r.get('replayError') is None
                                       and (r.get('replayMatchesLive', True) or r['reviewStatus'] == 'passed') for r in rows))
+    result['validation'] = dict(Counter(r['validationStatus'] for r in rows))
     write(folder / 'report.json', result)
     return result
 

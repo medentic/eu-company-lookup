@@ -2,6 +2,7 @@
 mod client;
 mod decode;
 mod identifiers;
+mod legal_forms;
 mod mapping;
 mod model;
 pub use client::{FrRegistryClient, FrRegistryConfig};

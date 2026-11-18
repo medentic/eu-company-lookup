@@ -79,7 +79,7 @@ async fn request_to(http: &reqwest::Client, vat: &crate::VatId, endpoint: &str) 
             },
         },
         transport::Body::Text(raw) => {
-            let decoded = soap::decode(&raw, vat);
+            let decoded = soap::decode(&raw, vat).map_err(crate::LookupError::from);
             row.raw_body = Some(raw);
             match decoded {
                 Ok(decoded) if response.status.is_success() => Outcome::Success {

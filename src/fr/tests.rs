@@ -12,11 +12,14 @@ fn source_fields_and_unknown_common_facts_are_preserved() {
     )
     .unwrap();
     let result: CompanyLookupResult = result.into();
+    crate::test_support::assert_company_contract(&result);
     assert_eq!(result.tax_id, "001234567");
     assert_eq!(result.source, Provider::FrenchRechercheEntreprises);
-    assert_eq!(result.status, Some(crate::CompanyStatus::Unknown));
-    assert!(
-        result.vat_id.is_none() && result.vat_registered.is_none() && result.legal_form.is_none()
+    assert_eq!(result.status, Some(crate::CompanyStatus::Active));
+    assert!(result.vat_id.is_none() && result.vat_registered.is_none());
+    assert_eq!(
+        result.legal_form.as_deref(),
+        Some("SAS, société par actions simplifiée")
     );
     let office = result.registered_office.unwrap();
     assert_eq!(
@@ -47,6 +50,7 @@ fn search_and_head_office_identity_are_checked() {
     let result: CompanyLookupResult = decode::decode(&serde_json::to_vec(&row).unwrap(), &id)
         .unwrap()
         .into();
+    crate::test_support::assert_company_contract(&result);
     assert!(result.registered_office.is_none());
     for bad in ["FR001234567", "00123456700001", "12345678", "00123456９"] {
         assert!(FrBusinessId::parse(bad).is_err());
@@ -54,14 +58,16 @@ fn search_and_head_office_identity_are_checked() {
 }
 #[tokio::test]
 async fn anonymous_exact_query_reaches_shared_facade() {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::io::AsyncWriteExt;
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let endpoint = format!("http://{}", listener.local_addr().unwrap());
     let body = source().to_string();
-    let server = tokio::spawn(async move {
+    let server = crate::test_support::http::spawn_server(async move {
         let (mut socket, _) = listener.accept().await.unwrap();
-        let mut buffer = [0; 4096];
-        let n = socket.read(&mut buffer).await.unwrap();
+        let buffer = crate::test_support::http::read_request(&mut socket)
+            .await
+            .unwrap();
+        let n = buffer.len();
         let request = String::from_utf8_lossy(&buffer[..n]).to_lowercase();
         assert!(request.starts_with("get /?q=001234567&minimal=true&include=siege "));
         assert!(!request.contains("authorization:") && !request.contains("cookie:"));
@@ -98,13 +104,15 @@ async fn invalid_configuration_and_identifier_fail_locally() {
 
 #[tokio::test]
 async fn endpoint_404_is_an_operational_error_not_registry_absence() {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::io::AsyncWriteExt;
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let endpoint = format!("http://{}", listener.local_addr().unwrap());
-    let server = tokio::spawn(async move {
+    let server = crate::test_support::http::spawn_server(async move {
         let (mut socket, _) = listener.accept().await.unwrap();
-        let mut buffer = [0; 4096];
-        let n = socket.read(&mut buffer).await.unwrap();
+        let buffer = crate::test_support::http::read_request(&mut socket)
+            .await
+            .unwrap();
+        let n = buffer.len();
         assert!(n > 0);
         socket.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Type: application/json\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}").await.unwrap();
     });
@@ -122,4 +130,46 @@ async fn endpoint_404_is_an_operational_error_not_registry_absence() {
         })
     ));
     server.await.unwrap();
+}
+
+#[test]
+fn lifecycle_maps_source_states_and_preserves_original_text() {
+    for (raw, expected) in [
+        (Some("A"), Some(crate::CompanyStatus::Active)),
+        (Some("C"), Some(crate::CompanyStatus::Closed)),
+        (Some("F"), Some(crate::CompanyStatus::Unknown)),
+        (Some("A inactive"), Some(crate::CompanyStatus::Unknown)),
+        (None, None),
+    ] {
+        let mut value = source();
+        *value.pointer_mut("/results/0/etat_administratif").unwrap() = json!(raw);
+        let result: CompanyLookupResult = decode::decode(
+            &serde_json::to_vec(&value).unwrap(),
+            &FrBusinessId::parse("001234567").unwrap(),
+        )
+        .unwrap()
+        .into();
+        crate::test_support::assert_company_contract(&result);
+        assert_eq!(result.status, expected, "{raw:?}");
+        let wire = serde_json::to_value(result).unwrap();
+        assert_eq!(
+            wire["registryDetails"]["data"]["nativeRegistryStatus"],
+            json!(raw)
+        );
+    }
+}
+
+#[test]
+fn unknown_legal_form_codes_do_not_become_common_labels() {
+    assert_eq!(super::legal_forms::label("999999"), None);
+    assert_eq!(super::legal_forms::label(""), None);
+}
+
+#[test]
+fn documented_company_output_matches_synthetic_source() {
+    let body = source();
+
+    let id = FrBusinessId::parse("001234567").unwrap();
+    let native = decode::decode(&serde_json::to_vec(&body).unwrap(), &id).unwrap();
+    crate::test_support::assert_documented_company("fr", native);
 }

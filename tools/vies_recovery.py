@@ -12,6 +12,8 @@ from types import SimpleNamespace
 from urllib.request import urlopen
 
 import vies_batch as batch
+from vies_evidence import load_evidence, snapshot
+from vies_reporting import build_report
 
 STATUS_URL = 'https://ec.europa.eu/taxation_customs/vies/rest-api/check-status'
 
@@ -59,32 +61,36 @@ def availability():
     return data, countries
 
 
-def summary(root, selected):
+def summary(root, selected, binary_manifest=None):
+    current = snapshot(batch.ROOT, binary_manifest) if binary_manifest else None
+    formats = batch.vat_formats()
     result = {}
     for country, _, offset, ids in selected:
         counts = dict(selected=len(ids), attempted=0, validObserved=0,
-                      negativeObserved=0, providerErrors=0, verifiedValid=0)
+                      negativeObserved=0, providerErrors=0, verifiedValid=0, verifiedInvalid=0)
         for index, identifier in enumerate(ids, offset):
             folder = root / country / f'{index:04d}'
             if not (folder / 'manifest.json').exists():
                 continue
-            manifest = json.loads((folder / 'manifest.json').read_text())
-            if manifest['ids'] != [identifier]:
+            evidence = load_evidence(batch.ROOT, folder, formats, current=current)
+            if evidence.ids != [identifier]:
                 raise ValueError('batch selection changed')
-            report = batch.report(folder)
-            rows = batch.load_rows(folder)
+            report = build_report(evidence)
+            rows = evidence.rows
             counts['attempted'] += len(rows)
             if rows:
                 response = rows[0]['attempts'][-1].get('response')
                 if response:
                     counts['validObserved' if response['valid'] else 'negativeObserved'] += 1
                     case = report['cases'][0]
-                    if response['valid'] and case['status'] == 'passed' and case['parsedFrom'] == 'offlineReplay':
-                        counts['verifiedValid'] += 1
+                    if case.get('verified'):
+                        counts['verifiedValid' if response['valid'] else 'verifiedInvalid'] += 1
                 else:
                     counts['providerErrors'] += 1
         counts['pending'] = len(ids) - counts['attempted']
         result[country] = counts
+    if current and snapshot(batch.ROOT, binary_manifest) != current:
+        raise ValueError('source/binary changed during report')
     return result
 
 
@@ -108,7 +114,7 @@ def run(args):
     selected = selections(plan)
     root = args.run_dir.resolve()
     if not args.execute:
-        return summary(root, selected)
+        return summary(root, selected, getattr(args, 'binary_manifest', None))
     if not 1 <= args.max_requests <= 100:
         raise ValueError('max-requests must be 1..100')
     if not args.binary or not args.binary.is_file():
@@ -194,7 +200,7 @@ def run(args):
                     break
             if requests >= args.max_requests:
                 break
-        result = summary(root, selected)
+        result = summary(root, selected, getattr(args, 'binary_manifest', None))
         batch.write_json(root/'recovery-report.json', result)
         append(journal, {'event': 'passFinished', 'requests': requests, 'counts': result})
         return result
@@ -206,10 +212,11 @@ def main():
     parser.add_argument('--run-dir', type=Path, required=True)
     parser.add_argument('--execute', action='store_true')
     parser.add_argument('--binary', type=Path)
+    parser.add_argument('--binary-manifest', type=Path, help='current build manifest for offline verification')
     parser.add_argument('--docker-image')
     parser.add_argument('--deadline-seconds', type=int, choices=[6, 25], default=25)
     parser.add_argument('--max-requests', type=int, default=20)
-    parser.add_argument('--skip', action='append', choices=sorted(batch.FORMATS), default=[])
+    parser.add_argument('--skip', action='append', choices=sorted(batch.vat_formats()), default=[])
     args = parser.parse_args()
     try:
         print(json.dumps(run(args), indent=2))

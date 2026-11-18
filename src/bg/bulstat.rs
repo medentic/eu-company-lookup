@@ -165,6 +165,7 @@ pub(super) fn detail(
     let status_text = values.get("Състояние").cloned().filter(|s| !s.is_empty());
     let status = status_text.as_deref().map(|text| match text {
         "развиващ дейност" => crate::CompanyStatus::Active,
+        "заличен" => crate::CompanyStatus::Closed,
         _ => crate::CompanyStatus::Unknown,
     });
     Ok(BgCompanyLookupResult {

@@ -2,6 +2,7 @@
 mod address;
 mod country;
 mod delivery;
+mod estonian;
 pub(crate) mod normalize;
 mod parser;
 mod romanian;

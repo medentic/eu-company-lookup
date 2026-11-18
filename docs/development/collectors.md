@@ -30,8 +30,11 @@ Docker execution requires an image already available locally and a run directory
 inside the repository. Images are never pulled by the collectors. Locks do not
 coordinate unrelated applications or other checkouts. Inspect process ownership
 before recovering a stale lock; never delete state to bypass a provider cooldown.
-Keep original observations and journals intact. Completed runs remove their frozen
-executable copy. No collection is scheduled by these instructions.
+Keep original observations and journals intact. VIES batches share a hash-checked
+executable cache retained after completion; legacy per-batch executables and the
+other collectors retain their existing cleanup behavior. See the
+[tooling ownership and retention guide](../../tools/README.md). No collection is
+scheduled by these instructions.
 
 ## VIES
 
@@ -51,6 +54,29 @@ after recovery; do not turn faults into negative VAT results or generate expecte
 company data from them. Address replay needs at least one usable response; an
 error-only journal can be validated as a typed journal but establishes no address
 replay coverage. See [VIES availability semantics](../reference/vies.md#national-services-and-availability).
+
+### France: intermittent request-capacity failures
+
+French VIES lookups have returned `MS_MAX_CONCURRENT_REQ` intermittently even
+with sequential, paced requests and an available service status. The fault can
+arrive quickly inside an HTTP 200 SOAP response; inspect the SOAP body rather
+than treating the HTTP status as a successful VAT validation. This is a capacity
+failure, not a timeout or a matched invalid VAT result. The
+[official VIES help](https://ec.europa.eu/taxation_customs/vies/#/help) distinguishes
+this fault from `IP_BLOCKED`.
+
+Retained observations include both consecutive successful validations and further
+capacity failures after pauses. They establish neither a fixed per-client request
+allowance nor a reliable unlock interval. Do not describe France as allowing only
+one request, infer an IP ban from this fault, or treat the collector's configured
+gaps as published provider quotas. Increasing concurrency is not a demonstrated
+remedy.
+
+Keep recovery sequential and bounded, honor Retry-After and existing cooldowns,
+and defer France after repeated failures. Retain request identifiers, timestamps,
+pauses, response bodies and outcomes in local evidence so later recovery can be
+compared without rewriting earlier observations. Exact timings and changing
+success/error counts belong with those runs, not in this guide.
 
 ### Import a queue
 
@@ -127,8 +153,10 @@ gap. Retry-After stops the pass and prevents automatic resumption of that run;
 inspect it and honor the wait before preparing another selection.
 
 Reports separate attempts, valid/negative observations, provider errors and verified
-valid IDs. The latter require reviewed expectations and offline replay through the
-existing reporting rules. The runner does not create expectations or approve source
+valid/invalid IDs. Verified counts require `--binary-manifest` with current build
+provenance, reviewed expectations and source-bound offline replay through the
+[reporting rules](testing.md#reading-reports). Offline summaries do not rewrite
+individual batch reports. The runner does not create expectations or approve source
 observations. Review and replay each response-bearing batch separately, then rerun
 the offline report. No new VAT validity or country-completion claim follows merely
 from finishing the selected queue.

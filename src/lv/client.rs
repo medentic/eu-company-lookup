@@ -87,11 +87,11 @@ impl LvRegistryClient {
     /// Look up the current Latvian public registry observation by full business ID.
     pub async fn lookup(&self, value: &str) -> Result<LvCompanyLookupResult, LookupError> {
         let id = LvBusinessId::parse(value)?;
-        registry_transport::execute(
+        registry_transport::execute_company(
             &self.admission,
             &self.config.bounds(),
             Provider::LatvianOpenData,
-            Spacing::FromStart,
+            Spacing::AfterCompletion,
             self.send(&id),
         )
         .await
@@ -103,6 +103,36 @@ impl LvRegistryClient {
             "regcode",
             id.as_str(),
         )?;
+        let bytes = self.request(url, "base").await?;
+        let mut record = decode::decode(&bytes, id)?;
+        // A complete closure observation needs no additional proceeding lookups.
+        if crate::CompanyLookupResult::from(record.clone()).status
+            == Some(crate::CompanyStatus::Closed)
+        {
+            return Ok(record);
+        }
+        let mut bodies = Vec::new();
+        for (name, resource, field) in super::lifecycle::SOURCES {
+            tokio::time::sleep(self.config.start_interval).await;
+            let mut url =
+                registry_transport::ckan::query(&self.endpoint, resource, field, id.as_str())?;
+            let query: Vec<(String, String)> = url
+                .query_pairs()
+                .filter(|(k, _)| k != "limit")
+                .map(|(k, v)| (k.into_owned(), v.into_owned()))
+                .collect();
+            url.query_pairs_mut()
+                .clear()
+                .extend_pairs(query)
+                .append_pair("limit", "100");
+            bodies.push(self.request(url, name).await?);
+        }
+        record.details.lifecycle = Some(super::lifecycle::decode(
+            &bodies[0], &bodies[1], &bodies[2], id,
+        )?);
+        Ok(record)
+    }
+    async fn request(&self, url: reqwest::Url, _stage: &str) -> Result<Vec<u8>, RegistryFailure> {
         let response = self
             .http
             .get(url)
@@ -112,7 +142,16 @@ impl LvRegistryClient {
             .map_err(network)?;
         #[cfg(test)]
         {
-            *self.captured.lock().unwrap() = serde_json::json!({"httpStatus":response.status().as_u16(), "contentType":response.headers().get("content-type").and_then(|v|v.to_str().ok()), "retryAfter":response.headers().get("retry-after").and_then(|v|v.to_str().ok())});
+            let mut capture = self.captured.lock().unwrap();
+            if capture.is_null() {
+                *capture = serde_json::json!({});
+            }
+            let slot = if _stage == "base" {
+                &mut *capture
+            } else {
+                &mut capture["lifecycle"][_stage]
+            };
+            *slot = serde_json::json!({"httpStatus":response.status().as_u16(), "contentType":response.headers().get("content-type").and_then(|v|v.to_str().ok()), "retryAfter":response.headers().get("retry-after").and_then(|v|v.to_str().ok())});
         }
         let status = response.status().as_u16();
         registry_transport::check_status(
@@ -123,10 +162,15 @@ impl LvRegistryClient {
         let bytes = registry_transport::json_body(response, self.config.max_response_bytes).await?;
         #[cfg(test)]
         {
-            self.captured.lock().unwrap()["body"] =
-                serde_json::json!(String::from_utf8_lossy(&bytes));
+            let mut capture = self.captured.lock().unwrap();
+            let slot = if _stage == "base" {
+                &mut *capture
+            } else {
+                &mut capture["lifecycle"][_stage]
+            };
+            slot["body"] = serde_json::json!(String::from_utf8_lossy(&bytes));
         }
-        decode::decode(&bytes, id)
+        Ok(bytes)
     }
     #[cfg(test)]
     pub(crate) fn for_test(endpoint: String, config: LvRegistryConfig) -> Self {

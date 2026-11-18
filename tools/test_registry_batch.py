@@ -26,6 +26,8 @@ class RegistryBatchTests(unittest.TestCase):
             self.assertEqual(report(root)['remaining'], 1)
             write(root / 'review.json', {'123456789': {'schemaVersion': 1, 'sourceSha256': hashlib.sha256(b'{}').hexdigest(), 'status': 'passed', 'expected': {'companyName': 'Example'}}})
             self.assertEqual(report(root)['reviews'], {'passed': 1})
+            self.assertEqual(report(root)['validation'], {'unresolved': 1})
+            self.assertFalse(report(root)['validationComplete'])
             row['rawResponse'] = '{"changed":true}'
             write(root / 'replay.json', [row])
             with self.assertRaisesRegex(ValueError, 'replay source differs'):
@@ -136,3 +138,31 @@ class RegistryBatchTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'explicit re-review'):
                 merge_reviewed_run(root, output)
             self.assertEqual(output.read_bytes(), original)
+
+    def test_definitive_miss_is_separate_from_unknown_and_provider_failure(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            write(root / 'manifest.json', {'ids': ['000000001']})
+            write(root / 'observations/000000001.json', {'schemaVersion': 1,
+                'taxId': '000000001', 'outcome': 'notFoundInCommercialRegister',
+                'record': None, 'rawResponse': '', 'elapsedMs': 1})
+            result = report(root)
+            self.assertEqual(result['validation'], {'negativeObservation': 1})
+            self.assertFalse(result['validationComplete'])
+
+    def test_negative_review_is_bound_to_source_and_registry_scope(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            write(root / 'manifest.json', {'ids': ['000000001']})
+            write(root / 'observations/000000001.json', {'schemaVersion': 1,
+                'taxId': '000000001', 'outcome': 'notFoundInCommercialRegister',
+                'record': None, 'rawResponse': '', 'elapsedMs': 1})
+            review = {'schemaVersion': 1, 'status': 'passed',
+                      'sourceSha256': hashlib.sha256(b'').hexdigest(),
+                      'expected': {'outcome': 'notFoundInCommercialRegister'}}
+            write(root / 'review.json', {'000000001': review})
+            self.assertEqual(report(root)['validation'], {'verifiedNegative': 1})
+            self.assertFalse(report(root)['validationComplete'])  # Bound replay still required.
+            review['sourceSha256'] = 'wrong'
+            write(root / 'review.json', {'000000001': review})
+            self.assertEqual(report(root)['validation'], {'negativeObservation': 1})

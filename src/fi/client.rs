@@ -87,7 +87,7 @@ impl FiRegistryClient {
     /// Look up the current PRH YTJ observation by full business ID.
     pub async fn lookup(&self, value: &str) -> Result<FiCompanyLookupResult, LookupError> {
         let id = FiBusinessId::parse(value)?;
-        registry_transport::execute(
+        registry_transport::execute_company(
             &self.admission,
             &self.config.bounds(),
             Provider::FinnishPrh,

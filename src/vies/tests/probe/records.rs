@@ -331,7 +331,10 @@ fn validate_saved_soap(record: &Observation) -> Result<usize, &'static str> {
             continue;
         };
         let successful_http = attempt.http_status.is_some_and(|s| (200..300).contains(&s));
-        match (super::soap::decode(raw, &record.vat_id), &attempt.outcome) {
+        match (
+            super::soap::decode(raw, &record.vat_id).map_err(crate::LookupError::from),
+            &attempt.outcome,
+        ) {
             (Ok(decoded), Outcome::Success { response })
                 if successful_http
                     && decoded.valid == response.valid
