@@ -17,7 +17,9 @@ populate the structured address; country and full-address text stay null because
 the response supplies neither. The source status is retained natively; `ACTIVE` maps to active and `DELETED`
 to closed. Historical/other states remain unknown. VAT status remains null. Synthetic tests
 cover identity binding, anonymous transport, source preservation and access
-failure semantics. Collected observations and reviewed expectations stay local.
+failure semantics. The reviewed sample meets the 200-distinct-ID national gate,
+including active and deleted companies, with complete source-bound offline replay.
+Collected observations and reviewed expectations stay local.
 
 Transport mechanics use the private [registry transport helpers](../registry_transport/mod.rs).
 Each client instance owns its admission state, shared only with its clones;
@@ -34,10 +36,13 @@ retains the original observation. See the
 ## Access, pacing and recovery
 
 A successful lookup uses two HTTP requests: all-status search, then matched
-detail. The default two-second interval applies between exchanges and after the
+detail. Search requests up to 10 entries and rejects truncated result sets;
+historical names can occupy several entries for one company. The default two-second interval applies between exchanges and after the
 lookup; both requests share the 30-second deadline. This is client pacing, not a
 verified JustizOnline quota. An empty all-status search still does not establish company closure.
-Multiple exact matches are rejected rather than selecting a historical revision. Access rejection must not trigger a paid-document
+When several exact matches include explicitly `HISTORIC` names, those historical
+entries are excluded and the sole remaining record is selected. Multiple
+nonhistorical matches remain errors; revision numbers are never ranked. Access rejection must not trigger a paid-document
 or authenticated-route fallback.
 
 See [shared pacing and evidence rules](../README.md#registry-pacing-and-evidence)

@@ -12,20 +12,26 @@ struct Search {
 struct Hit {
     id: String,
     fnr: String,
+    status: Option<String>,
 }
 pub(super) fn select(bytes: &[u8], id: &AtBusinessId) -> Result<String, RegistryFailure> {
     let v: Search =
         serde_json::from_slice(bytes).map_err(|_| RegistryFailure::UnexpectedResponse)?;
     // Accept retained active-only captures as well as the explicit all-status search.
-    // Multiple exact matches remain ambiguous; a historical revision is not a
-    // substitute for a unique current/deleted company observation.
+    // HISTORIC names may accompany the current registered/deleted entry.
+    // Only explicitly historical alternatives can be excluded.
     if !matches!(v.state.as_str(), "ACTIVE" | "ALL") || v.num_results != v.companies.len() {
         return Err(RegistryFailure::UnexpectedResponse);
     }
-    let mut matched = v
+    let mut candidates: Vec<_> = v
         .companies
         .into_iter()
-        .filter(|h| AtBusinessId::parse(&h.fnr).ok().as_ref() == Some(id));
+        .filter(|h| AtBusinessId::parse(&h.fnr).ok().as_ref() == Some(id))
+        .collect();
+    if candidates.len() > 1 {
+        candidates.retain(|h| h.status.as_deref() != Some("HISTORIC"));
+    }
+    let mut matched = candidates.into_iter();
     let h = matched.next().ok_or(RegistryFailure::UnexpectedResponse)?;
     if matched.next().is_some() {
         return Err(RegistryFailure::UnexpectedResponse);

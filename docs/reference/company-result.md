@@ -166,7 +166,9 @@ from the matched detail. Street, city and postal code populate the registered
 office; no full-address text or address country is invented. VAT fields, fiscal
 address and record URL remain null. Native `ACTIVE` maps to active and `DELETED` to closed; other states remain unknown. Native status, route
 identifier, domicile, source date and structured fields remain in
-`registryDetails.data`. The search explicitly includes all statuses. Empty searches do not establish absence.
+`registryDetails.data`. The search explicitly includes all statuses. Historical alternatives may be
+excluded to select a unique nonhistorical match; conflicting current entries and
+truncated searches remain errors. Empty searches do not establish absence.
 
 ## Belgian NBB Consult
 

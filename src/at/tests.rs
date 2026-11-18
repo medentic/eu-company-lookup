@@ -62,7 +62,7 @@ async fn anonymous_search_then_detail_and_capture() {
         let search = SEARCH.replace("ACTIVE", "ALL");
         for (path, body) in [
             (
-                "/search?term=00123a&size=5&page=0&state=ALL",
+                "/search?term=00123a&size=10&page=0&state=ALL",
                 search.as_str(),
             ),
             ("/00123a_7", DETAIL),
@@ -251,9 +251,49 @@ fn all_status_search_resolves_deleted_company_without_guessing_revisions() {
     );
     for ambiguous in [
         r#"{"numResults":0,"state":"ALL","companies":[]}"#,
-        r#"{"numResults":2,"state":"ALL","companies":[{"id":"00123a_1","fnr":"00123a","status":"HISTORIC"},{"id":"00123a_7","fnr":"00123a","status":"DELETED"}]}"#,
         r#"{"numResults":6,"state":"ALL","companies":[{"id":"00123a_7","fnr":"00123a"}]}"#,
     ] {
         assert!(decode::select(ambiguous.as_bytes(), &id).is_err());
     }
+}
+
+#[test]
+fn historical_names_do_not_hide_unique_current_record() {
+    let id = AtBusinessId::parse("00123A").unwrap();
+    for status in ["ACTIVE", "DELETED"] {
+        for historic_first in [true, false] {
+            let historical =
+                serde_json::json!({"id":"00123a_99","fnr":"00123a","status":"HISTORIC"});
+            let current = serde_json::json!({"id":"00123a_7","fnr":"00123a","status":status});
+            let companies = if historic_first {
+                vec![historical, current]
+            } else {
+                vec![current, historical]
+            };
+            let body = serde_json::json!({"numResults":2,"state":"ALL","companies":companies});
+            assert_eq!(
+                decode::select(&serde_json::to_vec(&body).unwrap(), &id).unwrap(),
+                "00123a_7"
+            );
+            for competing in ["ACTIVE", "DELETED", "UNRECOGNIZED", ""] {
+                let mut ambiguous = body.clone();
+                ambiguous["companies"][if historic_first { 0 } else { 1 }]["status"] =
+                    competing.into();
+                assert!(decode::select(&serde_json::to_vec(&ambiguous).unwrap(), &id).is_err());
+            }
+        }
+    }
+    let mut companies = vec![serde_json::json!({"id":"00123a_7","fnr":"00123a","status":"ACTIVE"})];
+    for revision in 1..=5 {
+        companies.push(serde_json::json!({"id":format!("00123a_{revision}"),"fnr":"00123a","status":"HISTORIC"}));
+    }
+    let complete = serde_json::json!({"numResults":6,"state":"ALL","companies":companies});
+    assert_eq!(
+        decode::select(&serde_json::to_vec(&complete).unwrap(), &id).unwrap(),
+        "00123a_7"
+    );
+    let body = serde_json::json!({"numResults":2,"state":"ALL","companies":[
+        {"id":"00123a_1","fnr":"00123a","status":"HISTORIC"},
+        {"id":"00123a_2","fnr":"00123a","status":"HISTORIC"}]});
+    assert!(decode::select(&serde_json::to_vec(&body).unwrap(), &id).is_err());
 }

@@ -383,6 +383,16 @@ thirteen-digit branches need broader coverage. VIES identity and address data
 may be withheld or only partly parseable. A successful VAT check does not mean
 that every address component can be extracted.
 
+### Austrian national verification status
+
+Austrian Firmenbuch lookup meets the reviewed 200-distinct-ID national
+verification gate, including active and deleted companies. All accepted cases
+have live source observations, source-bound reviewed expectations and passing
+offline replay. Historical names are separated from current records; recovered
+failures remain in local evidence. This milestone does not establish coverage of
+every registry history or a definitive company-absence outcome.
+See the [Austrian output examples](docs/examples/at.md).
+
 ### Polish national verification status
 
 Polish KRS P/S lookup meets the reviewed 200-distinct-ID national verification
@@ -402,7 +412,7 @@ are listed in the support table; implementation and publication dates are not pr
 
 | Priority | Work |
 | --- | --- |
-| 1 | Verify Austria, Belgium and Czechia; investigate national lookup for Spain. |
+| 1 | Verify Belgium and Czechia; investigate national lookup for Spain. |
 | 2 | Verify Greek national lookup alongside VIES behavior. |
 | 3 | Extend Romanian coverage beyond the current ANAF taxpayer source. |
 

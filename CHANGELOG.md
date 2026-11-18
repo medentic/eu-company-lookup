@@ -22,7 +22,9 @@
   official registration overviews. Bound PDF parsing, isolate document sessions
   per lookup, and preserve the dated native status separately from page fields.
 - Search all Austrian Firmenbuch states explicitly so deleted companies can
-  return a confirmed closed result. Empty searches and ambiguous revisions remain errors.
+  return a confirmed closed result. Exclude explicitly historical names when
+  selecting a unique current record; empty searches and conflicting current
+  records remain errors.
 - Resolve Polish KRS P/S routing, suspension, liquidation cancellation, merger
   direction and terminal removals. Retain successor identifiers and non-finality
   separately. Polish national lookup meets the reviewed 200-distinct-ID gate.

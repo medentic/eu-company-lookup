@@ -14,6 +14,11 @@ let result = client.lookup_company("00123A", "AT").await;
 
 One to six digits and a final letter; preserve leading zeroes. Do not include `FN` or a VAT prefix. This call illustrates input syntax; running it would contact the provider. See [how to serialize either outcome](README.md#serialize-success-and-failure).
 
+All-status search can return historical names alongside a current record. Explicit
+`HISTORIC` alternatives are ignored when a unique nonhistorical exact-ID match
+remains. The adapter follows that source-returned route, without choosing the
+largest revision number. Conflicting current records remain errors.
+
 ## Positive case: matched record
 
 The synthetic detail has source status `ACTIVE` and no legal-form label. “Positive” means the record matched and its lifecycle was resolved, not necessarily that it is active or VAT-registered.

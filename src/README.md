@@ -14,7 +14,7 @@ working source; they do not establish a published version or live coverage.
 | Identity and result contracts | [model](model/README.md) | National identity, common company view, source details, errors and JSON. |
 | VAT verification | [vies](vies/README.md) | VAT syntax, SOAP exchange, matched validity and VAT jurisdiction. |
 | Bulgarian business registration | [bg](bg/README.md) | Commercial Register first, then BULSTAT only after a definitive miss. |
-| Austrian company registration | [at](at/README.md) | Anonymous Firmenbuch active-record search and exact detail identity. |
+| Austrian company registration | [at](at/README.md) | Anonymous Firmenbuch all-status search and exact detail identity. |
 | Belgian company identity | [be](be/README.md) | Anonymous NBB Consult with CBE-derived identity; no CBE absence inference. |
 | Finnish company information | [fi](fi/README.md) | Anonymous PRH YTJ exact business-ID lookup; native contact-address and tax-register roles retained. |
 | Estonian public registry | [ee](ee/README.md) | Exact registry-code match in anonymous RIK portal search. |
