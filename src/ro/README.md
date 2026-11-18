@@ -128,3 +128,10 @@ both identifiers before interpreting `funcţiune` as active in that separate
 source. A BRIS review does not resolve the original ANAF response or authorize a
 general `TRANSFER(SOSIRE)` → active rule. The library has no BRIS transport;
 interactive browser evidence is not an unattended runtime fallback.
+
+ONRC also documents InfoSpecAPI in its
+[published institutional access protocol](https://www.impozitelocale1.ro/wp-content/uploads/2020/07/protocol_ONRC2023.pdf)
+(technical annex 2). That service requires an ONRC-issued username/password and
+method-specific access rights. The example route named `info_gratuite` describes
+free information, not anonymous access. It is not a keyless fallback for this
+adapter; public portal accounts and institutional API permissions are separate.

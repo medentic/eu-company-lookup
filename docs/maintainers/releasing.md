@@ -14,6 +14,11 @@ defines the compatibility contract. This procedure is repository-only.
   [documented Bulgarian limitations](../reference/bulgarian-registry.md#coverage-limitations).
   Synthetic success and address-only reviews do not establish broader live coverage.
 - Verify crates.io name availability and publisher ownership/access.
+- Distinguish parser regressions, unresolved lifecycle, insufficient live coverage
+  and reviewed source limitations. A retained VIES address marked ambiguous can
+  have exact source-preservation replay and a documented coverage exclusion;
+  its presence alone does not reopen an accepted country gate. Verify the
+  accepted sample independently, retaining excluded observations and their reviews.
 
 ## Verification
 
