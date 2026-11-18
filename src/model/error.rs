@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::Serialize;
 
 /// Scope of a provider admission limit.
@@ -17,7 +17,7 @@ pub enum RetryAfter {
     /// Delay in seconds.
     Seconds(u64),
     /// Absolute HTTP date.
-    Date(DateTime<Utc>),
+    Date(Timestamp),
 }
 
 /// Provider-independent failure object returned by every public lookup.

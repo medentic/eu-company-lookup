@@ -1,6 +1,6 @@
 use super::failure::Failure;
 use crate::{LimitScope, VatId};
-use chrono::NaiveDate;
+use jiff::civil::Date;
 use roxmltree::Node;
 
 const NS: &str = "urn:ec.europa.eu:taxud:vies:services:checkVat:types";
@@ -221,7 +221,7 @@ fn valid_date(value: &str) -> bool {
             .chain(&bytes[8..10])
             .all(u8::is_ascii_digit)
         || &value[..4] == "0000"
-        || NaiveDate::parse_from_str(&value[..10], "%Y-%m-%d").is_err()
+        || Date::strptime("%Y-%m-%d", &value[..10]).is_err()
     {
         return false;
     }

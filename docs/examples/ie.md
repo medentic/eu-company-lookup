@@ -2,7 +2,7 @@
 
 [All examples](README.md) · [Main README](../../README.md#country-support) · [Shared fields](../reference/company-result.md)
 
-Source: **CRO open data**. These outputs describe the 4.1 API, including resolved-lifecycle enforcement.
+Source: **CRO open data**. These outputs describe the 5.0 API, including resolved-lifecycle enforcement.
 
 These are **synthetic, offline examples**, not observations of real companies or identifiers to query. JSON blocks show the complete serialized value unless explicitly marked as excerpts. They illustrate the output shape; they do not establish live coverage.
 

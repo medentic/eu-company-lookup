@@ -37,7 +37,7 @@ async fn live_registry_batch() {
             .or_else(|| capture["full"]["body"].as_str())
             .or_else(|| capture["association"]["body"].as_str())
             .or_else(|| capture["association"]["full"]["body"].as_str());
-        let mut row = json!({"id": id, "checkedAt": chrono::Utc::now().to_rfc3339(), "capture": capture, "bodySha256": raw.map(|b|hash(b.as_bytes()))});
+        let mut row = json!({"id": id, "checkedAt": jiff::Timestamp::now().to_string(), "capture": capture, "bodySha256": raw.map(|b|hash(b.as_bytes()))});
         row["captureSha256"] = json!(hash(&serde_json::to_vec(&row["capture"]).unwrap()));
         let failed = result.is_err();
         let outside_current_scope = matches!(

@@ -470,9 +470,9 @@ impl CompanyDetails {
 #[non_exhaustive]
 pub struct AnafDetails {
     /// Requested fiscal date; does not date every identity field historically.
-    pub request_date: chrono::NaiveDate,
+    pub request_date: jiff::civil::Date,
     /// UTC response decoding timestamp.
-    pub checked_at: chrono::DateTime<chrono::Utc>,
+    pub checked_at: jiff::Timestamp,
     /// Source trade-register reference, not independently verified.
     pub trade_register_number: Option<String>,
     /// Source registration date text, not inferred incorporation date.

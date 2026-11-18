@@ -1,12 +1,8 @@
 use super::failure::Failure;
 use super::{VatId, identifiers::FORMATS, soap, transport, validate_vat_syntax};
 use crate::{LimitScope, LookupError, Provider, RetryAfter, VatLookupResult};
-use chrono::Utc;
-use std::{
-    collections::HashMap,
-    sync::Arc,
-    time::{Duration, SystemTime},
-};
+use jiff::Timestamp;
+use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::{
     sync::{Mutex, Semaphore},
     time::Instant,
@@ -331,7 +327,7 @@ impl ViesClient {
             vat_id: vat.clone(),
             valid: decoded.valid,
             request_date: decoded.request_date,
-            checked_at: Utc::now(),
+            checked_at: Timestamp::now(),
             company: decoded.company,
             address: super::address::split(vat.prefix(), decoded.address),
             source: Provider::Vies,
@@ -358,13 +354,14 @@ pub(super) fn parse_retry_after(value: &str) -> Option<RetryAfter> {
     }
     httpdate::parse_http_date(value)
         .ok()
-        .map(|d| RetryAfter::Date(d.into()))
+        .and_then(|d| jiff::Timestamp::try_from(d).ok())
+        .map(RetryAfter::Date)
 }
 fn retry_delay(value: &RetryAfter) -> Duration {
     match value {
         RetryAfter::Seconds(seconds) => Duration::from_secs(*seconds),
-        RetryAfter::Date(date) => SystemTime::from(*date)
-            .duration_since(SystemTime::now())
+        RetryAfter::Date(date) => (date.duration_since(jiff::Timestamp::now()))
+            .try_into()
             .unwrap_or_default(),
     }
 }

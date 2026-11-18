@@ -23,10 +23,10 @@ impl From<LvCompanyLookupResult> for CompanyLookupResult {
             .terminated
             .as_deref()
             .filter(|date| {
-                chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d")
-                    .is_ok_and(|d| d.format("%Y-%m-%d").to_string() == *date)
-                    || chrono::NaiveDateTime::parse_from_str(date, "%Y-%m-%dT%H:%M:%S")
-                        .is_ok_and(|d| d.format("%Y-%m-%dT%H:%M:%S").to_string() == *date)
+                jiff::civil::Date::strptime("%Y-%m-%d", date)
+                    .is_ok_and(|d| d.strftime("%Y-%m-%d").to_string() == *date)
+                    || jiff::civil::DateTime::strptime("%Y-%m-%dT%H:%M:%S", date)
+                        .is_ok_and(|d| d.strftime("%Y-%m-%dT%H:%M:%S").to_string() == *date)
             })
             .map(|_| crate::CompanyStatus::Closed);
         let malformed_date =

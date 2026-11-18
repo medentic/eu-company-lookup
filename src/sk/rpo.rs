@@ -48,8 +48,8 @@ pub(super) fn decode(
     Ok(record)
 }
 fn date(s: &str) -> bool {
-    chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
-        .is_ok_and(|d| d.format("%Y-%m-%d").to_string() == s)
+    jiff::civil::Date::strptime("%Y-%m-%d", s)
+        .is_ok_and(|d| d.strftime("%Y-%m-%d").to_string() == s)
 }
 fn current(value: &SkRpoValue) -> bool {
     value.valid_to.is_none() && value.valid_from.as_deref().is_none_or(date)

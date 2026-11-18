@@ -124,7 +124,7 @@ fn lifecycle(details: &super::PlCompanyDetails) -> Option<crate::CompanyStatus> 
             .is_some_and(|end| {
                 let parse = |s: Option<&str>| {
                     s.filter(|s| valid_date(s))
-                        .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%d.%m.%Y").ok())
+                        .and_then(|s| jiff::civil::Date::strptime("%d.%m.%Y", s).ok())
                 };
                 end.opis_sposobu_zakonczenia_postepowania
                     .as_deref()
@@ -165,7 +165,7 @@ fn lifecycle(details: &super::PlCompanyDetails) -> Option<crate::CompanyStatus> 
         // Compare to the source snapshot, never the replay machine's current date.
         let snapshot = as_of
             .filter(|s| valid_date(s))
-            .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%d.%m.%Y").ok());
+            .and_then(|s| jiff::civil::Date::strptime("%d.%m.%Y", s).ok());
         let mut intervals = Vec::new();
         let mut bad = snapshot.is_none();
         for entry in entries {
@@ -173,12 +173,12 @@ fn lifecycle(details: &super::PlCompanyDetails) -> Option<crate::CompanyStatus> 
                 .data_zawieszenia
                 .as_deref()
                 .filter(|s| valid_date(s))
-                .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%d.%m.%Y").ok());
+                .and_then(|s| jiff::civil::Date::strptime("%d.%m.%Y", s).ok());
             let end = entry
                 .data_wznowienia
                 .as_deref()
                 .filter(|s| valid_date(s))
-                .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%d.%m.%Y").ok());
+                .and_then(|s| jiff::civil::Date::strptime("%d.%m.%Y", s).ok());
             if start.is_none()
                 || (entry.data_wznowienia.is_some() && end.is_none())
                 || end.zip(start).is_some_and(|(e, s)| e < s)
@@ -212,8 +212,8 @@ fn lifecycle(details: &super::PlCompanyDetails) -> Option<crate::CompanyStatus> 
     }
 }
 fn valid_date(date: &str) -> bool {
-    chrono::NaiveDate::parse_from_str(date, "%d.%m.%Y")
-        .is_ok_and(|d| d.format("%d.%m.%Y").to_string() == date)
+    jiff::civil::Date::strptime("%d.%m.%Y", date)
+        .is_ok_and(|d| d.strftime("%d.%m.%Y").to_string() == date)
 }
 fn unended(end: Option<&super::PlProceedingEnd>) -> bool {
     end.is_none_or(|e| {
@@ -229,7 +229,7 @@ fn current_registration(details: &super::PlCompanyDetails) -> bool {
     let h = &details.naglowek;
     let date = |s: Option<&str>| {
         s.filter(|s| valid_date(s))
-            .and_then(|s| chrono::NaiveDate::parse_from_str(s, "%d.%m.%Y").ok())
+            .and_then(|s| jiff::civil::Date::strptime("%d.%m.%Y", s).ok())
     };
     let dates = date(h.data_rejestracji_w_krs.as_deref())
         .zip(date(h.data_ostatniego_wpisu.as_deref()))

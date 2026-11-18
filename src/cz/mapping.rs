@@ -101,8 +101,8 @@ fn lifecycle(v: &CzCompanyLookupResult) -> Option<crate::CompanyStatus> {
     use crate::CompanyStatus::*;
     if let Some(date) = v.ceased_date.as_deref() {
         return Some(
-            if chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d")
-                .is_ok_and(|d| d.format("%Y-%m-%d").to_string() == date)
+            if jiff::civil::Date::strptime("%Y-%m-%d", date)
+                .is_ok_and(|d| d.strftime("%Y-%m-%d").to_string() == date)
             {
                 Closed
             } else {
@@ -113,8 +113,8 @@ fn lifecycle(v: &CzCompanyLookupResult) -> Option<crate::CompanyStatus> {
     if v.ros_closure.as_ref().is_some_and(|r| {
         r.ico == v.tax_id.as_str()
             && r.subject_state == "ZANIKLY"
-            && chrono::NaiveDate::parse_from_str(&r.ceased_date, "%Y-%m-%d")
-                .is_ok_and(|d| d.format("%Y-%m-%d").to_string() == r.ceased_date)
+            && jiff::civil::Date::strptime("%Y-%m-%d", &r.ceased_date)
+                .is_ok_and(|d| d.strftime("%Y-%m-%d").to_string() == r.ceased_date)
     }) {
         return Some(Closed);
     }

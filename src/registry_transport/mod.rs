@@ -1,10 +1,7 @@
 //! Private mechanics for bounded anonymous registry requests.
 //! Identity, accepted HTTP statuses and source decoding remain adapter-owned.
 use crate::{LookupError, Provider, RegistryFailure, RetryAfter, UnavailabilityReason};
-use std::{
-    future::Future,
-    time::{Duration, SystemTime},
-};
+use std::{future::Future, time::Duration};
 use tokio::{sync::Mutex, time::Instant};
 
 pub(crate) struct Bounds {
@@ -166,8 +163,8 @@ pub(crate) async fn execute_in_scope<T>(
             .as_ref()
             .map(|retry| match retry {
                 RetryAfter::Seconds(s) => Duration::from_secs(*s),
-                RetryAfter::Date(d) => SystemTime::from(*d)
-                    .duration_since(SystemTime::now())
+                RetryAfter::Date(d) => (d.duration_since(jiff::Timestamp::now()))
+                    .try_into()
                     .unwrap_or_default(),
             })
             .unwrap_or_default()
@@ -213,7 +210,8 @@ pub(crate) fn retry_after(response: &crate::http_capture::Response) -> Option<Re
             } else {
                 httpdate::parse_http_date(v)
                     .ok()
-                    .map(|d| RetryAfter::Date(d.into()))
+                    .and_then(|d| jiff::Timestamp::try_from(d).ok())
+                    .map(RetryAfter::Date)
             }
         })
 }

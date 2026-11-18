@@ -6,10 +6,10 @@ const REMOVAL: &str = "WYKREŚLENIE Z KRAJOWEGO REJESTRU SĄDOWEGO";
 fn invalid() -> RegistryFailure {
     RegistryFailure::UnexpectedResponse
 }
-fn day(s: &str) -> Result<chrono::NaiveDate, RegistryFailure> {
-    chrono::NaiveDate::parse_from_str(s, "%d.%m.%Y")
+fn day(s: &str) -> Result<jiff::civil::Date, RegistryFailure> {
+    jiff::civil::Date::strptime("%d.%m.%Y", s)
         .ok()
-        .filter(|d| d.format("%d.%m.%Y").to_string() == s)
+        .filter(|d| d.strftime("%d.%m.%Y").to_string() == s)
         .ok_or_else(invalid)
 }
 fn text<'a>(v: &'a Value, key: &str) -> Result<&'a str, RegistryFailure> {

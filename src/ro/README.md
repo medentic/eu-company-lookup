@@ -1,6 +1,8 @@
 # Romanian ANAF adapter
 
-This is a taxpayer/fiscal adapter, not an ONRC extract. The
+This is a taxpayer/fiscal adapter, not an ONRC extract. Default fiscal dates use
+Europe/Bucharest with Jiff and bundled IANA timezone rules, independently of the
+host clock timezone. Explicit dates use the exported `Date` type. The
 [consumer reference](../../docs/reference/romanian-registry.md) defines dates and
 limitations. [client.rs](client.rs) uses the private shared registry transport
 for bounds, admission, cooldowns and HTTP/body handling, and owns the configured

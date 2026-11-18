@@ -769,7 +769,7 @@ fn registry_json_contract_is_stable_and_entry_year_is_derived() {
     else {
         panic!("wrong source")
     };
-    details.identifier_entry_date = chrono::NaiveDate::from_ymd_opt(2024, 2, 29);
+    details.identifier_entry_date = jiff::civil::Date::new(2024, 2, 29).ok();
     let v = serde_json::to_value(&record).unwrap();
     fn keys(value: &Value, expected: &[&str]) {
         let actual: std::collections::BTreeSet<_> = value

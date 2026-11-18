@@ -1,6 +1,14 @@
 # Changelog
 
-## 4.1.0
+## 5.0.0
+
+- Replace unmaintained `chrono` and `chrono-tz` with Jiff 1.x, addressing
+  RUSTSEC-2026-0543 and RUSTSEC-2026-0555. This is a breaking Rust API change:
+  exported dates, local datetimes and UTC instants now use the re-exported
+  `Date`, `CivilDateTime` and `Timestamp` types. JSON fields retain ISO date and
+  RFC 3339 string representations. See the [migration guide](docs/reference/api-stability.md#datetime-types-in-50).
+- Bundle IANA timezone data so Sofia end-of-day and Bucharest fiscal-date
+  calculations do not depend on the host timezone database.
 
 - Add national lookup for Austria, Belgium, Czechia, Estonia, Finland, France,
   Greece, Iceland, Latvia, Lithuania, Poland and Slovakia. Implementation and

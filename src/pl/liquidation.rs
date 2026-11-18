@@ -1,6 +1,6 @@
 //! Narrow reconciliation of registered liquidation descriptions (KSH Arts. 273–276).
 use super::{PlCompanyDetails, PlLiquidation};
-use chrono::NaiveDate;
+use jiff::civil::Date;
 
 fn words(text: &str) -> String {
     text.split_whitespace()
@@ -8,12 +8,12 @@ fn words(text: &str) -> String {
         .join(" ")
         .to_uppercase()
 }
-fn date(text: &str) -> Option<NaiveDate> {
-    NaiveDate::parse_from_str(text, "%d.%m.%Y")
+fn date(text: &str) -> Option<Date> {
+    Date::strptime("%d.%m.%Y", text)
         .ok()
-        .filter(|d| d.format("%d.%m.%Y").to_string() == text)
+        .filter(|d| d.strftime("%d.%m.%Y").to_string() == text)
 }
-fn dates(text: &str) -> Vec<NaiveDate> {
+fn dates(text: &str) -> Vec<Date> {
     text.char_indices()
         .filter_map(|(i, _)| text.get(i..i + 10).and_then(date))
         .collect()

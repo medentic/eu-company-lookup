@@ -80,10 +80,10 @@ pub(super) fn decode(
     Ok(data)
 }
 fn date(value: &str) -> bool {
-    chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d")
-        .is_ok_and(|d| d.format("%Y-%m-%d").to_string() == value)
-        || chrono::NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S")
-            .is_ok_and(|d| d.format("%Y-%m-%dT%H:%M:%S").to_string() == value)
+    jiff::civil::Date::strptime("%Y-%m-%d", value)
+        .is_ok_and(|d| d.strftime("%Y-%m-%d").to_string() == value)
+        || jiff::civil::DateTime::strptime("%Y-%m-%dT%H:%M:%S", value)
+            .is_ok_and(|d| d.strftime("%Y-%m-%dT%H:%M:%S").to_string() == value)
 }
 pub(super) fn status(details: &LvCompanyDetails) -> Option<CompanyStatus> {
     use CompanyStatus::*;

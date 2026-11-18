@@ -1,6 +1,6 @@
 use super::{RoBusinessId, RoCompanyLookupResult, RoRegistryAddress, RoTaxStatus};
 use crate::{Provider, RegistryFailure};
-use chrono::{NaiveDate, Utc};
+use jiff::{Timestamp, civil::Date};
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
@@ -96,7 +96,7 @@ fn address(
 pub(super) fn decode(
     body: &[u8],
     id: &RoBusinessId,
-    date: NaiveDate,
+    date: Date,
 ) -> Result<Option<RoCompanyLookupResult>, RegistryFailure> {
     let response: Envelope =
         serde_json::from_slice(body).map_err(|_| RegistryFailure::UnexpectedResponse)?;
@@ -144,7 +144,7 @@ pub(super) fn decode(
         tax_id: id.clone(),
         source: Provider::RomanianAnaf,
         request_date: date,
-        checked_at: Utc::now(),
+        checked_at: Timestamp::now(),
         company_name: text(general, "denumire")?.ok_or(RegistryFailure::UnexpectedResponse)?,
         trade_register_number: text(general, "nrRegCom")?,
         status,

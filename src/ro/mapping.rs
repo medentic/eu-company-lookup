@@ -91,8 +91,8 @@ pub(super) fn lifecycle(value: &str) -> crate::CompanyStatus {
             return status;
         }
         if let Some(date) = value.strip_prefix(&format!("{label} DIN DATA "))
-            && chrono::NaiveDate::parse_from_str(date, "%d.%m.%Y")
-                .is_ok_and(|d| d.format("%d.%m.%Y").to_string() == date)
+            && jiff::civil::Date::strptime("%d.%m.%Y", date)
+                .is_ok_and(|d| d.strftime("%d.%m.%Y").to_string() == date)
         {
             return status;
         }

@@ -187,7 +187,7 @@ pub struct Run {
 pub struct Observation {
     pub schema_version: u32,
     pub vat_id: VatId,
-    pub checked_at: chrono::DateTime<chrono::Utc>,
+    pub checked_at: jiff::Timestamp,
     #[serde(flatten)]
     pub run: Run,
 }

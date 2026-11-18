@@ -2,7 +2,7 @@
 
 [All examples](README.md) · [Main README](../../README.md#examples) · [VIES reference](../reference/vies.md)
 
-VIES VAT lookup supports all 28 VAT prefixes. These examples describe the 4.1 API, including local checksum preflight. They use synthetic SOAP responses, not live VAT observations or identifiers to query.
+VIES VAT lookup supports all 28 VAT prefixes. These examples describe the 5.0 API, including local checksum preflight. They use synthetic SOAP responses, not live VAT observations or identifiers to query.
 
 ## Input
 

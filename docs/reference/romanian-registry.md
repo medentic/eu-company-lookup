@@ -25,7 +25,7 @@ an integer for transport and matches the response's numeric identity; the result
 retains the requested identifier spelling. This conversion does not change the
 string representation returned to consumers.
 
-The default lookup uses today's date in Europe/Bucharest. `RoRegistryClient::lookup_at` accepts an explicit `chrono::NaiveDate`; future
+The default lookup uses today's date in Europe/Bucharest. `RoRegistryClient::lookup_at` accepts an explicit `eu_company_lookup::Date`; future
 dates are rejected locally. Historical fiscal status is not a historical extract
 of every company detail. Both the requested date and UTC observation time are
 included in the result.

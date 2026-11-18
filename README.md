@@ -11,7 +11,7 @@ Async Rust lookups for **EU VAT numbers (VIES)** and national company or taxpaye
 information. Returns typed company details, source-preserving addresses and a
 shared error object with stable IDs.
 
-Version **4.1** provides national lookup for **Austria, Belgium, Bulgaria,
+Version **5.0** provides national lookup for **Austria, Belgium, Bulgaria,
 Czechia, Estonia, Finland, France, Greece, Iceland, Ireland, Latvia, Lithuania,
 Norway, Poland, Romania and Slovakia**, plus all 28 supported VIES VAT prefixes.
 Implementation and reviewed live coverage are separate; see the
@@ -34,13 +34,15 @@ Version **4** adds Irish and Norwegian national lookup, one common `LookupError`
 object and opt-in raw HTTP diagnostics. The shared company contract and automatic
 BG VIES verification remain available. See [migration from 3.x](docs/reference/errors.md#migrating-from-3x)
 or [migration from 2.x](docs/reference/api-stability.md#migrating-from-2x)
-when upgrading an existing integration. Version 4.1 additionally enforces resolved
+when upgrading an existing integration. Version 5.0 additionally enforces resolved
 company lifecycle and supported VAT checksums; see
 [migration from 4.0](docs/reference/api-stability.md#migrating-from-40).
+Version 5.0 replaces Chrono with Jiff datetime types; see the
+[datetime migration](docs/reference/api-stability.md#datetime-types-in-50).
 
 ```toml
 [dependencies]
-eu-company-lookup = "4.1"
+eu-company-lookup = "5.0"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "time"] }
 serde_json = "1" # To print the JSON shown below.
 ```
@@ -66,7 +68,7 @@ proceedings have explicit status values; other optional fields remain nullable.
 
 ## Examples
 
-The following lookup examples use the 4.1 API. Put either Rust
+The following lookup examples use the 5.0 API. Put either Rust
 program in `src/main.rs` with the dependencies above. Running it contacts live
 providers; documentation tests compile `no_run` examples without making requests.
 Explore [complete output examples](docs/examples/README.md) for synthetic positive,
@@ -175,7 +177,7 @@ for fallback, field preservation and client configuration.
 
 ## Country support
 
-The table describes the 4.1 source distribution. “Implemented” does not claim
+The table describes the 5.0 source distribution. “Implemented” does not claim
 complete live verification. “Pending” means no national lookup is implemented. VIES support
 is separate and does not imply a national registry adapter.
 The table covers all 30 EEA countries, plus Northern Ireland. A dash in the VIES

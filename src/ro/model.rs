@@ -1,6 +1,6 @@
 use super::RoBusinessId;
 use crate::{CompanyStatus, Provider};
-use chrono::{DateTime, NaiveDate, Utc};
+use jiff::{Timestamp, civil::Date};
 use serde::Serialize;
 
 /// ANAF taxpayer observation, distinct from a VIES validity check or ONRC extract.
@@ -13,9 +13,9 @@ pub struct RoCompanyLookupResult {
     /// ANAF, the source of this observation.
     pub source: Provider,
     /// Date for which the fiscal status was requested and matched.
-    pub request_date: NaiveDate,
+    pub request_date: Date,
     /// UTC time the response was decoded.
-    pub checked_at: DateTime<Utc>,
+    pub checked_at: Timestamp,
     /// Source company name, without translation.
     pub company_name: String,
     /// Trade register number reported by ANAF; not independently checked at ONRC.

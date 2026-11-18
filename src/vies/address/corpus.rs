@@ -36,7 +36,7 @@ struct Review {
     vat_id: String,
     status: ReviewStatus,
     note: String,
-    reviewed_at: chrono::NaiveDate,
+    reviewed_at: jiff::civil::Date,
     review_version: u32,
     normalization_version: String,
     expected_sha256: String,
@@ -161,7 +161,7 @@ fn report(mut rows: Vec<Value>, mode: &str) {
     let total = rows.len();
     let ambiguous = rows.iter().filter(|r| r["status"] == "ambiguous").count();
     let passed = rows.iter().filter(|r| r["status"] == "passed").count();
-    let report = json!({"mode": mode, "checkedAt": chrono::Utc::now(), "total": total,
+    let report = json!({"mode": mode, "checkedAt": jiff::Timestamp::now(), "total": total,
         "passed": passed, "ambiguous": ambiguous, "parserMatched": passed + ambiguous, "notPassed": total - passed,
         "passPercentage": if total == 0 { 0.0 } else { passed as f64 * 100.0 / total as f64 },
         "cases": rows});
@@ -227,7 +227,7 @@ async fn live_corpus() {
             writeln!(
                 file,
                 "{}",
-                json!({"checkedAt": chrono::Utc::now(), "case": row})
+                json!({"checkedAt": jiff::Timestamp::now(), "case": row})
             )
             .unwrap();
         }

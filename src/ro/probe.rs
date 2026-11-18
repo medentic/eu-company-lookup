@@ -1,7 +1,7 @@
 //! Explicitly selected local-only observations; never part of the ordinary tests.
 use super::*;
 use crate::LookupError;
-use chrono::{NaiveDate, Utc};
+use jiff::{Timestamp, civil::Date};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{collections::HashSet, io::Write, path::PathBuf, time::Duration};
@@ -15,7 +15,7 @@ async fn live_anaf_batch() {
     let ids: Vec<String> = serde_json::from_value(manifest["ids"].clone()).unwrap();
     assert!(!ids.is_empty() && ids.len() <= 100);
     assert_eq!(ids.iter().collect::<HashSet<_>>().len(), ids.len());
-    let date: NaiveDate = manifest["requestDate"].as_str().unwrap().parse().unwrap();
+    let date: Date = manifest["requestDate"].as_str().unwrap().parse().unwrap();
     let journal = folder.join("observations.jsonl");
     let prior = std::fs::read_to_string(&journal).unwrap_or_else(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
@@ -51,11 +51,14 @@ async fn live_anaf_batch() {
             "journal budget exceeded"
         );
         if let Some(row) = &last {
-            let completed =
-                chrono::DateTime::parse_from_rfc3339(row["completedAt"].as_str().unwrap()).unwrap();
+            let completed = row["completedAt"]
+                .as_str()
+                .unwrap()
+                .parse::<jiff::Timestamp>()
+                .unwrap();
             let gap = if row.get("error").is_some() { 60 } else { 5 };
-            let until = completed + chrono::Duration::seconds(gap);
-            if let Ok(wait) = (until.with_timezone(&Utc) - Utc::now()).to_std() {
+            let until = completed + jiff::SignedDuration::from_secs(gap);
+            if let Ok(wait) = (until - Timestamp::now()).try_into() {
                 tokio::time::sleep(wait).await;
             }
         }
@@ -64,7 +67,7 @@ async fn live_anaf_batch() {
         let result = client.lookup_at(id, date).await;
         let capture = client.take_capture();
         let deferred = capture["retryAfter"].as_str().is_some();
-        let mut row = json!({"schemaVersion":1,"taxId":id,"requestDate":date,"completedAt":Utc::now(),"durationMs":start.elapsed().as_millis(),"transport":capture});
+        let mut row = json!({"schemaVersion":1,"taxId":id,"requestDate":date,"completedAt":Timestamp::now(),"durationMs":start.elapsed().as_millis(),"transport":capture});
         if let Some(body) = row["transport"]["body"].as_str() {
             row["bodySha256"] = json!(format!("{:x}", Sha256::digest(body.as_bytes())));
         }

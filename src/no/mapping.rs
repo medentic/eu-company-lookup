@@ -50,8 +50,8 @@ fn lifecycle(details: &super::NoCompanyDetails) -> Option<crate::CompanyStatus> 
         || details.under_tvangsavvikling_eller_tvangsopplosning == Some(true);
     if let Some(date) = details.slettedato.as_deref() {
         return Some(
-            if chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d")
-                .is_ok_and(|d| d.format("%Y-%m-%d").to_string() == date)
+            if jiff::civil::Date::strptime("%Y-%m-%d", date)
+                .is_ok_and(|d| d.strftime("%Y-%m-%d").to_string() == date)
                 && !bankrupt
                 && !liquidating
                 && restructuring.is_none()
@@ -94,6 +94,6 @@ fn lifecycle(details: &super::NoCompanyDetails) -> Option<crate::CompanyStatus> 
 }
 
 fn valid_date(date: &str) -> bool {
-    chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d")
-        .is_ok_and(|d| d.format("%Y-%m-%d").to_string() == date)
+    jiff::civil::Date::strptime("%Y-%m-%d", date)
+        .is_ok_and(|d| d.strftime("%Y-%m-%d").to_string() == date)
 }

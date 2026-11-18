@@ -1,12 +1,12 @@
 use super::*;
 use crate::{LookupError, Provider, RegistryFailure, RetryAfter};
-use chrono::NaiveDate;
+use jiff::civil::Date;
 use serde_json::{Value, json};
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 
-fn date() -> NaiveDate {
-    NaiveDate::from_ymd_opt(2025, 2, 14).unwrap()
+fn date() -> Date {
+    Date::new(2025, 2, 14).unwrap()
 }
 fn fixture() -> Value {
     json!({"cod":200,"message":"SUCCESS","found":[{
@@ -460,9 +460,10 @@ fn shared_company_preserves_fiscal_semantics_and_source_components() {
 #[tokio::test]
 async fn shared_dispatch_uses_anaf_and_preserves_negative_observations() {
     for negative in [false, true] {
-        let today = chrono::Utc::now()
-            .with_timezone(&chrono_tz::Europe::Bucharest)
-            .date_naive();
+        let today = jiff::Timestamp::now()
+            .in_tz("Europe/Bucharest")
+            .expect("bundled Bucharest timezone")
+            .date();
         let mut body = fixture();
         body["found"][0]["date_generale"]["data"] = json!(today.to_string());
         if negative {
@@ -818,4 +819,21 @@ fn documented_company_output_matches_synthetic_source() {
     let mut native = decode(body).unwrap().unwrap();
     native.checked_at = "2025-02-14T12:00:00Z".parse().unwrap();
     crate::test_support::assert_documented_company("ro", native);
+}
+
+#[test]
+fn fiscal_day_uses_bucharest_midnight_across_dst_changes() {
+    for (instant, expected) in [
+        ("2026-01-01T21:59:59Z", "2026-01-01"),
+        ("2026-01-01T22:00:00Z", "2026-01-02"),
+        ("2026-03-29T20:59:59Z", "2026-03-29"),
+        ("2026-03-29T21:00:00Z", "2026-03-30"),
+        ("2026-10-25T21:59:59Z", "2026-10-25"),
+        ("2026-10-25T22:00:00Z", "2026-10-26"),
+    ] {
+        assert_eq!(
+            client::fiscal_date_at(instant.parse().unwrap()).to_string(),
+            expected
+        );
+    }
 }

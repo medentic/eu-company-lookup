@@ -29,17 +29,17 @@ async fn live_bulstat_batch() {
         let state = read(&state_path);
         for key in ["nextStartAt", "cooldownUntil"] {
             if let Some(until) = state[key].as_str() {
-                let until = until.parse::<chrono::DateTime<chrono::Utc>>().unwrap();
-                if let Ok(wait) = (until - chrono::Utc::now()).to_std() {
+                let until = until.parse::<jiff::Timestamp>().unwrap();
+                if let Ok(wait) = (until - jiff::Timestamp::now()).try_into() {
                     tokio::time::sleep(wait).await;
                 }
             }
         }
-        let start = chrono::Utc::now();
+        let start = jiff::Timestamp::now();
         // Reserve the complete deadline plus spacing, including after interruption.
         write_json(
             &state_path,
-            &json!({"nextStartAt":start+chrono::Duration::seconds(60),"cooldownUntil":null}),
+            &json!({"nextStartAt":start+jiff::SignedDuration::from_secs(60),"cooldownUntil":null}),
         );
         client.begin_capture();
         let timer = Instant::now();
@@ -75,7 +75,7 @@ async fn live_bulstat_batch() {
                 })
             );
         let cooldown = if failed && outcome != "unresolvedData" {
-            let minimum = chrono::Utc::now() + chrono::Duration::seconds(60);
+            let minimum = jiff::Timestamp::now() + jiff::SignedDuration::from_secs(60);
             let retry = match &result {
                 Err(LookupError {
                     kind:
@@ -91,7 +91,8 @@ async fn live_bulstat_batch() {
             };
             Some(match retry {
                 Some(RetryAfter::Seconds(n)) => minimum.max(
-                    chrono::Utc::now() + chrono::Duration::seconds((*n).min(315_360_000) as i64),
+                    jiff::Timestamp::now()
+                        + jiff::SignedDuration::from_secs((*n).min(315_360_000) as i64),
                 ),
                 Some(RetryAfter::Date(date)) => minimum.max(*date),
                 None => minimum,
@@ -105,7 +106,7 @@ async fn live_bulstat_batch() {
         );
         write_json(
             &state_path,
-            &json!({"nextStartAt":chrono::Utc::now()+chrono::Duration::seconds(30),"cooldownUntil":cooldown}),
+            &json!({"nextStartAt":jiff::Timestamp::now()+jiff::SignedDuration::from_secs(30),"cooldownUntil":cooldown}),
         );
         eprintln!("{id}: {outcome} ({elapsed} ms)");
         if failed {
@@ -196,7 +197,7 @@ fn replay_bulstat_batch() {
     assert!(!rows.is_empty());
     write_json(
         &dir.join("replay.json"),
-        &json!({"schemaVersion":1,"generatedAt":chrono::Utc::now(),"binarySha256":source_sha(&fs::read(std::env::current_exe().unwrap()).unwrap()),"rows":rows}),
+        &json!({"schemaVersion":1,"generatedAt":jiff::Timestamp::now(),"binarySha256":source_sha(&fs::read(std::env::current_exe().unwrap()).unwrap()),"rows":rows}),
     );
     assert!(
         rows.iter().all(|r| r["error"].is_null()

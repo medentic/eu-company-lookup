@@ -1,6 +1,6 @@
 [package]
 name = "eu-company-lookup"
-version = "4.1.0"
+version = "5.0.0"
 edition = "2024"
 rust-version = "1.98.1"
 description = "Typed EU VAT verification and national company/taxpayer lookup with explicit provider capabilities"
@@ -34,8 +34,7 @@ include = [
 
 [dependencies]
 base64 = "0.23.1"
-chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
-chrono-tz = "0.10"
+jiff = { version = "1", default-features = false, features = ["std", "serde", "tzdb-bundle-always"] }
 httpdate = "1"
 regex-lite = "0.1"
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls"] }

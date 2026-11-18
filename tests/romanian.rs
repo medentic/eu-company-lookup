@@ -46,7 +46,7 @@ async fn invalid_input_fails_before_network() {
         })
     ));
     let registry = RoRegistryClient::new().unwrap();
-    let future = registry.lookup_at("1234", chrono::NaiveDate::from_ymd_opt(9999, 1, 1).unwrap());
+    let future = registry.lookup_at("1234", eu_company_lookup::Date::new(9999, 1, 1).unwrap());
     fn send<T: Send>(_: &T) {}
     send(&future);
     assert!(matches!(

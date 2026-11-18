@@ -21,7 +21,7 @@ Do not introduce universal prefix inference or undocumented address substitution
 
 ## Scope and invariants
 
-- Version 4.1 source covers VIES and the national adapters in the README support
+- Version 5.0 source covers VIES and the national adapters in the README support
   table. Implementation, reviewed live coverage and publication are separate gates.
 - Preserve full identifiers and leading zeroes. Syntax is not checksum or registration.
 - `valid: false` requires a matched negative VIES response. `NotFound` requires both

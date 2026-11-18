@@ -18,6 +18,11 @@ mod pl;
 mod sk;
 pub use capabilities::capabilities;
 pub use client::{Client, ClientBuilder};
+/// Calendar dates, local datetimes and UTC instants used by the public API.
+pub use jiff::{
+    Timestamp,
+    civil::{Date, DateTime as CivilDateTime},
+};
 mod http_capture;
 pub mod locations;
 mod model;

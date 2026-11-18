@@ -20,7 +20,7 @@ remain registry-only. See [enrichment semantics](../../docs/reference/bulgarian-
 
 The configured Commercial Register endpoint is on `portal.registryagency.bg`
 under `/CR/api/Deeds/`. The request uses the complete identifier and a Sofia
-end-of-day `entryDate`. A successful, empty HTTP 200 body with permitted content
+end-of-day `entryDate`, calculated with Jiff and bundled IANA timezone rules. A successful, empty HTTP 200 body with permitted content
 type is the recognized miss. Whitespace, JSON null, HTTP 404, malformed records
 and service failures do not trigger fallback.
 
@@ -105,3 +105,6 @@ fallback. No numerical national-registry quota is established by these defaults.
 
 See [shared pacing and evidence rules](../README.md#registry-pacing-and-evidence)
 for clone scope, cooldowns, error classification and complete-batch replay.
+
+Typed local announcement dates use Jiff civil datetimes. Unsupported leap-second
+values remain unparsed rather than being silently changed to a different second.

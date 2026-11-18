@@ -37,8 +37,8 @@ fn lifecycle(text: Option<&str>) -> Option<crate::CompanyStatus> {
     let (registered, notice) = text.split_once('(')?;
     let closed = notice.strip_prefix("Félag afskráð ")?.strip_suffix(')');
     let valid = |s: &str| {
-        chrono::NaiveDate::parse_from_str(s, "%d.%m.%Y")
-            .is_ok_and(|d| d.format("%d.%m.%Y").to_string() == s)
+        jiff::civil::Date::strptime("%d.%m.%Y", s)
+            .is_ok_and(|d| d.strftime("%d.%m.%Y").to_string() == s)
     };
     Some(if valid(registered.trim()) && closed.is_some_and(valid) {
         crate::CompanyStatus::Closed

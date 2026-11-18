@@ -4,7 +4,7 @@ use crate::{
     RegistryDocument, RegistryFailure, RegistryMoney, RegistryPerson,
 };
 use crate::{CommercialRegisterDetails, CompanyStatus, RegistryDocumentType, RegistryRole};
-use chrono::NaiveDateTime;
+use jiff::civil::DateTime as CivilDateTime;
 use scraper::{Html, Selector};
 use serde::Deserialize;
 
@@ -76,9 +76,17 @@ fn text(f: Option<&Field>) -> Option<String> {
         .map(html::text)
         .filter(|s| !s.is_empty())
 }
-fn date(f: Option<&Field>) -> Option<NaiveDateTime> {
+// Jiff does not represent leap seconds. Do not silently clamp a source :60 to :59.
+fn local_datetime(format: &str, raw: &str) -> Option<CivilDateTime> {
+    if raw.contains(":60") {
+        return None;
+    }
+    CivilDateTime::strptime(format, raw).ok()
+}
+
+fn date(f: Option<&Field>) -> Option<CivilDateTime> {
     f.and_then(|f| f.field_entry_date.as_deref())
-        .and_then(|s| NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.f").ok())
+        .and_then(|s| local_datetime("%Y-%m-%dT%H:%M:%S%.f", s))
 }
 // Explicit corporate-holder IDs are metadata, not part of the holder name.
 // Accept only the observed label with a complete business-code syntax.
@@ -214,8 +222,7 @@ fn documents(f: Option<&Field>) -> Option<Vec<RegistryDocument>> {
                 if !dates.is_empty() {
                     if dates.len() == 1 {
                         announced_at_local =
-                            NaiveDateTime::parse_from_str(dates[0].trim(), "%d.%m.%Y г. %H:%M:%S")
-                                .ok();
+                            local_datetime("%d.%m.%Y г. %H:%M:%S", dates[0].trim());
                     }
                     break;
                 }
@@ -347,4 +354,14 @@ pub(super) fn decode(
             },
         )),
     })
+}
+
+#[test]
+fn local_source_times_preserve_fractional_seconds_and_reject_leap_second_clamping() {
+    let fmt = "%Y-%m-%dT%H:%M:%S%.f";
+    let parsed = local_datetime(fmt, "2024-02-29T12:34:56.123456789").unwrap();
+    assert_eq!(parsed.to_string(), "2024-02-29T12:34:56.123456789");
+    assert!(local_datetime(fmt, "2023-02-29T12:34:56").is_none());
+    assert!(local_datetime(fmt, "2024-12-31T23:59:60").is_none());
+    assert!(local_datetime("%d.%m.%Y г. %H:%M:%S", "31.12.2024 г. 23:59:60").is_none());
 }

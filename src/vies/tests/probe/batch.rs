@@ -28,24 +28,23 @@ fn journal(text: &str, ids: &[crate::VatId]) -> Vec<Observation> {
         .collect()
 }
 
-fn next_allowed(row: &Observation) -> Result<chrono::DateTime<chrono::Utc>, &'static str> {
+fn next_allowed(row: &Observation) -> Result<jiff::Timestamp, &'static str> {
     let at = row.checked_at;
     let last = row.last();
-    let mut until = at + chrono::Duration::seconds(if last.success() { 5 } else { 60 });
+    let mut until = at + jiff::SignedDuration::from_secs(if last.success() { 5 } else { 60 });
     if let Some(header) = last.retry_after.as_deref() {
         let retry = if let Ok(seconds) = header.parse::<i64>() {
             if seconds < 0 {
                 return Err("negative Retry-After");
             }
-            at.checked_add_signed(
-                chrono::Duration::try_seconds(seconds).ok_or("Retry-After overflow")?,
-            )
-            .ok_or("Retry-After overflow")?
+            at.checked_add(jiff::SignedDuration::from_secs(seconds))
+                .map_err(|_| "Retry-After overflow")?
         } else {
-            chrono::DateTime::<chrono::Utc>::from(
+            jiff::Timestamp::try_from(
                 httpdate::parse_http_date(header)
                     .map_err(|_| "invalid Retry-After; manual review required")?,
             )
+            .map_err(|_| "Retry-After overflow")?
         };
         until = until.max(retry);
     }
@@ -115,19 +114,19 @@ async fn live_batch(budget: Duration) {
         if let Some(last) = rows.last() {
             let until = next_allowed(last).expect("provider cooldown requires review");
             // A restarted process cannot bypass the previous lookup's cooldown.
-            if let Ok(wait) = (until - chrono::Utc::now()).to_std() {
+            if let Ok(wait) = (until - jiff::Timestamp::now()).try_into() {
                 sleep(wait).await;
             }
         }
         let result = Observation {
             schema_version: SCHEMA_VERSION,
             vat_id: vat.clone(),
-            checked_at: chrono::Utc::now(),
+            checked_at: jiff::Timestamp::now(),
             run: experiment_with_budget(|| request(&http, vat), budget).await,
         };
         // Timestamp the completed lookup for cooldown accounting.
         let result = Observation {
-            checked_at: chrono::Utc::now(),
+            checked_at: jiff::Timestamp::now(),
             ..result
         };
         writeln!(log, "{}", serde_json::to_string(&result).unwrap()).unwrap();
@@ -190,15 +189,22 @@ fn resume_preserves_cooldown_and_retry_after() {
         },
     };
     assert_eq!(
-        next_allowed(&row).unwrap().to_rfc3339(),
-        "2026-11-13T10:02:00+00:00"
+        next_allowed(&row).unwrap().to_string(),
+        "2026-11-13T10:02:00Z"
     );
     let mut row = row;
     row.run.attempts[0].retry_after = Some("Fri, 13 Nov 2026 10:03:00 GMT".into());
     assert_eq!(
-        next_allowed(&row).unwrap().to_rfc3339(),
-        "2026-11-13T10:03:00+00:00"
+        next_allowed(&row).unwrap().to_string(),
+        "2026-11-13T10:03:00Z"
     );
-    row.run.attempts[0].retry_after = Some("garbage".into());
-    assert!(next_allowed(&row).is_err());
+    for invalid in [
+        "garbage",
+        "-1",
+        "9223372036854775807",
+        "18446744073709551615",
+    ] {
+        row.run.attempts[0].retry_after = Some(invalid.into());
+        assert!(next_allowed(&row).is_err(), "{invalid}");
+    }
 }

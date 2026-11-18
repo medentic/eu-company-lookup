@@ -37,8 +37,8 @@ impl From<FiCompanyLookupResult> for CompanyLookupResult {
                 .as_deref()
                 .filter(|date| !date.trim().is_empty())
                 .is_some_and(|date| {
-                    !chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d")
-                        .is_ok_and(|d| d.format("%Y-%m-%d").to_string() == date)
+                    !jiff::civil::Date::strptime("%Y-%m-%d", date)
+                        .is_ok_and(|d| d.strftime("%Y-%m-%d").to_string() == date)
                 })
         }) {
             status = Some(crate::CompanyStatus::Unknown);

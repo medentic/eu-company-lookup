@@ -32,7 +32,7 @@ async fn live_ares_batch() {
         let result = client.lookup_company(&id, "CZ").await;
         let capture = native.take_capture();
         let raw = capture["body"].as_str();
-        let mut row = json!({"id": id, "checkedAt": chrono::Utc::now().to_rfc3339(), "capture": capture, "bodySha256": raw.map(|b|hash(b.as_bytes()))});
+        let mut row = json!({"id": id, "checkedAt": jiff::Timestamp::now().to_string(), "capture": capture, "bodySha256": raw.map(|b|hash(b.as_bytes()))});
         row["captureSha256"] = json!(hash(&serde_json::to_vec(&row["capture"]).unwrap()));
         let failed = result.is_err();
         match result {

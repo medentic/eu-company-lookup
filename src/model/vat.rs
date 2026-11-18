@@ -1,6 +1,6 @@
 use super::Provider;
 use crate::VatId;
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::Serialize;
 
 /// Original VIES address and conservative extracted components.
@@ -35,7 +35,7 @@ pub struct VatLookupResult {
     #[serde(skip)]
     pub(crate) request_date: String,
     #[serde(skip)]
-    pub(crate) checked_at: DateTime<Utc>,
+    pub(crate) checked_at: Timestamp,
 }
 
 impl std::ops::Deref for VatAddress {

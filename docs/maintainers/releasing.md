@@ -37,7 +37,8 @@ cargo publish --locked --dry-run
 ```
 
 Audit the locked dependencies against the current RustSec advisory database using
-`cargo audit`; resolve vulnerabilities and record any informational warnings.
+`cargo audit --deny unmaintained`; resolve vulnerabilities and unmaintained
+dependencies before publication, and review any other informational warnings.
 Compile a separate consumer against the extracted package with a fresh lockfile
 to check dependency resolution independently of this repository.
 

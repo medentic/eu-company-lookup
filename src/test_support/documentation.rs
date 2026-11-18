@@ -71,7 +71,7 @@ async fn documented_registry_failures_match_public_clients() {
             "pl" => lookup!(PlRegistryClient),
             "sk" => lookup!(SkRegistryClient),
             "ro" => RoRegistryClient::for_test(endpoint, Default::default())
-                .lookup_at(id, chrono::NaiveDate::from_ymd_opt(2025, 2, 14).unwrap())
+                .lookup_at(id, jiff::civil::Date::new(2025, 2, 14).unwrap())
                 .await
                 .unwrap_err(),
             _ => unreachable!(),

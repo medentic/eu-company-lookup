@@ -8,29 +8,29 @@ Explore complete success and error JSON plus provider-specific edge cases. There
 
 | Country | Company country code | National source | Availability |
 | --- | --- | --- | --- |
-| [Austria](at.md) | `AT` | Firmenbuch | 4.1 |
-| [Belgium](be.md) | `BE` | NBB Consult | 4.1 |
-| [Bulgaria](bg.md) | `BG` | Commercial Register / BULSTAT | 4.1 |
-| [Czechia](cz.md) | `CZ` | ARES | 4.1 |
-| [Estonia](ee.md) | `EE` | RIK public search | 4.1 |
-| [Finland](fi.md) | `FI` | PRH YTJ | 4.1 |
-| [France](fr.md) | `FR` | API Recherche Entreprises | 4.1 |
-| [Greece](gr.md) | `GR` | GEMI | 4.1 |
-| [Ireland](ie.md) | `IE` | CRO open data | 4.1 |
-| [Iceland](is.md) | `IS` | Skatturinn company pages | 4.1 |
-| [Lithuania](lt.md) | `LT` | JAR open data | 4.1 |
-| [Latvia](lv.md) | `LV` | Registry open data | 4.1 |
-| [Norway](no.md) | `NO` | Enhetsregisteret | 4.1 |
-| [Poland](pl.md) | `PL` | KRS current extracts and confirmed removals | 4.1 |
-| [Romania](ro.md) | `RO` | ANAF taxpayer lookup | 4.1 |
-| [Slovakia](sk.md) | `SK` | RÚZ accounting entities | 4.1 |
+| [Austria](at.md) | `AT` | Firmenbuch | 5.0 |
+| [Belgium](be.md) | `BE` | NBB Consult | 5.0 |
+| [Bulgaria](bg.md) | `BG` | Commercial Register / BULSTAT | 5.0 |
+| [Czechia](cz.md) | `CZ` | ARES | 5.0 |
+| [Estonia](ee.md) | `EE` | RIK public search | 5.0 |
+| [Finland](fi.md) | `FI` | PRH YTJ | 5.0 |
+| [France](fr.md) | `FR` | API Recherche Entreprises | 5.0 |
+| [Greece](gr.md) | `GR` | GEMI | 5.0 |
+| [Ireland](ie.md) | `IE` | CRO open data | 5.0 |
+| [Iceland](is.md) | `IS` | Skatturinn company pages | 5.0 |
+| [Lithuania](lt.md) | `LT` | JAR open data | 5.0 |
+| [Latvia](lv.md) | `LV` | Registry open data | 5.0 |
+| [Norway](no.md) | `NO` | Enhetsregisteret | 5.0 |
+| [Poland](pl.md) | `PL` | KRS current extracts and confirmed removals | 5.0 |
+| [Romania](ro.md) | `RO` | ANAF taxpayer lookup | 5.0 |
+| [Slovakia](sk.md) | `SK` | RÚZ accounting entities | 5.0 |
 
 [VIES positive, negative, withheld-details and service-failure examples](vies.md) cover the separate VAT operation, including EL/GR and XI/GB behavior.
 
 ## Reading the examples
 
 - All company names, identifiers and records in this gallery are synthetic test data. Do not use the sample identifiers as a live collection queue or treat generated record links as real-company references.
-- Outputs describe the 4.1 contract, including lifecycle enforcement, proceeding states and VIES checksum preflight. The [API contract](../reference/api-stability.md) explains version boundaries.
+- Outputs describe the 5.0 contract, including lifecycle enforcement, proceeding states and VIES checksum preflight. The [API contract](../reference/api-stability.md) explains version boundaries.
 - Success JSON is the serialized inner result, not a Rust `Result` wrapper. Error JSON is the serialized `LookupError`. The library does not choose an HTTP status for your application.
 - A matched closed company or a company in proceedings can be a successful lookup. A VIES `valid: false` is also a successful response with a negative VAT conclusion. A company `not_found` is an error with a narrowly defined source scope.
 - Missing optional facts are explicit nulls. `vatRegistered: null` means unknown; it is not false. Original source text and leading zeroes are preserved. Native provider keys can use a different naming style from common fields.
@@ -39,7 +39,7 @@ Explore complete success and error JSON plus provider-specific edge cases. There
 
 ## Serialize success and failure
 
-This complete program uses 4.1 APIs. Running it contacts a provider; substitute an identifier you are authorized to look up. The synthetic output shown in the country pages is illustrative and is not promised for this live call.
+This complete program uses 5.0 APIs. Running it contacts a provider; substitute an identifier you are authorized to look up. The synthetic output shown in the country pages is illustrative and is not promised for this live call.
 
 ```rust,no_run
 use eu_company_lookup::Client;

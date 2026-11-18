@@ -1,6 +1,6 @@
 # Public API compatibility
 
-The 4.x contract covers exported Rust types and methods and documented JSON field
+The 5.x contract covers exported Rust types and methods and documented JSON field
 names, value types and null semantics. Provider data remains an observation that
 can change between requests.
 
@@ -40,16 +40,52 @@ Converting a native result consumes it without fetching or merging other sources
 - Clients are cloneable, `Send + Sync`; lookup futures are `Send`. Clones share
   admission state. Debug output exposes configuration, not requests or provider bodies.
 - `RetryAfter` is exhaustive: seconds or an absolute date. Error and provider enums
-  are extensible. Public Chrono types are part of the Rust compatibility contract.
+  are extensible. The exported Jiff datetime types are part of the Rust compatibility contract.
 
 The minimum Rust version is 1.98.1. Increases require a documented minor release,
 never a patch release. Network lookups require Tokio with I/O and time enabled.
 CI covers Linux; no broader platform verification is claimed. See
 [Cargo's SemVer guidance](https://doc.rust-lang.org/cargo/reference/semver.html).
 
+## Datetime types in 5.0
+
+Version 5.0 removes `chrono` and `chrono-tz`, which have no patched maintained
+versions under [RUSTSEC-2026-0543](https://rustsec.org/advisories/RUSTSEC-2026-0543.html)
+and [RUSTSEC-2026-0555](https://rustsec.org/advisories/RUSTSEC-2026-0555.html).
+Jiff 1.x replaces them, with bundled IANA timezone data for provider calendars.
+This requires a major version because these types appear in the public Rust API.
+
+| Previous Rust type | Replacement exported by this crate | Used by |
+| --- | --- | --- |
+| `chrono::NaiveDate` | `Date` (`jiff::civil::Date`) | ANAF `lookup_at` and request dates; Bulgarian identifier entry dates. |
+| `chrono::NaiveDateTime` | `CivilDateTime` (`jiff::civil::DateTime`) | Bulgarian document local announcement times. |
+| `chrono::DateTime<chrono::Utc>` | `Timestamp` (`jiff::Timestamp`) | Observation times and `RetryAfter::Date`. |
+
+Construct a date with `Date::new(2025, 2, 14)?` or `"2025-02-14".parse::<Date>()?`.
+Parse an instant with `"2025-02-14T10:00:00Z".parse::<Timestamp>()?`; use
+`Timestamp::now()` for the current instant. Consumers need no direct Jiff dependency
+for these re-exported types. Existing Chrono consumers must explicitly convert
+or migrate; the crate does not retain an optional Chrono dependency.
+
+JSON field names, null semantics and string value types are unchanged: calendar
+dates use ISO `YYYY-MM-DD`, local datetimes have no invented timezone, and instants
+use RFC 3339 UTC timestamps. Fractional seconds may use the shortest exact precision;
+consumers should parse timestamps rather than depend on fractional zero padding.
+Jiff supports civil years -9999 through 9999 and does not model leap seconds;
+provider-specific validation still determines accepted registry dates.
+
+```rust
+use eu_company_lookup::{Date, RetryAfter, Timestamp};
+let fiscal_date = Date::new(2025, 2, 14)?;
+assert_eq!(fiscal_date.to_string(), "2025-02-14");
+let instant: Timestamp = "2025-02-14T10:00:00Z".parse()?;
+let retry = RetryAfter::Date(instant);
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
 ## Migrating from 4.0
 
-Version 4.1 adds national adapters and lifecycle variants to extensible enums.
+Version 5.0 adds national adapters and lifecycle variants to extensible enums.
 Successful national lookups require a resolved lifecycle. Handle `unresolved_data`
 when a matched record has missing, unsupported or conflicting lifecycle evidence;
 this is not proof of absence or closure. Pure native-to-common conversions still

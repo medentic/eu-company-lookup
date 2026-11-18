@@ -67,8 +67,8 @@ pub(super) fn ros_closure(
         return Ok(None);
     };
     if record.state.as_deref() != Some("ZANIKLY")
-        || !chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d")
-            .is_ok_and(|d| d.format("%Y-%m-%d").to_string() == date)
+        || !jiff::civil::Date::strptime("%Y-%m-%d", date)
+            .is_ok_and(|d| d.strftime("%Y-%m-%d").to_string() == date)
     {
         return Ok(None);
     }

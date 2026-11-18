@@ -3,12 +3,8 @@ use crate::http_capture::SendTraced;
 use crate::{
     BgCompanyLookupResult, LookupError, Provider, RegistryFailure, RetryAfter, UnavailabilityReason,
 };
-use chrono::{DateTime, TimeZone, Utc};
-use chrono_tz::Europe::Sofia;
-use std::{
-    sync::Arc,
-    time::{Duration, SystemTime},
-};
+use jiff::Timestamp;
+use std::{sync::Arc, time::Duration};
 use tokio::{sync::Mutex, time::Instant};
 
 const COMMERCIAL: &str = "https://portal.registryagency.bg/CR/api/Deeds/";
@@ -172,7 +168,7 @@ impl BgRegistryClient {
                     ))
                 })?;
                 url.query_pairs_mut()
-                    .append_pair("entryDate", &end_of_day(Utc::now()))
+                    .append_pair("entryDate", &end_of_day(Timestamp::now()))
                     .append_pair("loadFieldsFromAllLegalForms", "false");
                 let response = self
                     .fetch(provider, url, &mut state.providers[0], deadline)
@@ -395,27 +391,26 @@ fn parse_retry_after(value: &str) -> Option<RetryAfter> {
     }
     httpdate::parse_http_date(value)
         .ok()
-        .map(|d| RetryAfter::Date(d.into()))
+        .and_then(|d| jiff::Timestamp::try_from(d).ok())
+        .map(RetryAfter::Date)
 }
 fn retry_delay(value: &RetryAfter) -> Duration {
     match value {
         RetryAfter::Seconds(seconds) => Duration::from_secs(*seconds),
-        RetryAfter::Date(date) => SystemTime::from(*date)
-            .duration_since(SystemTime::now())
+        RetryAfter::Date(date) => (date.duration_since(jiff::Timestamp::now()))
+            .try_into()
             .unwrap_or_default(),
     }
 }
-pub(super) fn end_of_day(now: DateTime<Utc>) -> String {
+pub(super) fn end_of_day(now: Timestamp) -> String {
     let local = now
-        .with_timezone(&Sofia)
-        .date_naive()
-        .and_hms_milli_opt(23, 59, 59, 999)
-        .unwrap();
-    Sofia
-        .from_local_datetime(&local)
-        .single()
-        .expect("Sofia end of day is unambiguous")
-        .to_rfc3339_opts(chrono::SecondsFormat::Millis, false)
+        .in_tz("Europe/Sofia")
+        .expect("bundled Sofia timezone")
+        .date()
+        .at(23, 59, 59, 999_000_000)
+        .in_tz("Europe/Sofia")
+        .expect("Sofia end of day is unambiguous");
+    local.strftime("%Y-%m-%dT%H:%M:%S%.3f%:z").to_string()
 }
 
 #[cfg(test)]
@@ -450,7 +445,7 @@ impl BgRegistryClient {
                 ))
             })?;
         url.query_pairs_mut()
-            .append_pair("entryDate", &end_of_day(Utc::now()))
+            .append_pair("entryDate", &end_of_day(Timestamp::now()))
             .append_pair("loadFieldsFromAllLegalForms", "false");
         let response = self
             .fetch(provider, url, &mut state.providers[0], deadline)

@@ -32,7 +32,7 @@ async fn live_registry_batch() {
         let result = client.lookup_company(&id, "SK").await;
         let capture = native.take_capture();
         let raw = capture["detail"]["body"].as_str();
-        let mut row = json!({"id": id, "checkedAt": chrono::Utc::now().to_rfc3339(), "capture": capture, "bodySha256": raw.map(|b|hash(b.as_bytes()))});
+        let mut row = json!({"id": id, "checkedAt": jiff::Timestamp::now().to_string(), "capture": capture, "bodySha256": raw.map(|b|hash(b.as_bytes()))});
         row["searchSha256"] = row["capture"]["search"]["body"]
             .as_str()
             .map(|s| serde_json::json!(hash(s.as_bytes())))

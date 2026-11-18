@@ -30,7 +30,7 @@ struct Observation {
     record: Option<BgCompanyLookupResult>,
     error: Option<String>,
     service_unavailable: bool,
-    resume_not_before: Option<chrono::DateTime<chrono::Utc>>,
+    resume_not_before: Option<jiff::Timestamp>,
 }
 
 #[tokio::test]
@@ -63,30 +63,30 @@ async fn live_commercial_batch() {
         let state: Value = serde_json::from_slice(&fs::read(&provider_state).unwrap()).unwrap();
         if state["cooldownUntil"]
             .as_str()
-            .and_then(|s| s.parse::<chrono::DateTime<chrono::Utc>>().ok())
-            .is_some_and(|t| t > chrono::Utc::now())
+            .and_then(|s| s.parse::<jiff::Timestamp>().ok())
+            .is_some_and(|t| t > jiff::Timestamp::now())
         {
             break;
         }
         if let Some(next) = state["nextStartAt"]
             .as_str()
-            .and_then(|s| s.parse::<chrono::DateTime<chrono::Utc>>().ok())
-            && let Ok(wait) = (next - chrono::Utc::now()).to_std()
+            .and_then(|s| s.parse::<jiff::Timestamp>().ok())
+            && let Ok(wait) = (next - jiff::Timestamp::now()).try_into()
         {
             tokio::time::sleep(wait).await;
         }
-        let request_start = chrono::Utc::now();
+        let request_start = jiff::Timestamp::now();
         // Conservative reservation survives process termination during a request.
         write_json(
             &provider_state,
-            &serde_json::json!({"nextStartAt":request_start + chrono::Duration::seconds(30 + interval as i64),"cooldownUntil":null}),
+            &serde_json::json!({"nextStartAt":request_start + jiff::SignedDuration::from_secs(30 + interval as i64),"cooldownUntil":null}),
         );
         let scheduler_wait_ms = scheduled.elapsed().as_millis();
         let started = Instant::now();
         let mut row = Observation {
             schema_version: 2,
             tax_id: id.to_string(),
-            checked_at: chrono::Utc::now().to_rfc3339(),
+            checked_at: jiff::Timestamp::now().to_string(),
             elapsed_ms: 0,
             scheduler_wait_ms,
             transport: Default::default(),
@@ -136,8 +136,8 @@ async fn live_commercial_batch() {
                     });
                 }
                 row.service_unavailable = error.is_service_unavailable();
-                let now = chrono::Utc::now();
-                let minimum = now + chrono::Duration::seconds(60);
+                let now = jiff::Timestamp::now();
+                let minimum = now + jiff::SignedDuration::from_secs(60);
                 let retry_after = match &error {
                     LookupError {
                         kind:
@@ -153,7 +153,7 @@ async fn live_commercial_batch() {
                 };
                 row.resume_not_before = Some(match retry_after {
                     Some(crate::RetryAfter::Seconds(seconds)) => (now
-                        + chrono::Duration::seconds((*seconds).min(315_360_000) as i64))
+                        + jiff::SignedDuration::from_secs((*seconds).min(315_360_000) as i64))
                     .max(minimum),
                     Some(crate::RetryAfter::Date(date)) => (*date).max(minimum),
                     None => minimum,
@@ -165,7 +165,7 @@ async fn live_commercial_batch() {
         row.transport = client.observation_trace();
         write_json(
             &provider_state,
-            &serde_json::json!({"nextStartAt":request_start + chrono::Duration::seconds(interval as i64),"cooldownUntil":row.resume_not_before}),
+            &serde_json::json!({"nextStartAt":request_start + jiff::SignedDuration::from_secs(interval as i64),"cooldownUntil":row.resume_not_before}),
         );
         let stop = matches!(row.outcome, Outcome::ProviderError);
         write_json(&path, &serde_json::to_value(&row).unwrap());
@@ -209,7 +209,7 @@ fn replay_commercial_batch() {
     }
     assert!(!rows.is_empty());
     rows.sort_by(|a, b| a["taxId"].as_str().cmp(&b["taxId"].as_str()));
-    let replay = serde_json::json!({"schemaVersion":2,"generatedAt":chrono::Utc::now(),"crateVersion":env!("CARGO_PKG_VERSION"),"parserSha256":parser_fingerprint(),"binarySha256":source_sha(&fs::read(std::env::current_exe().unwrap()).unwrap()),"observations":rows});
+    let replay = serde_json::json!({"schemaVersion":2,"generatedAt":jiff::Timestamp::now(),"crateVersion":env!("CARGO_PKG_VERSION"),"parserSha256":parser_fingerprint(),"binarySha256":source_sha(&fs::read(std::env::current_exe().unwrap()).unwrap()),"observations":rows});
     write_json(&dir.join("replay.json"), &replay);
     eprintln!(
         "Replayed {} saved registry responses; review expectations remain separate",

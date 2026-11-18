@@ -2,7 +2,7 @@ use super::{RoBusinessId, RoCompanyLookupResult, decode};
 use crate::http_capture::SendTraced;
 use crate::registry_transport::{self, Admission, Bounds, Spacing, network};
 use crate::{LookupError, Provider, RegistryFailure};
-use chrono::{NaiveDate, Utc};
+use jiff::{Timestamp, civil::Date};
 use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 
@@ -88,20 +88,15 @@ impl RoRegistryClient {
     /// Look up a CUI for today's date in Europe/Bucharest.
     /// A source-specific miss does not establish absence from all Romanian registers.
     pub async fn lookup(&self, value: &str) -> Result<RoCompanyLookupResult, LookupError> {
-        self.lookup_at(
-            value,
-            Utc::now()
-                .with_timezone(&chrono_tz::Europe::Bucharest)
-                .date_naive(),
-        )
-        .await
+        self.lookup_at(value, fiscal_date_at(Timestamp::now()))
+            .await
     }
     /// Look up fiscal status for an explicit date. Future dates are rejected locally.
     /// ANAF's historical status fields do not imply a historical company extract.
     pub async fn lookup_at(
         &self,
         value: &str,
-        date: NaiveDate,
+        date: Date,
     ) -> Result<RoCompanyLookupResult, LookupError> {
         crate::http_capture::scope(
             self.config.raw_debug,
@@ -110,11 +105,8 @@ impl RoRegistryClient {
             Provider::RomanianAnaf,
             async {
                 let id = RoBusinessId::parse(value)?;
-                if date
-                    > Utc::now()
-                        .with_timezone(&chrono_tz::Europe::Bucharest)
-                        .date_naive()
-                    || date.format("%Y-%m-%d").to_string().len() != 10
+                if date > fiscal_date_at(Timestamp::now())
+                    || date.strftime("%Y-%m-%d").to_string().len() != 10
                 {
                     return Err(LookupError::from(crate::model::LookupFailure::InvalidInput));
                 }
@@ -139,7 +131,7 @@ impl RoRegistryClient {
     async fn send(
         &self,
         id: &RoBusinessId,
-        date: NaiveDate,
+        date: Date,
     ) -> Result<Option<RoCompanyLookupResult>, RegistryFailure> {
         let body = serde_json::json!([{"cui": id.as_str().parse::<u64>().expect("validated CUI"), "data": date.to_string()}]).to_string();
         let response = self
@@ -183,4 +175,11 @@ impl RoRegistryClient {
     pub(super) fn take_capture(&self) -> serde_json::Value {
         self.captured.lock().unwrap().take()
     }
+}
+
+// ANAF dates follow the provider's calendar day, independent of the host timezone.
+pub(super) fn fiscal_date_at(now: Timestamp) -> Date {
+    now.in_tz("Europe/Bucharest")
+        .expect("bundled Bucharest timezone")
+        .date()
 }

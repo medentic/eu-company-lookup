@@ -11,8 +11,8 @@ impl From<SkCompanyLookupResult> for CompanyLookupResult {
         // RÚZ documents this as dissolution of the accounting entity, not deletion
         // of the API record (`stav`). Missing dates do not establish active status.
         let status = v.details.datum_zrusenia.as_deref().map(|date| {
-            if chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d")
-                .is_ok_and(|d| d.format("%Y-%m-%d").to_string() == date)
+            if jiff::civil::Date::strptime("%Y-%m-%d", date)
+                .is_ok_and(|d| d.strftime("%Y-%m-%d").to_string() == date)
             {
                 crate::CompanyStatus::Closed
             } else {

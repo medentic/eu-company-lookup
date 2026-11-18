@@ -96,12 +96,12 @@ async fn public_check_sends_exact_request_and_returns_source_observation() {
         Duration::ZERO,
     )
     .await;
-    let before = chrono::Utc::now();
+    let before = jiff::Timestamp::now();
     let result = server.client().lookup_vat("bg 123456786").await.unwrap();
     assert!(result.valid);
     assert_eq!(result.vat_id.as_str(), "BG123456786");
     assert_eq!(result.source, Provider::Vies);
-    assert!(result.checked_at >= before && result.checked_at <= chrono::Utc::now());
+    assert!(result.checked_at >= before && result.checked_at <= jiff::Timestamp::now());
     let requests = server.requests.lock().unwrap();
     assert_eq!(requests.len(), 1);
     assert!(requests[0].starts_with("POST /vies HTTP/1.1"));

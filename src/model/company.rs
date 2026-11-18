@@ -1,5 +1,5 @@
 use crate::{BgBusinessId, CompanyStatus, LegalForm, Provider, RegistryDocumentType, RegistryRole};
-use chrono::{Datelike, NaiveDate, NaiveDateTime};
+use jiff::civil::{Date, DateTime as CivilDateTime};
 use serde::Serialize;
 
 /// Registered-office address, independent of the VIES response model.
@@ -75,7 +75,7 @@ pub struct CommercialRegisterDetails {
     /// Registered name without the legal-form suffix.
     pub registered_name: Option<String>,
     /// Current UIC field's entry date, not necessarily original incorporation.
-    pub identifier_entry_date: Option<NaiveDate>,
+    pub identifier_entry_date: Option<Date>,
     /// Field 7 managers; null if absent, erased or not interpretable as a list.
     pub managers: Option<Vec<RegistryPerson>>,
     /// Field 23 sole capital owners; other ownership forms are not yet parsed.
@@ -92,7 +92,7 @@ pub struct CommercialRegisterDetails {
 impl CommercialRegisterDetails {
     /// Calendar year of the identifier entry, when known.
     pub fn identifier_entry_year(&self) -> Option<i32> {
-        self.identifier_entry_date.map(|d| d.year())
+        self.identifier_entry_date.map(|d| i32::from(d.year()))
     }
 }
 impl Serialize for CommercialRegisterDetails {
@@ -177,7 +177,7 @@ pub struct RegistryDocument {
     /// Source link title.
     pub title: String,
     /// Source local announcement time; no timezone is invented.
-    pub announced_at_local: Option<NaiveDateTime>,
+    pub announced_at_local: Option<CivilDateTime>,
     /// Absolute official registry URL; access may depend on registry requirements.
     pub url: String,
 }
