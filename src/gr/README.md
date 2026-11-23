@@ -20,6 +20,12 @@ public company URL uses the exact GEMI number; VAT fields remain unknown.
 The [official publicity service](https://publicity.businessportal.gr/) provides
 the source. Live observations and source reviews stay local-only.
 
+The reviewed national sample meets the 200-distinct-ID gate, including at least
+200 active companies and explicit dissolution/liquidation cases. Offline replay verifies
+source-bound expectations for the complete accepted sample. Closed and bankruptcy
+states have synthetic regression coverage but are not established by this live
+sample. National lookup does not verify VAT registration.
+
 Transport mechanics use the private [registry transport helpers](../registry_transport/mod.rs).
 Each client instance owns its admission state, shared only with its clones;
 country identifiers, accepted HTTP statuses, decoding and mapping stay here.

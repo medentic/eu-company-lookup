@@ -65,6 +65,12 @@ Offline replay supports source-bound positive and negative reviews and compares
 all replay identities with the original manifest; see the
 [validation contract](../../docs/development/testing.md#registry-validation-outcomes).
 
+The reviewed national sample includes at least 200 distinct active companies
+with matched live observations and passing source-bound offline replay. Closed
+and inactive cases are counted separately from this active sample. Transfer-only
+records and operational failures remain outside accepted coverage; additional
+passing records do not resolve those retained limitations.
+
 After successful decoding, public lookup requires resolved lifecycle and returns
 `unresolved_data` for missing, unsupported or ambiguous lifecycle evidence.
 Missing required envelope/identity fields remain decoding errors. Pure decoding/projection
@@ -96,6 +102,12 @@ See [shared pacing and evidence rules](../README.md#registry-pacing-and-evidence
 for clone scope, cooldowns, error classification and complete-batch replay.
 
 ### Cross-checking tax transfers
+
+TODO: resolve retained transfer-status cases through an authoritative lifecycle
+source suitable for unattended lookup. Until then, preserve these observations
+as unresolved and exclude them from accepted positive coverage. Keep source-data
+gaps separate from account requirements or interactive access challenges; adding
+other passing cases does not resolve the transfer records.
 
 `TRANSFER(SOSIRE)` describes a fiscal transfer and does not by itself establish
 legal lifecycle. ONRC publishes separate [company and status datasets](https://data.gov.ro/organization/onrc)

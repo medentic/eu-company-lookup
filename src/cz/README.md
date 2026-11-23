@@ -6,8 +6,8 @@ Czech company lookup is enabled in the facade and capability catalog.
 The [shared projection](mapping.rs) maps explicit cessation dates to closed and
 unambiguous ARES legal-form codes to Czech labels. VAT facts remain null.
 The reviewed sample meets the 200-distinct-ID national verification gate,
-including active, liquidation and closed states, with source-bound expectations and
-complete offline replay. This does not establish coverage of every proceeding
+including at least 200 active companies and separate liquidation and closed cases,
+with source-bound expectations and complete offline replay. This does not establish coverage of every proceeding
 or entity type.
 
 ARES is the Czech Ministry of Finance's aggregation service for economic subjects,

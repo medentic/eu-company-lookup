@@ -386,8 +386,8 @@ that every address component can be extracted.
 ### Austrian national verification status
 
 Austrian Firmenbuch lookup meets the reviewed 200-distinct-ID national
-verification gate, including active and deleted companies. All accepted cases
-have live source observations, source-bound reviewed expectations and passing
+verification gate, including at least 200 active companies and a deleted company.
+All accepted cases have live source observations, source-bound reviewed expectations and passing
 offline replay. Historical names are separated from current records; recovered
 failures remain in local evidence. This milestone does not establish coverage of
 every registry history or a definitive company-absence outcome.
@@ -405,12 +405,33 @@ See the [Belgian output examples](docs/examples/be.md).
 ### Czech national verification status
 
 Czech ARES lookup meets the reviewed 200-distinct-ID national verification gate,
-including active, liquidation and closed states. Source-bound expectations and complete
-offline replay cover the accepted sample. Primary public-register records can
+including at least 200 active companies and separate liquidation and closed cases.
+Source-bound expectations and complete offline replay cover the accepted sample.
+Primary public-register records can
 resolve lifecycle when ROS explicitly has no record; conflicting evidence and
 operational failures remain errors. This milestone does not claim exhaustive
 coverage of proceedings or every ARES entity type.
 See the [Czech output examples](docs/examples/cz.md).
+
+### Greek national verification status
+
+Greek GEMI lookup meets the reviewed 200-distinct-ID national verification gate,
+including at least 200 active companies and explicitly labelled liquidation cases. All accepted
+cases have live source observations, source-bound expectations and passing offline
+replay. Closed and bankruptcy states remain covered by synthetic tests rather than
+this live sample. GEMI registration numbers and AFM tax numbers remain distinct;
+national lookup does not establish VAT registration.
+See the [Greek output examples](docs/examples/gr.md).
+
+### Norwegian national verification status
+
+Norwegian Enhetsregisteret lookup meets the national verification gate with at
+least 200 distinct active companies and separate liquidation cases. The complete
+accepted sample has live source observations, source-bound reviewed expectations
+and passing offline replay. Historical failed captures remain preserved outside
+accepted coverage. Active status requires complete entity and lifecycle evidence;
+missing annotations or proceeding flags never imply activity.
+See the [Norwegian output examples](docs/examples/no.md).
 
 ### Polish national verification status
 
@@ -422,6 +443,16 @@ or lifecycle blocker remains in the accepted Polish sample. This is a verificati
 milestone for KRS P/S, not a CEIDG coverage claim.
 See the [Polish output examples](docs/examples/pl.md).
 
+### Romanian national verification status
+
+Romanian ANAF lookup meets the national verification gate with a reviewed sample
+of at least 200 distinct active companies, backed by live source observations and
+passing offline replay. Separate reviewed cases cover closed and inactive states.
+Transfer-only records remain unresolved TODOs and are excluded from accepted
+coverage; operational failures are recorded separately. ANAF is a taxpayer source,
+and this milestone does not establish ONRC coverage or resolve every lifecycle.
+See the [Romanian output examples](docs/examples/ro.md).
+
 ### Remaining work
 
 The target is national lookup across all 30 EEA countries using public sources
@@ -432,7 +463,7 @@ are listed in the support table; implementation and publication dates are not pr
 | Priority | Work |
 | --- | --- |
 | 1 | Investigate national lookup for Spain. |
-| 2 | Verify Greek national lookup alongside VIES behavior. |
+| 2 | Broaden Greek lifecycle coverage beyond the accepted national sample. |
 | 3 | Extend Romanian coverage beyond the current ANAF taxpayer source. |
 
 Polish registry extensions (TODO; not yet implemented):

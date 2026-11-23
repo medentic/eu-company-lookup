@@ -32,6 +32,11 @@ No automatic retries, redirects, cookies or ambient proxies. Synthetic tests cov
 identity, missing facts, domestic VAT flags and source preservation; live records
 and source-bound reviewed expectations remain local-only.
 
+The reviewed sample includes at least 200 distinct active companies and separate
+liquidation cases, with complete source-bound offline replay. Failed captures are
+retained separately and excluded from accepted coverage; a later successful
+observation does not erase an earlier failure.
+
 After successful decoding, public lookup requires resolved lifecycle and returns
 `unresolved_data` for missing, unsupported or ambiguous lifecycle evidence.
 Missing required envelope/identity fields remain decoding errors. Pure decoding/projection

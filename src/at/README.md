@@ -18,7 +18,9 @@ the response supplies neither. The source status is retained natively; `ACTIVE` 
 to closed. Historical/other states remain unknown. VAT status remains null. Synthetic tests
 cover identity binding, anonymous transport, source preservation and access
 failure semantics. The reviewed sample meets the 200-distinct-ID national gate,
-including active and deleted companies, with complete source-bound offline replay.
+including at least 200 active companies and a deleted company, with complete
+source-bound offline replay. Empty all-status searches remain unresolved and
+are excluded from accepted coverage; they do not establish company closure.
 Collected observations and reviewed expectations stay local.
 
 Transport mechanics use the private [registry transport helpers](../registry_transport/mod.rs).
