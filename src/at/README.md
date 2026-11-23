@@ -21,7 +21,9 @@ failure semantics. The reviewed sample meets the 200-distinct-ID national gate,
 including at least 200 active companies and a deleted company, with complete
 source-bound offline replay. Empty all-status searches remain unresolved and
 are excluded from accepted coverage; they do not establish company closure.
-Collected observations and reviewed expectations stay local.
+Prepared reviewed observations and history may be committed under
+`tests/fixtures/registry/` for local-only replay and refresh; original raw collections
+and queues remain ignored. Fixtures stay outside the published crate.
 
 Transport mechanics use the private [registry transport helpers](../registry_transport/mod.rs).
 Each client instance owns its admission state, shared only with its clones;

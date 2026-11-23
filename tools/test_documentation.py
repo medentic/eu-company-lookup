@@ -51,6 +51,7 @@ class DocumentationTests(unittest.TestCase):
         for unwanted in ['AGENTS.md', 'CONTRIBUTING.md', 'docs/README.md',
                          'docs/development/testing.md', 'docs/development/collectors.md',
                          'docs/maintainers/releasing.md',
+                         'tests/fixtures/registry/RO/corpus.json', 'tools/registry_fixtures.py',
                          'src/vies/fixtures/ids/bg.source.json', 'src/bg/fixtures/commercial/case.json',
                          'src/vies/fixtures/ids/bg.json', 'src/debug.log', 'target/run.jsonl']:
             with self.subTest(unwanted=unwanted):

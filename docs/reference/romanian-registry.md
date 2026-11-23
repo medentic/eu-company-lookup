@@ -7,8 +7,9 @@ supported by `Client::lookup_vat` through VIES.
 
 The adapter follows ANAF's [v9 service instructions](https://static.anaf.ro/static/10/Anaf/Informatii_R/Servicii_web/doc_WS_V9.txt)
 and [service directory](https://static.anaf.ro/static/10/Anaf/Informatii_R/Servicii_web/servicii_sincron.html).
-Synthetic tests cover parser and HTTP failures; authorized live observations and
-reviewed expectations remain local-only. The official example is descriptive rather
+Synthetic tests cover parser and HTTP failures. Reviewed real-response fixtures
+are maintained in the repository for local-only replay and refresh, outside the
+published crate. The official example is descriptive rather
 than executable JSON. Observed HTTP 200 responses omit its top-level `cod` and
 `message` fields, so these are optional; when present, they must indicate success.
 Exact identifier/date matching and unambiguous result arrays remain mandatory.

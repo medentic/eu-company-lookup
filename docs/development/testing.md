@@ -1,7 +1,8 @@
 # Testing and evidence
 
-Normal tests are offline and use synthetic HTTP fixtures. Collected responses
-are retained locally for separate opt-in regressions. The complete check commands are in
+Normal tests are offline and use synthetic HTTP fixtures. Reviewed registry responses are committed for separate local-only opt-in regressions;
+see the [fixture workflow](../../tests/fixtures/registry/README.md). Original raw collections
+and unreviewed queues remain ignored. The complete check commands are in
 [CONTRIBUTING.md](../../CONTRIBUTING.md#setup-and-checks).
 
 ## Country completion minimum
@@ -13,7 +14,9 @@ for the 200 valid results, and provider failures count toward neither threshold.
 Syntax rejection alone is not a matched invalid VIES response.
 
 National company/tax lookup separately requires live verification of at least 200
-distinct IDs. These are minimum samples per operation, not permission for unbounded
+distinct IDs, with at least 200 active cases tracked separately for the reviewed
+registry corpus. Closed, inactive, liquidation, unresolved and failed cases never
+substitute for active cases. These are minimum samples per operation, not permission for unbounded
 collection or proof of exhaustive national coverage. Select sourced identifiers
 and retain provenance.
 
@@ -41,9 +44,10 @@ automatic live country-completion check is scheduled by this guidance.
 
 Private transports and decoders remain private. Test-only endpoint overrides and
 probes must not become public API merely to simplify tests. Synthetic cases ship
-in the crate. Collected corpora, identifier queues and their provenance are excluded
-from both public Git history and the crate. Public CI checks this file boundary
-and runs the synthetic suite; it does not claim to validate the local corpora.
+in the crate. Approved prepared registry corpora and review history are committed
+under `tests/fixtures/registry/`, but excluded from the crate. All other raw corpora
+and identifier queues remain ignored. Public CI checks the distribution boundary
+and runs synthetic tests; both real-fixture replay and live refresh stay local-only.
 
 Focused checks:
 
@@ -85,6 +89,9 @@ completion. Normal Python tool tests do not require python-stdnum or a compiler.
 
 ## Local collected-data checks
 
+This section describes the legacy ignored corpora. For the committed AT/CZ/GR/NO/RO/SK
+samples, use the [repository fixture workflow](../../tests/fixtures/registry/README.md).
+
 Original observations may contain personal names, contact details and record links.
 Keep them in the ignored fixture paths below; preserve their bytes, review history
 and hashes. A fresh public clone does not include them. Do not download them from
@@ -108,7 +115,8 @@ For new parser regressions, add a small synthetic case that preserves the releva
 structure without copying identities, contact details or document identifiers.
 
 `python3 tools/check_public_source.py --history HEAD` checks both tracked paths
-and reachable history. Deleting a collected file in a later commit is insufficient;
+and reachable history, allowing only the explicitly approved registry fixture paths.
+Deleting an unapproved collected file in a later commit is insufficient;
 an unpublished candidate must be rebuilt from a clean ancestor before pushing.
 The path check does not replace human review of source literals or new fixtures.
 

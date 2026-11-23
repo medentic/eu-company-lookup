@@ -45,8 +45,9 @@ or personal tax numbers as IČO.
 - A definitive miss requires HTTP 404 with the documented `NENALEZENO` envelope.
   Other HTTP failures do not establish absence.
 
-Raw observations, identifier queues, source snapshots and review history remain
-local-only. They are not synthetic fixtures or evidence of completed coverage.
+Prepared reviewed observations and history may be committed under
+`tests/fixtures/registry/` for local-only replay and refresh; original raw collections
+and queues remain ignored. Fixtures stay outside the published crate.
 
 ## Native transport
 

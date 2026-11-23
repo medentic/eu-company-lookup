@@ -8,7 +8,7 @@ and [testing/evidence](../docs/development/testing.md) for review semantics.
 | --- | --- |
 | `check_docs.py` | Validate repository Markdown targets and headings without fetching external links. |
 | `check_distribution.py` | Inspect Cargo's current package file list, allowed contents and consumer links. |
-| `check_public_source.py` | Detect collected records/queues/provenance in source and Git history. |
+| `check_public_source.py` | Enforce approved fixture paths and reject other collected records/queues in source and history. |
 | `check_vat_checksums.py` | Compare local Rust checksum arithmetic with pinned development-only python-stdnum using deterministic synthetic inputs; no provider calls or evidence access. |
 | `vies_batch.py` | VIES collection orchestration and explicit report saving. |
 | `vies_evidence.py` | Read-only manifests, journals, reviews and replay/source integrity checks; one cached input view per run evaluation. |
@@ -16,6 +16,8 @@ and [testing/evidence](../docs/development/testing.md) for review semantics.
 | `vies_binary.py` | Locked, hash-checked executable freezing into an explicitly supplied cache. |
 | `vies_verification.py` | Read-only offline distinct 200-valid/1-invalid country gate over loaded evidence and reports. |
 | `vies_recovery.py` | Bounded multi-country recovery, availability observations, deferral and resumable single-ID batches; offline report by default. |
+| `registry_fixtures.py` | Local-only committed registry replay, bounded refresh, explicit acceptance and active coverage. |
+| `registry_fixture_data.py` | Prepared payloads, immutable observations/reviews and integrity checks. |
 | `registry_batch.py` | Commercial Register collection/replay workflow. |
 | `bulstat_batch.py` | BULSTAT-specific evidence workflow. |
 | `ro_batch.py` | ANAF collection/replay workflow. |
@@ -29,7 +31,9 @@ to run it. Python unit tests run with
 
 Keep source observations separate from reviewed expectations and replay outputs.
 Preserve append-only audit journals, provenance and review revisions. Local-only
-queues/corpora are excluded from Git and the crate; an ignored path is not permission
+queues/raw corpora are excluded from Git and the crate. The approved
+[prepared registry fixtures](../tests/fixtures/registry/README.md) are committed but
+run locally and remain outside the crate; an ignored path is not permission
 to delete its contents. Classify a file before cleanup, especially under `target/`.
 The command layer loads repository configuration explicitly. Evidence loading never
 imports a collector; reporting evaluates loaded values without filesystem access.

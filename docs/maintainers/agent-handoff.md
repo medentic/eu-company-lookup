@@ -55,7 +55,10 @@ and `check_distribution.py`. Check disk space before/after substantial runs.
 A source change needs a reviewed explanation of what changed and why the new
 interpretation follows from that source. Keep raw observations, source hashes,
 review revisions and journals intact. Public synthetic regressions must not copy
-collected identifiers or records. The [testing guide](../development/testing.md)
+collected identifiers or records. Reviewed real cases belong separately in
+[repository fixtures](../../tests/fixtures/registry/README.md), including source-bound
+review history; run their replay locally before changing their interpretation.
+The [testing guide](../development/testing.md)
 defines evidence review; the [collector guide](../development/collectors.md)
 defines bounded live work. Counts alone never establish country completion.
 

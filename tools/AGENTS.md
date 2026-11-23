@@ -11,7 +11,10 @@ collectors or reports. Root [agent instructions](../AGENTS.md) still apply.
   separately. A completed request count is not a count of reviewed identifiers.
 - Keep resumability and locking intact. Do not stop or clean up another collector's
   active process, executable or evidence directory.
-- Use synthetic records in committed tool tests. Keep real queues, responses and
-  provenance local-only, including in Git history and generated archives.
+- Use synthetic records in tool unit tests. Reviewed real registry fixtures and
+  provenance may be committed only under `tests/fixtures/registry/`. Raw collection
+  queues and unreviewed responses stay local; all collected data stays out of crate
+  archives. Preserve history when accepting refreshes; never derive expectations
+  from parser output without a source-bound review. Corpus replay/refresh stay local-only.
 - Bound disposable logging; keep mandatory audit logs complete. Do not confuse
   regenerable reports with original evidence when reclaiming space.

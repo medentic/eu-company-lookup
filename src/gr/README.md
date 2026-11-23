@@ -18,7 +18,9 @@ The source Latin-script name populates the foreign-name field. The verified
 public company URL uses the exact GEMI number; VAT fields remain unknown.
 
 The [official publicity service](https://publicity.businessportal.gr/) provides
-the source. Live observations and source reviews stay local-only.
+the source. Prepared reviewed observations and history may be committed under
+`tests/fixtures/registry/` for local-only replay and refresh; original raw collections
+and queues remain ignored. Fixtures stay outside the published crate.
 
 The reviewed national sample meets the 200-distinct-ID gate, including at least
 200 active companies and explicit dissolution/liquidation cases. Offline replay verifies

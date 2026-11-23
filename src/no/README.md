@@ -30,7 +30,9 @@ Use the private shared transport with thirty-second total deadline, three-second
 connect timeout, two-second spacing, sixty-second cooldown and one-MiB body cap.
 No automatic retries, redirects, cookies or ambient proxies. Synthetic tests cover
 identity, missing facts, domestic VAT flags and source preservation; live records
-and source-bound reviewed expectations remain local-only.
+and reviews are preserved. Prepared reviewed observations and history may be committed under
+`tests/fixtures/registry/` for local-only replay and refresh; original raw collections
+and queues remain ignored. Fixtures stay outside the published crate.
 
 The reviewed sample includes at least 200 distinct active companies and separate
 liquidation cases, with complete source-bound offline replay. Failed captures are

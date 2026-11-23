@@ -3,12 +3,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from check_public_source import PUBLIC_FIXTURES, forbidden_files, history_paths
+from check_public_source import PUBLIC_FIXTURES, REPOSITORY_FIXTURES, forbidden_files, history_paths
 
 
 class PublicSourceTests(unittest.TestCase):
     def test_code_and_approved_synthetic_fixtures_are_allowed(self):
-        self.assertEqual(forbidden_files(PUBLIC_FIXTURES | {
+        self.assertEqual(forbidden_files(PUBLIC_FIXTURES | REPOSITORY_FIXTURES | {
             'src/bg/tests.rs', 'README.md', 'tools/vies_batch.py', 'Cargo.lock',
         }), [])
 
@@ -16,9 +16,28 @@ class PublicSourceTests(unittest.TestCase):
         for path in ('src/bg/fixtures/commercial/case.json',
                      'src/vies/fixtures/countries/bg.json',
                      'src/vies/fixtures/ids/bg.source.json',
-                     'docs/observations.json', 'records.jsonl', 'target/report.txt'):
+                     'docs/observations.json', 'records.jsonl', 'target/report.txt',
+                     'tests/fixtures/registry/AT/raw.json',
+                     'tests/fixtures/registry/XX/corpus.json'):
             with self.subTest(path=path):
                 self.assertEqual(forbidden_files({path}), [path])
+
+    def test_approved_fixture_history_ignores_directory_trees(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            def git(*args):
+                return subprocess.check_output(['git', *args], cwd=root, stderr=subprocess.DEVNULL)
+            git('init', '-q')
+            git('config', 'user.email', 'test@example.invalid')
+            git('config', 'user.name', 'Fixture test')
+            path = root/'tests/fixtures/registry/RO/corpus.json'
+            path.parent.mkdir(parents=True)
+            path.write_text('{}')
+            git('add', '.')
+            git('commit', '-qm', 'Add synthetic history test')
+            paths = history_paths(root, 'HEAD')
+            self.assertEqual(paths, {'tests/fixtures/registry/RO/corpus.json'})
+            self.assertEqual(forbidden_files(paths), [])
 
     def test_removing_a_file_does_not_remove_it_from_history(self):
         with tempfile.TemporaryDirectory() as directory:

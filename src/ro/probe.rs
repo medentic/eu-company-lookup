@@ -6,6 +6,28 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{collections::HashSet, io::Write, path::PathBuf, time::Duration};
 
+#[test]
+#[ignore = "local offline audit of explicitly selected repository fixtures"]
+fn audit_retained_registry_responses() {
+    crate::test_support::retained_registry::run("RO", |row| {
+        let id = RoBusinessId::parse(row["taxId"].as_str().ok_or("missingIdentity")?)
+            .map_err(|e| e.to_string())?;
+        let raw =
+            crate::test_support::retained_registry::body(row, "/transport/body", "bodySha256")?;
+        if row["transport"]["httpStatus"] != 200 {
+            return Err("nonSuccessHttpStatus".into());
+        }
+        let date = row["requestDate"]
+            .as_str()
+            .ok_or("missingRequestDate")?
+            .parse()
+            .map_err(|_| "invalidRequestDate")?;
+        decode::decode(raw.as_bytes(), &id, date)
+            .map(|v| v.map(Into::into))
+            .map_err(|e| e.to_string())
+    });
+}
+
 #[tokio::test]
 #[ignore = "authorized bounded ANAF collection only; use tools/ro_batch.py"]
 async fn live_anaf_batch() {

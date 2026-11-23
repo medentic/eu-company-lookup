@@ -24,10 +24,13 @@ defines the compatibility contract. This procedure is repository-only.
 
 Run all [contributor checks](../../CONTRIBUTING.md#setup-and-checks) and obtain passing
 minimum-version and stable-Rust Linux CI results for the exact candidate commit.
-Run the separate local corpus regressions when the retained observations are
-available, and record that evidence separately from public CI. Check both public
-source history and the crate archive: collected corpora, identifier queues and
-provenance must remain local-only. A local candidate and its
+Run the [committed fixture replay](../../tests/fixtures/registry/README.md) locally
+when preparing a release, plus legacy regressions when available. Record this evidence
+separately from CI. Review the per-country active shortfall; 200 resolved lifecycle
+cases do not mean 200 active cases. Live refresh is an explicit bounded local action
+and requires source review before accepting changed expectations. Check source history
+and the crate archive: approved prepared fixtures belong in Git but never in the
+crate; unreviewed collections and identifier queues remain ignored. A local candidate and its
 local checks must not be reported as passing remote CI.
 
 After `cargo package --locked`, run the archive's tests. With Cargo's default target

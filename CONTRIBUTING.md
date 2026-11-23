@@ -23,12 +23,14 @@ links module ownership and provider field mappings.
 | `examples/` | Runnable consumers; executing them contacts live providers. |
 | `tools/` | Repository-only collectors, reports and validation tools. |
 | `docs/` | [Documentation index](docs/README.md), grouped by audience. |
-| `src/**/fixtures/` | Approved synthetic fixtures; collected corpora and queues are local-only and ignored by Git. |
+| `src/**/fixtures/` | Approved synthetic fixtures; legacy raw corpora and queues remain ignored. |
+| `tests/fixtures/registry/` | Reviewed real observations and immutable review history, committed for local-only replay/refresh. |
 | `target/` | Ignored build output and local run evidence; not all contents are disposable. |
 
 Private parser/transport tests stay beside their modules so testing does not require
-public endpoint overrides. Local real-response corpora supplement synthetic tests; they
-are excluded from both public Git history and the crate archive. Do not split modules or introduce a workspace
+public endpoint overrides. Reviewed real-response corpora supplement synthetic tests in
+[repository fixtures](tests/fixtures/registry/README.md). Their execution is local-only;
+the fixtures and maintenance tools are excluded from the crate archive. Do not split modules or introduce a workspace
 unless a concrete ownership or consumer need justifies it.
 
 ## Setup and checks
@@ -60,7 +62,8 @@ from a clean reviewed commit. Keep `Cargo.lock` and review dependency changes.
 
 Normal tests use synthetic HTTP fixtures and never contact providers. The
 [local corpus regressions](docs/development/testing.md#local-collected-data-checks)
-run separately when the original observations are available. Ignored tests
+run separately. Committed registry fixtures work from a fresh checkout; legacy raw
+corpus regressions require their ignored observations. Ignored tests
 include those regressions, live operations and offline replay; invoke only the specific test
 needed. Do not run all ignored tests together. Small code changes need targeted
 regressions plus the affected suite; final release checks cover the full package.
@@ -97,8 +100,9 @@ disabled adapters; no discovery call should initialize transport or contact sour
 Reuse the shared facade consumer tests for typed failures, disabled adapters and
 capability contracts. Add provider-local synthetic tests for matched identity,
 positive and definitive negative observations, service/access/schema failures,
-source preservation and common-result conversion. Real observations and reviewed
-expectations stay local-only, with ambiguity and provider errors reported separately.
+source preservation and common-result conversion. Prepared real observations and reviewed expectations may be committed only in the
+approved registry corpus paths. Replay and refresh run locally, with ambiguities,
+access failures and the 200-active target reported separately.
 Do not add a public plugin trait or another crate solely to register a new country.
 
 ## Documentation and evidence

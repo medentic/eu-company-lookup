@@ -48,13 +48,21 @@ Do not introduce universal prefix inference or undocumented address substitution
   do not establish completion.
 - Default to offline tests. Live calls require explicit identifiers or a bounded
   selection authorized by the user. Never run every ignored test as a shortcut.
-- Collected records, identifier queues and their provenance stay local-only. Do not
-  add them to Git or push a commit that contains them in its ancestry. Run
-  `python3 tools/check_public_source.py --history HEAD` before a source push.
+- Reviewed, prepared national-registry fixtures belong in `tests/fixtures/registry/`
+  so a fresh checkout can replay them. Follow its README: preserve immutable
+  observations, source hashes, review revisions and explicit latest-review pointers.
+  Remove unused personal/contact/financial data before acceptance; keep original
+  captures and unreviewed queues local. Never commit credentials or browser sessions.
+  Fixture replay and live refresh are explicit local workflows, never CI jobs.
+  Live refresh stages pending observations; only reviewed acceptance updates replay.
+  Track at least 200 distinct active cases separately from resolved non-active cases,
+  unresolved records and access failures. Historical fixtures do not prove current status.
+  All collected fixtures, provenance and local tools must stay outside the crate.
+  Run `python3 tools/check_public_source.py --history HEAD` before a source push.
 - Never replace expected results simply to pass tests. Preserve source observations,
   fixture provenance, review revisions and append-only journals.
-- Keep current behavior in docs; keep run-specific IDs, timing tables and batch
-  summaries in local evidence. Do not copy chat transcripts or local paths into docs.
+- Keep current behavior in docs; put reviewed IDs and snapshot provenance only in
+  the approved repository fixtures. Keep timing tables and disposable batch reports local. Do not copy chat transcripts or local paths into docs.
 - Keep the [country and VIES output examples](docs/examples/README.md) current.
   Before editing an example page, check the latest provider code and shared contracts.
   When fields, mappings, validation, errors or lookup behavior change, refresh the
