@@ -2,6 +2,9 @@
 
 ## 5.0.0
 
+- Update locked cookie and URL dependencies to patched versions for
+  RUSTSEC-2026-0594 and RUSTSEC-2026-0592.
+
 - Replace unmaintained `chrono` and `chrono-tz` with Jiff 1.x, addressing
   RUSTSEC-2026-0543 and RUSTSEC-2026-0555. This is a breaking Rust API change:
   exported dates, local datetimes and UTC instants now use the re-exported
