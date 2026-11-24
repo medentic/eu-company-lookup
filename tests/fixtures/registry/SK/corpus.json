@@ -8059,53 +8059,1116 @@
         "source": "https://www.registeruz.sk/cruz-public/api",
         "preparation": "adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed"
       }
+    },
+    "4fc0001779deb797512b3178b3c5c77d181e6597557d07527f134a590307b77e": {
+      "observation": {
+        "id": "00643581",
+        "checkedAt": "2026-11-23T23:31:53.722913759Z",
+        "capture": {
+          "detail": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"datumPoslednejUpravy\":\"2026-07-03\",\"datumZalozenia\":\"1991-02-13\",\"dic\":\"2020327848\",\"druhVlastnictva\":\"7\",\"ico\":\"00643581\",\"id\":15,\"kraj\":\"SK010\",\"mesto\":\"Senec\",\"nazovUJ\":\"TERRASTROJ spol. s r.o.\",\"okres\":\"SK0108\",\"pravnaForma\":\"112\",\"psc\":\"90301\",\"sidlo\":\"SK0108508217\",\"skNace\":\"46630\",\"ulica\":\"Diaľničná cesta 22A\",\"velkostOrganizacie\":\"11\",\"zdrojDat\":\"SUSR\"}"
+          },
+          "rpoDetail": {
+            "httpStatus": 200,
+            "contentType": "application/json",
+            "retryAfter": null,
+            "body": "{\"establishment\":\"1991-02-13\",\"id\":663006,\"identifiers\":[{\"validFrom\":\"1991-02-13\",\"value\":\"00643581\"}]}"
+          },
+          "rpoSearch": {
+            "httpStatus": 200,
+            "contentType": "application/json",
+            "retryAfter": null,
+            "body": "{\"results\":[{\"establishment\":\"1991-02-13\",\"id\":663006,\"identifiers\":[{\"validFrom\":\"1991-02-13\",\"value\":\"00643581\"}]}]}"
+          },
+          "search": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"existujeDalsieId\":false,\"id\":[15]}"
+          }
+        },
+        "bodySha256": "9eb8f95eb611a4ab84f0468842b7d52a8fd08fe163e20cc5fe7ecaaacd65328e",
+        "searchSha256": "d7394179e78df8a2433ba20e9032dff47602198d7bb3acab835ae9f5624d2c74",
+        "captureSha256": "26b43776d7eb07d4ce6620e48423e00a59e3dd37f58e74d5a4f09e185c96abe0"
+      },
+      "review": {
+        "fields": {
+          "/country": "SK",
+          "/taxId": "00643581",
+          "/companyName": "TERRASTROJ spol. s r.o.",
+          "/status": "active",
+          "/legalForm": "Spol. s r. o.",
+          "/registryDetails/data/rpoLifecycle/id": 663006,
+          "/registryDetails/data/rpoLifecycle/establishment": "1991-02-13",
+          "/registryDetails/data/datumZrusenia": null
+        },
+        "bodySha256": "9eb8f95eb611a4ab84f0468842b7d52a8fd08fe163e20cc5fe7ecaaacd65328e",
+        "captureSha256": "26b43776d7eb07d4ce6620e48423e00a59e3dd37f58e74d5a4f09e185c96abe0"
+      },
+      "provenance": {
+        "originalObservationSha256": "ff8a71c813a3c9f3c3a2ddf2934639de51dfd56207b2ca952ceaa3549fe762ff",
+        "originalBodyHashes": {
+          "detail": "d623b5a5c35da317dd4ca449bdae5838a917c46d2759e2357eef3e2901ca5a9c",
+          "rpoDetail": "0822bc576a86ec2a20b386add8be909d1c59e2ca10e4c5337924b50aa7eb38b4",
+          "rpoSearch": "8f240f0fc54e997cefc8017383c281ce2f057015c6234df70b84fd3a4ac2e0a2",
+          "search": "ba5b8a9c011a8d267fe1fa530dff9ee75b693bb555ee22745fe18e0c39a79062"
+        },
+        "source": "https://www.registeruz.sk/cruz-public/api",
+        "preparation": "adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed"
+      },
+      "category": "resolved",
+      "expectedValidation": "verifiedPositive",
+      "reviewer": "Codex source review 2026-11-24",
+      "rationale": "Reviewed refreshed prepared official payload against the preceding source-bound observation: identity, lifecycle and all other retained facts unchanged. Only direct source/request dates and the documented Austrian all-state search scope may differ; dates taken from source fields, not parser output. Previous review retained."
+    },
+    "aa7b3db88f99db55d225bb97a673acb102e7102dc92b53b7a72bd3ab4977c513": {
+      "observation": {
+        "id": "00695254",
+        "checkedAt": "2026-11-23T23:32:04.986398958Z",
+        "capture": {
+          "detail": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"datumPoslednejUpravy\":\"2026-05-14\",\"datumZalozenia\":\"1991-01-17\",\"datumZrusenia\":\"2021-11-23\",\"dic\":\"2021186981\",\"druhVlastnictva\":\"2\",\"ico\":\"00695254\",\"id\":40,\"kraj\":\"SK042\",\"mesto\":\"Košice - mestská časť Krásna\",\"nazovUJ\":\"HORNÁD, spol. s r. o. Košice-Krásna v likvidácii\",\"okres\":\"SK0425\",\"pravnaForma\":\"112\",\"psc\":\"04018\",\"sidlo\":\"SK0425599794\",\"skNace\":\"33120\",\"ulica\":\"Golianova ul.\",\"velkostOrganizacie\":\"00\",\"zdrojDat\":\"SUSR\"}"
+          },
+          "search": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"existujeDalsieId\":false,\"id\":[40]}"
+          }
+        },
+        "bodySha256": "bc97dc21a0888e46fd1457838449a8f0dd5c1e26c497c91f36c4d22bfacb6e26",
+        "searchSha256": "92e40a11cc91404ffa2579f09cdf28fdbfdcf11f0bddb5bfbde30734b19c0a2a",
+        "captureSha256": "45bef0d094615b3244c83d9370169051aa9faaeaba639fcf056f8e16048e7334"
+      },
+      "review": {
+        "fields": {
+          "/country": "SK",
+          "/taxId": "00695254",
+          "/companyName": "HORNÁD, spol. s r. o. Košice-Krásna v likvidácii",
+          "/source": "SlovakRuz",
+          "/registryDetails/provider": "SlovakRuz",
+          "/registryDetails/data": {
+            "id": 40,
+            "ico": "00695254",
+            "nazovUJ": "HORNÁD, spol. s r. o. Košice-Krásna v likvidácii",
+            "dic": "2021186981",
+            "ulica": "Golianova ul.",
+            "mesto": "Košice - mestská časť Krásna",
+            "psc": "04018",
+            "pravnaForma": "112",
+            "datumZalozenia": "1991-01-17",
+            "datumZrusenia": "2021-11-23",
+            "datumPoslednejUpravy": "2026-05-14",
+            "zdrojDat": "SUSR",
+            "sidlo": "SK0425599794",
+            "kraj": "SK042",
+            "okres": "SK0425",
+            "skNace": "33120",
+            "velkostOrganizacie": "00",
+            "druhVlastnictva": "2",
+            "stav": null,
+            "nativeRegistryStatus": null,
+            "rpoLifecycle": null
+          },
+          "/registeredOffice": null,
+          "/fiscalAddress": null,
+          "/legalForm": "Spol. s r. o.",
+          "/status": "closed",
+          "/vatRegistered": null,
+          "/vatId": null,
+          "/registryUrl": null,
+          "/foreignName": null
+        },
+        "bodySha256": "bc97dc21a0888e46fd1457838449a8f0dd5c1e26c497c91f36c4d22bfacb6e26",
+        "captureSha256": "45bef0d094615b3244c83d9370169051aa9faaeaba639fcf056f8e16048e7334"
+      },
+      "provenance": {
+        "originalObservationSha256": "eb03110d997c61d45dff9c667a92fb8e6ae772e52deafcf90c4e2bed6a09e11a",
+        "originalBodyHashes": {
+          "detail": "6e01ace3fd00f90c54a2aca62ae52fa42d8870114926648ef3fe33f2ad2c418a",
+          "search": "e2309a32efdc6d7eead27eb9368e499db2a1481f7b93ba9cb76b33cd9779466d"
+        },
+        "source": "https://www.registeruz.sk/cruz-public/api",
+        "preparation": "adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed"
+      },
+      "category": "resolved",
+      "expectedValidation": "verifiedPositive",
+      "reviewer": "Codex source review 2026-11-24",
+      "rationale": "Reviewed refreshed prepared official payload against the preceding source-bound observation: identity, lifecycle and all other retained facts unchanged. Only direct source/request dates and the documented Austrian all-state search scope may differ; dates taken from source fields, not parser output. Previous review retained."
+    },
+    "a339771ced9f27224c6d1c43266ec864bb7162d94b6e1d8e5636b6a748534294": {
+      "observation": {
+        "id": "00633861",
+        "checkedAt": "2026-11-23T23:32:10.051031752Z",
+        "capture": {
+          "detail": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"datumPoslednejUpravy\":\"2026-05-14\",\"datumZalozenia\":\"1991-04-19\",\"datumZrusenia\":\"2018-11-27\",\"dic\":\"2020435967\",\"druhVlastnictva\":\"2\",\"ico\":\"00633861\",\"id\":65,\"kraj\":\"SK022\",\"mesto\":\"Dubnica nad Váhom\",\"nazovUJ\":\"TRADEF spol. s r.o. v likvidácii\",\"okres\":\"SK0222\",\"pravnaForma\":\"112\",\"psc\":\"01841\",\"sidlo\":\"SK0222513016\",\"skNace\":\"68200\",\"ulica\":\"Obrancov mieru 344/2\",\"velkostOrganizacie\":\"00\",\"zdrojDat\":\"SUSR\"}"
+          },
+          "search": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"existujeDalsieId\":false,\"id\":[65]}"
+          }
+        },
+        "bodySha256": "90a8a8de7388743b66988caef0c0a3e96c0d78c03cac78004bcba6038d9989ca",
+        "searchSha256": "afdd9759437bfae6d48bf7796e4c8ad8e16a422483cf176714b858ec07095489",
+        "captureSha256": "cc6d4a53839ce9070dbf1bd3e8ad6fb695dc9f89836ac73140003e7d5815aa3c"
+      },
+      "review": {
+        "fields": {
+          "/country": "SK",
+          "/taxId": "00633861",
+          "/companyName": "TRADEF spol. s r.o. v likvidácii",
+          "/source": "SlovakRuz",
+          "/registryDetails/provider": "SlovakRuz",
+          "/registryDetails/data": {
+            "id": 65,
+            "ico": "00633861",
+            "nazovUJ": "TRADEF spol. s r.o. v likvidácii",
+            "dic": "2020435967",
+            "ulica": "Obrancov mieru 344/2",
+            "mesto": "Dubnica nad Váhom",
+            "psc": "01841",
+            "pravnaForma": "112",
+            "datumZalozenia": "1991-04-19",
+            "datumZrusenia": "2018-11-27",
+            "datumPoslednejUpravy": "2026-05-14",
+            "zdrojDat": "SUSR",
+            "sidlo": "SK0222513016",
+            "kraj": "SK022",
+            "okres": "SK0222",
+            "skNace": "68200",
+            "velkostOrganizacie": "00",
+            "druhVlastnictva": "2",
+            "stav": null,
+            "nativeRegistryStatus": null,
+            "rpoLifecycle": null
+          },
+          "/registeredOffice": null,
+          "/fiscalAddress": null,
+          "/legalForm": "Spol. s r. o.",
+          "/status": "closed",
+          "/vatRegistered": null,
+          "/vatId": null,
+          "/registryUrl": null,
+          "/foreignName": null
+        },
+        "bodySha256": "90a8a8de7388743b66988caef0c0a3e96c0d78c03cac78004bcba6038d9989ca",
+        "captureSha256": "cc6d4a53839ce9070dbf1bd3e8ad6fb695dc9f89836ac73140003e7d5815aa3c"
+      },
+      "provenance": {
+        "originalObservationSha256": "c52bc20cd084657ed859c86379211e7d9b8ebd6237a2667f83e4a8027b50fe3f",
+        "originalBodyHashes": {
+          "detail": "eb220cdcf79e755b20907e66a60e8187a9815663d52433952d8243f4ccaa1331",
+          "search": "95b62d1f7ffa6c33723e19b7c10947afb231ce7d5ca8181fa28d3bb578c3d5cb"
+        },
+        "source": "https://www.registeruz.sk/cruz-public/api",
+        "preparation": "adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed"
+      },
+      "category": "resolved",
+      "expectedValidation": "verifiedPositive",
+      "reviewer": "Codex source review 2026-11-24",
+      "rationale": "Reviewed refreshed prepared official payload against the preceding source-bound observation: identity, lifecycle and all other retained facts unchanged. Only direct source/request dates and the documented Austrian all-state search scope may differ; dates taken from source fields, not parser output. Previous review retained."
+    },
+    "09aba4664ed93d189ca3d82e3686d1954d2a30424c34e130fed94e8c49ce1cc6": {
+      "observation": {
+        "id": "00895920",
+        "checkedAt": "2026-11-23T23:32:20.144489507Z",
+        "capture": {
+          "detail": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"datumPoslednejUpravy\":\"2026-07-03\",\"datumZalozenia\":\"1990-11-27\",\"dic\":\"2020349914\",\"druhVlastnictva\":\"2\",\"ico\":\"00895920\",\"id\":67,\"kraj\":\"SK010\",\"mesto\":\"Bratislava - mestská časť Petržalka\",\"nazovUJ\":\"TOR spol. s r.o.\",\"okres\":\"SK0105\",\"pravnaForma\":\"112\",\"psc\":\"85102\",\"sidlo\":\"SK0105529460\",\"skNace\":\"43910\",\"ulica\":\"Starohájska 3\",\"velkostOrganizacie\":\"06\",\"zdrojDat\":\"SUSR\"}"
+          },
+          "rpoDetail": {
+            "httpStatus": 200,
+            "contentType": "application/json",
+            "retryAfter": null,
+            "body": "{\"establishment\":\"1990-11-27\",\"id\":380093,\"identifiers\":[{\"validFrom\":\"1990-11-27\",\"value\":\"00895920\"}]}"
+          },
+          "rpoSearch": {
+            "httpStatus": 200,
+            "contentType": "application/json",
+            "retryAfter": null,
+            "body": "{\"results\":[{\"establishment\":\"1990-11-27\",\"id\":380093,\"identifiers\":[{\"validFrom\":\"1990-11-27\",\"value\":\"00895920\"}]}]}"
+          },
+          "search": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"existujeDalsieId\":false,\"id\":[67]}"
+          }
+        },
+        "bodySha256": "12aafe1392224f208fd261e8750d7c9ddf7fb3eb259a17f403d64c16092de9b1",
+        "searchSha256": "1dfdbfb0d9e1f46c7a12eabc77b5b00ca0a422539b35d18bd310ac13ebeed88f",
+        "captureSha256": "87b990bad22681f7c482911c2eae40fc312c97755b94f3da315d7aace2a00c96"
+      },
+      "review": {
+        "fields": {
+          "/status": "active"
+        },
+        "bodySha256": "12aafe1392224f208fd261e8750d7c9ddf7fb3eb259a17f403d64c16092de9b1",
+        "captureSha256": "87b990bad22681f7c482911c2eae40fc312c97755b94f3da315d7aace2a00c96"
+      },
+      "provenance": {
+        "originalObservationSha256": "8b31f8e3cb04d9c2660bc420aebca1f19ae8722b211c3d93ca7b82180d13ab64",
+        "originalBodyHashes": {
+          "detail": "694410e3e109628c746fb432297bf39fa2d55d0ff47c81d1460d31b4f96dd0d7",
+          "rpoDetail": "129db5ac6f40fb2546c151258331c0251424f3dc31dc3c9659cf63fab070c147",
+          "rpoSearch": "9a286780c129eec63e28ce2fb6ec32226d7f394b4bd42c1b0e496629d7b48653",
+          "search": "3dcec71f4996edde772fbd8bd1b00e881b4a303407cf71689ee947497bfd715a"
+        },
+        "source": "https://www.registeruz.sk/cruz-public/api",
+        "preparation": "adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed"
+      },
+      "category": "resolved",
+      "expectedValidation": "verifiedPositive",
+      "reviewer": "Codex source review 2026-11-24",
+      "rationale": "Reviewed refreshed prepared official payload against the preceding source-bound observation: identity, lifecycle and all other retained facts unchanged. Only direct source/request dates and the documented Austrian all-state search scope may differ; dates taken from source fields, not parser output. Previous review retained."
+    },
+    "c504ce929ab25f65a87013c922978b16947d9167c427e50a093a73e421f65dce": {
+      "observation": {
+        "id": "00618811",
+        "checkedAt": "2026-11-23T23:32:25.202806093Z",
+        "capture": {
+          "detail": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"datumPoslednejUpravy\":\"2026-07-03\",\"datumZalozenia\":\"1991-11-20\",\"datumZrusenia\":\"2009-04-28\",\"druhVlastnictva\":\"8\",\"ico\":\"00618811\",\"id\":100,\"kraj\":\"SK042\",\"mesto\":\"Rožňava\",\"nazovUJ\":\"ITALSLOV TRADE, spol. s r.o.\",\"okres\":\"SK0428\",\"pravnaForma\":\"112\",\"psc\":\"04801\",\"sidlo\":\"SK0428525529\",\"skNace\":\"46900\",\"ulica\":\"Šafárikova 19\",\"velkostOrganizacie\":\"00\",\"zdrojDat\":\"SUSR\"}"
+          },
+          "search": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"existujeDalsieId\":false,\"id\":[100]}"
+          }
+        },
+        "bodySha256": "0b9bd33dbf4d6c3aecd7a2c8fbeab24bd35316a23e5f65872ba09c79c4a156af",
+        "searchSha256": "fc682e7605fb6692e23de10c3c5fdb353248af6c8df8d424c3c63656860cad76",
+        "captureSha256": "cf724cd391736c721068596d50fae016886e6bca20169e00c1fab2de4f8785bd"
+      },
+      "review": {
+        "fields": {
+          "/country": "SK",
+          "/taxId": "00618811",
+          "/companyName": "ITALSLOV TRADE, spol. s r.o.",
+          "/source": "SlovakRuz",
+          "/registryDetails/provider": "SlovakRuz",
+          "/registryDetails/data": {
+            "id": 100,
+            "ico": "00618811",
+            "nazovUJ": "ITALSLOV TRADE, spol. s r.o.",
+            "dic": null,
+            "ulica": "Šafárikova 19",
+            "mesto": "Rožňava",
+            "psc": "04801",
+            "pravnaForma": "112",
+            "datumZalozenia": "1991-11-20",
+            "datumZrusenia": "2009-04-28",
+            "datumPoslednejUpravy": "2026-07-03",
+            "zdrojDat": "SUSR",
+            "sidlo": "SK0428525529",
+            "kraj": "SK042",
+            "okres": "SK0428",
+            "skNace": "46900",
+            "velkostOrganizacie": "00",
+            "druhVlastnictva": "8",
+            "stav": null,
+            "nativeRegistryStatus": null,
+            "rpoLifecycle": null
+          },
+          "/registeredOffice": null,
+          "/fiscalAddress": null,
+          "/legalForm": "Spol. s r. o.",
+          "/status": "closed",
+          "/vatRegistered": null,
+          "/vatId": null,
+          "/registryUrl": null,
+          "/foreignName": null
+        },
+        "bodySha256": "0b9bd33dbf4d6c3aecd7a2c8fbeab24bd35316a23e5f65872ba09c79c4a156af",
+        "captureSha256": "cf724cd391736c721068596d50fae016886e6bca20169e00c1fab2de4f8785bd"
+      },
+      "provenance": {
+        "originalObservationSha256": "f440d8c47408d584d8d98d92d0dfb9d69c1c07cfdacdea34c7875a182137ae01",
+        "originalBodyHashes": {
+          "detail": "d290643d569a80f9edc80fe2bdf23c62150592105606f297d5cf8973b1e58c4b",
+          "search": "1f8257a23dcc46df8d11a2f885de8be1e36c059459413311cfc2d7dfcd5c3162"
+        },
+        "source": "https://www.registeruz.sk/cruz-public/api",
+        "preparation": "adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed"
+      },
+      "category": "resolved",
+      "expectedValidation": "verifiedPositive",
+      "reviewer": "Codex source review 2026-11-24",
+      "rationale": "Reviewed refreshed prepared official payload against the preceding source-bound observation: identity, lifecycle and all other retained facts unchanged. Only direct source/request dates and the documented Austrian all-state search scope may differ; dates taken from source fields, not parser output. Previous review retained."
+    },
+    "8d81bb8d63ef62db27cea9f9474e24c18465bf76b4fa2036635054d92125d42c": {
+      "observation": {
+        "id": "00650811",
+        "checkedAt": "2026-11-23T23:32:30.260803803Z",
+        "capture": {
+          "detail": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"datumPoslednejUpravy\":\"2026-07-03\",\"datumZalozenia\":\"1991-03-26\",\"datumZrusenia\":\"2009-09-24\",\"druhVlastnictva\":\"2\",\"ico\":\"00650811\",\"id\":115,\"kraj\":\"SK031\",\"mesto\":\"Žilina\",\"nazovUJ\":\"K + S  Management, spol. s r.o.\",\"okres\":\"SK031B\",\"pravnaForma\":\"112\",\"psc\":\"01001\",\"sidlo\":\"SK031B517402\",\"skNace\":\"46730\",\"ulica\":\"Platanova 16\",\"velkostOrganizacie\":\"00\",\"zdrojDat\":\"SUSR\"}"
+          },
+          "search": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"existujeDalsieId\":false,\"id\":[115]}"
+          }
+        },
+        "bodySha256": "976d12cc2f83ccb56bd205ad2475c9a09f5a3cf3ee7000e75ca3a00f9504e829",
+        "searchSha256": "1d82dcdb78b405a005d8de14e1679e35d079c50ac66310f6c79bddc117b9b706",
+        "captureSha256": "fb50d556d98cef4a9bbb471ab59c314d3c79d1ac2d58968d6fe097e95bba0026"
+      },
+      "review": {
+        "fields": {
+          "/country": "SK",
+          "/taxId": "00650811",
+          "/companyName": "K + S  Management, spol. s r.o.",
+          "/source": "SlovakRuz",
+          "/registryDetails/provider": "SlovakRuz",
+          "/registryDetails/data": {
+            "id": 115,
+            "ico": "00650811",
+            "nazovUJ": "K + S  Management, spol. s r.o.",
+            "dic": null,
+            "ulica": "Platanova 16",
+            "mesto": "Žilina",
+            "psc": "01001",
+            "pravnaForma": "112",
+            "datumZalozenia": "1991-03-26",
+            "datumZrusenia": "2009-09-24",
+            "datumPoslednejUpravy": "2026-07-03",
+            "zdrojDat": "SUSR",
+            "sidlo": "SK031B517402",
+            "kraj": "SK031",
+            "okres": "SK031B",
+            "skNace": "46730",
+            "velkostOrganizacie": "00",
+            "druhVlastnictva": "2",
+            "stav": null,
+            "nativeRegistryStatus": null,
+            "rpoLifecycle": null
+          },
+          "/registeredOffice": null,
+          "/fiscalAddress": null,
+          "/legalForm": "Spol. s r. o.",
+          "/status": "closed",
+          "/vatRegistered": null,
+          "/vatId": null,
+          "/registryUrl": null,
+          "/foreignName": null
+        },
+        "bodySha256": "976d12cc2f83ccb56bd205ad2475c9a09f5a3cf3ee7000e75ca3a00f9504e829",
+        "captureSha256": "fb50d556d98cef4a9bbb471ab59c314d3c79d1ac2d58968d6fe097e95bba0026"
+      },
+      "provenance": {
+        "originalObservationSha256": "19bdc888c5d8841cfb17ddd806460d403207c90ac75f4cfaa56d23fcaf7971a8",
+        "originalBodyHashes": {
+          "detail": "12a67289b6ca6e364b60fa4afe4f7874a5b7037bd530adfc013b28485361dc20",
+          "search": "b2a14d10b294e93164e009fcc569e262ad8e412588fdbbb229f504933cc64a88"
+        },
+        "source": "https://www.registeruz.sk/cruz-public/api",
+        "preparation": "adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed"
+      },
+      "category": "resolved",
+      "expectedValidation": "verifiedPositive",
+      "reviewer": "Codex source review 2026-11-24",
+      "rationale": "Reviewed refreshed prepared official payload against the preceding source-bound observation: identity, lifecycle and all other retained facts unchanged. Only direct source/request dates and the documented Austrian all-state search scope may differ; dates taken from source fields, not parser output. Previous review retained."
+    },
+    "778e6de64e84bdd9ba630dd9fd031002c83f9ccc22ee26a36f933e4729e195ea": {
+      "observation": {
+        "id": "00650951",
+        "checkedAt": "2026-11-23T23:32:40.372773794Z",
+        "capture": {
+          "detail": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"datumPoslednejUpravy\":\"2026-09-10\",\"datumZalozenia\":\"1991-03-04\",\"dic\":\"2020445790\",\"druhVlastnictva\":\"2\",\"ico\":\"00650951\",\"id\":133,\"kraj\":\"SK031\",\"mesto\":\"Žilina\",\"nazovUJ\":\"ELCEN, s.r.o. v likvidácii\",\"okres\":\"SK031B\",\"pravnaForma\":\"112\",\"psc\":\"01001\",\"sidlo\":\"SK031B517402\",\"skNace\":\"46900\",\"ulica\":\"Predmestská 79\",\"velkostOrganizacie\":\"00\",\"zdrojDat\":\"SUSR\"}"
+          },
+          "rpoDetail": {
+            "httpStatus": 200,
+            "contentType": "application/json",
+            "retryAfter": null,
+            "body": "{\"establishment\":\"1991-03-04\",\"id\":589971,\"identifiers\":[{\"validFrom\":\"1991-10-15\",\"value\":\"00650951\"}],\"legalStatuses\":[{\"validFrom\":\"2026-08-01\",\"value\":{\"code\":\"2\",\"codelistCode\":\"CL010108\",\"value\":\"V likvidácii\"}}]}"
+          },
+          "rpoSearch": {
+            "httpStatus": 200,
+            "contentType": "application/json",
+            "retryAfter": null,
+            "body": "{\"results\":[{\"establishment\":\"1991-03-04\",\"id\":589971,\"identifiers\":[{\"validFrom\":\"1991-10-15\",\"value\":\"00650951\"}]}]}"
+          },
+          "search": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"existujeDalsieId\":false,\"id\":[133]}"
+          }
+        },
+        "bodySha256": "eb96fab3e1cf3e6312010d454cc4c3e4993b150093a0594ab77ad9e80fa713aa",
+        "searchSha256": "168bf9159ec5146494fc0cf6e02b8fb57e14d49f2e442f4a4ea83565823c7980",
+        "captureSha256": "6c0555b9c4fdf329fc14807d301949a7891be0b834dc2c169dc3b48eea473735"
+      },
+      "review": {
+        "fields": {
+          "/status": "liquidation"
+        },
+        "bodySha256": "eb96fab3e1cf3e6312010d454cc4c3e4993b150093a0594ab77ad9e80fa713aa",
+        "captureSha256": "6c0555b9c4fdf329fc14807d301949a7891be0b834dc2c169dc3b48eea473735"
+      },
+      "provenance": {
+        "originalObservationSha256": "eef91cb09e54578dd521d56021f634e07d1fe0121a30394505f65e8dd498f9e1",
+        "originalBodyHashes": {
+          "detail": "d5cd70fca9664e9818ceaadaff0863a9fdab1f0e54c65002cda82751e84370cf",
+          "rpoDetail": "11faba4d7a0b4b29e9f2fe1f29d28ee14c83d1b22fedb18e1c0bb3fd5e21ac8d",
+          "rpoSearch": "6071f768e91bb4db44e3dd72bca1270ef52185ce059e8a9cef6557cff40be737",
+          "search": "09b842395d7b2a05f142790c78a92f1e2c8acbd588f0402a3095b0f2144c658a"
+        },
+        "source": "https://www.registeruz.sk/cruz-public/api",
+        "preparation": "adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed"
+      },
+      "category": "resolved",
+      "expectedValidation": "verifiedPositive",
+      "reviewer": "Codex source review 2026-11-24",
+      "rationale": "Reviewed refreshed prepared official payload against the preceding source-bound observation: identity, lifecycle and all other retained facts unchanged. Only direct source/request dates and the documented Austrian all-state search scope may differ; dates taken from source fields, not parser output. Previous review retained."
+    },
+    "859c3e613c6970c5fb67104ac48ff3311816cb5e7df6a6e3097a9f3e3d40d907": {
+      "observation": {
+        "id": "00684473",
+        "checkedAt": "2026-11-23T23:32:50.185306632Z",
+        "capture": {
+          "detail": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"datumPoslednejUpravy\":\"2026-07-03\",\"datumZalozenia\":\"1990-10-22\",\"dic\":\"2020297598\",\"druhVlastnictva\":\"2\",\"ico\":\"00684473\",\"id\":173,\"kraj\":\"SK010\",\"mesto\":\"Bratislava - mestská časť Nové Mesto\",\"nazovUJ\":\"BZ, spol. s r.o.\",\"okres\":\"SK0103\",\"pravnaForma\":\"112\",\"psc\":\"83104\",\"sidlo\":\"SK0103529346\",\"skNace\":\"41209\",\"ulica\":\"Tomášikova 50/E\",\"velkostOrganizacie\":\"06\",\"zdrojDat\":\"SUSR\"}"
+          },
+          "rpoDetail": {
+            "httpStatus": 200,
+            "contentType": "application/json",
+            "retryAfter": null,
+            "body": "{\"establishment\":\"1990-10-22\",\"id\":781825,\"identifiers\":[{\"validFrom\":\"1990-10-22\",\"value\":\"00684473\"}]}"
+          },
+          "rpoSearch": {
+            "httpStatus": 200,
+            "contentType": "application/json",
+            "retryAfter": null,
+            "body": "{\"results\":[{\"establishment\":\"1990-10-22\",\"id\":781825,\"identifiers\":[{\"validFrom\":\"1990-10-22\",\"value\":\"00684473\"}]}]}"
+          },
+          "search": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"existujeDalsieId\":false,\"id\":[173]}"
+          }
+        },
+        "bodySha256": "8d4153a9b12505a4fe3cc6d11408b404698386aa65d4f1b3cadce38eada2ae23",
+        "searchSha256": "d24e87a477c0ba498fe8ef4cbb1d30158beffe981627f82a78c34d020bcfd610",
+        "captureSha256": "0d005a330d1b510aa6af49b8c1c36a87eb66b5e3531639f106ff7280333dcdcd"
+      },
+      "review": {
+        "fields": {
+          "/status": "active"
+        },
+        "bodySha256": "8d4153a9b12505a4fe3cc6d11408b404698386aa65d4f1b3cadce38eada2ae23",
+        "captureSha256": "0d005a330d1b510aa6af49b8c1c36a87eb66b5e3531639f106ff7280333dcdcd"
+      },
+      "provenance": {
+        "originalObservationSha256": "f8bbb507355090d551cb07941fad623bd419defbb5f5875fae4a68ed72434c7a",
+        "originalBodyHashes": {
+          "detail": "c2dd57069dd7a45f46292a314434c66896a67a82d3ffd157a201997372bf9214",
+          "rpoDetail": "b448b89661f2594dc73e6518fc14ac7904bfba84c0eb9e1ddcbf5ccee4070f3e",
+          "rpoSearch": "3870c18fe26754b7d1ad5096dc62e020ad2bd60e50d81d7de640edcf4207b22d",
+          "search": "e8ca05daeb0447bcd5fdb9526d440bdc656d2ac81d8905f97308edd691580d05"
+        },
+        "source": "https://www.registeruz.sk/cruz-public/api",
+        "preparation": "adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed"
+      },
+      "category": "resolved",
+      "expectedValidation": "verifiedPositive",
+      "reviewer": "Codex source review 2026-11-24",
+      "rationale": "Reviewed refreshed prepared official payload against the preceding source-bound observation: identity, lifecycle and all other retained facts unchanged. Only direct source/request dates and the documented Austrian all-state search scope may differ; dates taken from source fields, not parser output. Previous review retained."
+    },
+    "ff480ea4d1e9178511c959a4e2ae8e0ab78cac67dc41828cd833315a4cfb6181": {
+      "observation": {
+        "id": "00603015",
+        "checkedAt": "2026-11-23T23:33:00.16013697Z",
+        "capture": {
+          "detail": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"datumPoslednejUpravy\":\"2026-07-03\",\"datumZalozenia\":\"1991-01-21\",\"dic\":\"2020418994\",\"druhVlastnictva\":\"8\",\"ico\":\"00603015\",\"id\":200,\"kraj\":\"SK010\",\"mesto\":\"Bratislava - mestská časť Nové Mesto\",\"nazovUJ\":\"MicroStep, spol. s r.o.\",\"okres\":\"SK0103\",\"pravnaForma\":\"112\",\"psc\":\"83104\",\"sidlo\":\"SK0103529346\",\"skNace\":\"28410\",\"ulica\":\"Vajnorská 158\",\"velkostOrganizacie\":\"24\",\"zdrojDat\":\"SUSR\"}"
+          },
+          "rpoDetail": {
+            "httpStatus": 200,
+            "contentType": "application/json",
+            "retryAfter": null,
+            "body": "{\"establishment\":\"1991-01-21\",\"id\":449025,\"identifiers\":[{\"validFrom\":\"1991-01-21\",\"value\":\"00603015\"}]}"
+          },
+          "rpoSearch": {
+            "httpStatus": 200,
+            "contentType": "application/json",
+            "retryAfter": null,
+            "body": "{\"results\":[{\"establishment\":\"1991-01-21\",\"id\":449025,\"identifiers\":[{\"validFrom\":\"1991-01-21\",\"value\":\"00603015\"}]}]}"
+          },
+          "search": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"existujeDalsieId\":false,\"id\":[200]}"
+          }
+        },
+        "bodySha256": "c6a042128035dde016e66c4da2dd22a0bc3ed677766f5962dc995b3fa5c21655",
+        "searchSha256": "ac2062ab4017ff47fae87edfaaf7a6d2a42527f0ccd605cd77341175d4d8d97e",
+        "captureSha256": "b80a084f1bd71109cc8a016a1a20467efb63110c0bc16e6ef3cde44a8ec8461f"
+      },
+      "review": {
+        "fields": {
+          "/status": "active"
+        },
+        "bodySha256": "c6a042128035dde016e66c4da2dd22a0bc3ed677766f5962dc995b3fa5c21655",
+        "captureSha256": "b80a084f1bd71109cc8a016a1a20467efb63110c0bc16e6ef3cde44a8ec8461f"
+      },
+      "provenance": {
+        "originalObservationSha256": "45a5610efc162fbec9815c27916fb278d95562bfd0eab9141b9a8670b0a6cb33",
+        "originalBodyHashes": {
+          "detail": "31caf62b0a9def52f11205fdb9fda3983d18beee2f52d846f859c8d4074d05f3",
+          "rpoDetail": "c0c997a57666915cb4b02ae82a36c9518e7e4161e26421ceef19a7e3047dad6e",
+          "rpoSearch": "9970e565c5dfd4679cf021a039991cb66a44f854e711271babb82454cff7cfe9",
+          "search": "2b24acfb91d70f87fd5fe31ac4676a7ccd3cb3fc22a591dfb595c91b59ca4c4b"
+        },
+        "source": "https://www.registeruz.sk/cruz-public/api",
+        "preparation": "adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed"
+      },
+      "category": "resolved",
+      "expectedValidation": "verifiedPositive",
+      "reviewer": "Codex source review 2026-11-24",
+      "rationale": "Reviewed refreshed prepared official payload against the preceding source-bound observation: identity, lifecycle and all other retained facts unchanged. Only direct source/request dates and the documented Austrian all-state search scope may differ; dates taken from source fields, not parser output. Previous review retained."
+    },
+    "5a1cde0225f6d3f3dc69dc916981f498f55d443a189ea41045c51af30a4eff52": {
+      "observation": {
+        "id": "00692221",
+        "checkedAt": "2026-11-23T23:33:05.230505875Z",
+        "capture": {
+          "detail": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"datumPoslednejUpravy\":\"2026-07-03\",\"datumZalozenia\":\"1990-09-17\",\"datumZrusenia\":\"2013-04-30\",\"dic\":\"2020608854\",\"druhVlastnictva\":\"2\",\"ico\":\"00692221\",\"id\":340,\"kraj\":\"SK022\",\"mesto\":\"Ilava\",\"nazovUJ\":\"Exmont,spol. s r.o.\",\"okres\":\"SK0222\",\"pravnaForma\":\"112\",\"psc\":\"01901\",\"sidlo\":\"SK0222513156\",\"skNace\":\"25620\",\"ulica\":\"J.L.Bellu 122/6\",\"velkostOrganizacie\":\"00\",\"zdrojDat\":\"SUSR\"}"
+          },
+          "search": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"existujeDalsieId\":false,\"id\":[340]}"
+          }
+        },
+        "bodySha256": "2c8d06bb984a884af8f86febc9973fdd00d7ab887aa1cbdf9098fafe6ab46974",
+        "searchSha256": "537aee7955b07a9fab5c2c710bbba9781276c4b6e9ee99e064a69efe1e892338",
+        "captureSha256": "5391077d30e1de7339529154e199796d98618ded7e81f7066920d3d18ff43e91"
+      },
+      "review": {
+        "fields": {
+          "/country": "SK",
+          "/taxId": "00692221",
+          "/companyName": "Exmont,spol. s r.o.",
+          "/source": "SlovakRuz",
+          "/registryDetails/provider": "SlovakRuz",
+          "/registryDetails/data": {
+            "id": 340,
+            "ico": "00692221",
+            "nazovUJ": "Exmont,spol. s r.o.",
+            "dic": "2020608854",
+            "ulica": "J.L.Bellu 122/6",
+            "mesto": "Ilava",
+            "psc": "01901",
+            "pravnaForma": "112",
+            "datumZalozenia": "1990-09-17",
+            "datumZrusenia": "2013-04-30",
+            "datumPoslednejUpravy": "2026-07-03",
+            "zdrojDat": "SUSR",
+            "sidlo": "SK0222513156",
+            "kraj": "SK022",
+            "okres": "SK0222",
+            "skNace": "25620",
+            "velkostOrganizacie": "00",
+            "druhVlastnictva": "2",
+            "stav": null,
+            "nativeRegistryStatus": null,
+            "rpoLifecycle": null
+          },
+          "/registeredOffice": null,
+          "/fiscalAddress": null,
+          "/legalForm": "Spol. s r. o.",
+          "/status": "closed",
+          "/vatRegistered": null,
+          "/vatId": null,
+          "/registryUrl": null,
+          "/foreignName": null
+        },
+        "bodySha256": "2c8d06bb984a884af8f86febc9973fdd00d7ab887aa1cbdf9098fafe6ab46974",
+        "captureSha256": "5391077d30e1de7339529154e199796d98618ded7e81f7066920d3d18ff43e91"
+      },
+      "provenance": {
+        "originalObservationSha256": "6e8265da7f917e24792cf7c4e4b0387824706ecefd868cb93dc50f1fefd7fe3e",
+        "originalBodyHashes": {
+          "detail": "f4ca6a18b637d8b4006d6f838d36f6b73593705f6e2a2a382529b217a205ffdb",
+          "search": "f8c223471499b5d88708dde8379cac044110214eb5fa11f38ba031386725bc2f"
+        },
+        "source": "https://www.registeruz.sk/cruz-public/api",
+        "preparation": "adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed"
+      },
+      "category": "resolved",
+      "expectedValidation": "verifiedPositive",
+      "reviewer": "Codex source review 2026-11-24",
+      "rationale": "Reviewed refreshed prepared official payload against the preceding source-bound observation: identity, lifecycle and all other retained facts unchanged. Only direct source/request dates and the documented Austrian all-state search scope may differ; dates taken from source fields, not parser output. Previous review retained."
+    },
+    "e71581dbf6f0b537915d07a9ff915076e3268f19542cc912d2a96baf64dde4ea": {
+      "observation": {
+        "id": "00684431",
+        "checkedAt": "2026-11-23T23:33:10.288355461Z",
+        "capture": {
+          "detail": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"datumPoslednejUpravy\":\"2026-07-03\",\"datumZalozenia\":\"1990-09-24\",\"datumZrusenia\":\"2021-11-23\",\"dic\":\"2020899606\",\"druhVlastnictva\":\"2\",\"ico\":\"00684431\",\"id\":354,\"kraj\":\"SK010\",\"mesto\":\"Bratislava - mestská časť Karlova Ves\",\"nazovUJ\":\"TOMING spol. s r.o. v likvidácii\",\"okres\":\"SK0104\",\"pravnaForma\":\"112\",\"psc\":\"84104\",\"sidlo\":\"SK0104529397\",\"skNace\":\"43110\",\"ulica\":\"Kuklovská 6\",\"velkostOrganizacie\":\"00\",\"zdrojDat\":\"SUSR\"}"
+          },
+          "search": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"existujeDalsieId\":false,\"id\":[354]}"
+          }
+        },
+        "bodySha256": "f6c607000f892401bf9e000d13f3426b36d9ea3caf49e09553ffccc03e68302c",
+        "searchSha256": "5f488c2fb6df9ecd748483ad9b552695b794c8fbb162f15d2e406249e116b752",
+        "captureSha256": "5707c407b47493eb01d0b5addf903c7e184d18153d2400f52dcc4197ed993326"
+      },
+      "review": {
+        "fields": {
+          "/country": "SK",
+          "/taxId": "00684431",
+          "/companyName": "TOMING spol. s r.o. v likvidácii",
+          "/source": "SlovakRuz",
+          "/registryDetails/provider": "SlovakRuz",
+          "/registryDetails/data": {
+            "id": 354,
+            "ico": "00684431",
+            "nazovUJ": "TOMING spol. s r.o. v likvidácii",
+            "dic": "2020899606",
+            "ulica": "Kuklovská 6",
+            "mesto": "Bratislava - mestská časť Karlova Ves",
+            "psc": "84104",
+            "pravnaForma": "112",
+            "datumZalozenia": "1990-09-24",
+            "datumZrusenia": "2021-11-23",
+            "datumPoslednejUpravy": "2026-07-03",
+            "zdrojDat": "SUSR",
+            "sidlo": "SK0104529397",
+            "kraj": "SK010",
+            "okres": "SK0104",
+            "skNace": "43110",
+            "velkostOrganizacie": "00",
+            "druhVlastnictva": "2",
+            "stav": null,
+            "nativeRegistryStatus": null,
+            "rpoLifecycle": null
+          },
+          "/registeredOffice": null,
+          "/fiscalAddress": null,
+          "/legalForm": "Spol. s r. o.",
+          "/status": "closed",
+          "/vatRegistered": null,
+          "/vatId": null,
+          "/registryUrl": null,
+          "/foreignName": null
+        },
+        "bodySha256": "f6c607000f892401bf9e000d13f3426b36d9ea3caf49e09553ffccc03e68302c",
+        "captureSha256": "5707c407b47493eb01d0b5addf903c7e184d18153d2400f52dcc4197ed993326"
+      },
+      "provenance": {
+        "originalObservationSha256": "6470e6c5a920ae385b17ac7074201684f79279649915bebb7cd2e77bb859ca91",
+        "originalBodyHashes": {
+          "detail": "988beaf721a286768bc10d9ae45c46d016da7dca9e1a5b3a59404583e5c9d87d",
+          "search": "84869352c7a12c4ee2bce7d5e68db604311c8f72681f31f772c6e348adf3a69d"
+        },
+        "source": "https://www.registeruz.sk/cruz-public/api",
+        "preparation": "adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed"
+      },
+      "category": "resolved",
+      "expectedValidation": "verifiedPositive",
+      "reviewer": "Codex source review 2026-11-24",
+      "rationale": "Reviewed refreshed prepared official payload against the preceding source-bound observation: identity, lifecycle and all other retained facts unchanged. Only direct source/request dates and the documented Austrian all-state search scope may differ; dates taken from source fields, not parser output. Previous review retained."
+    },
+    "6757c241f43085bea236a61e8d9db598caac9839cf2cd7861a0f3d606a0fbc80": {
+      "observation": {
+        "id": "00595004",
+        "checkedAt": "2026-11-23T23:33:15.347374213Z",
+        "capture": {
+          "detail": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"datumPoslednejUpravy\":\"2026-05-14\",\"datumZalozenia\":\"1990-08-29\",\"datumZrusenia\":\"2021-11-23\",\"dic\":\"2020753152\",\"druhVlastnictva\":\"2\",\"ico\":\"00595004\",\"id\":362,\"kraj\":\"SK042\",\"mesto\":\"Bočiar\",\"nazovUJ\":\"Stavebné konštrukcie Bočiar, s.r.o. v likvidácii\",\"okres\":\"SK0426\",\"pravnaForma\":\"112\",\"psc\":\"04457\",\"sidlo\":\"SK0426559831\",\"skNace\":\"28990\",\"ulica\":\"Bočiar 595\",\"velkostOrganizacie\":\"00\",\"zdrojDat\":\"SUSR\"}"
+          },
+          "search": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"existujeDalsieId\":false,\"id\":[362]}"
+          }
+        },
+        "bodySha256": "143e6874fab470aed597077d7959a803d8ff35216401a63fd61a7c3f42a64c90",
+        "searchSha256": "008da878a1955992d542bfee0ca1857a748c988f55df9921edc23d3935576cb0",
+        "captureSha256": "ae260e72000a59ac664211a51603eec02d0f59bee12bdfea740498f914976452"
+      },
+      "review": {
+        "fields": {
+          "/country": "SK",
+          "/taxId": "00595004",
+          "/companyName": "Stavebné konštrukcie Bočiar, s.r.o. v likvidácii",
+          "/source": "SlovakRuz",
+          "/registryDetails/provider": "SlovakRuz",
+          "/registryDetails/data": {
+            "id": 362,
+            "ico": "00595004",
+            "nazovUJ": "Stavebné konštrukcie Bočiar, s.r.o. v likvidácii",
+            "dic": "2020753152",
+            "ulica": "Bočiar 595",
+            "mesto": "Bočiar",
+            "psc": "04457",
+            "pravnaForma": "112",
+            "datumZalozenia": "1990-08-29",
+            "datumZrusenia": "2021-11-23",
+            "datumPoslednejUpravy": "2026-05-14",
+            "zdrojDat": "SUSR",
+            "sidlo": "SK0426559831",
+            "kraj": "SK042",
+            "okres": "SK0426",
+            "skNace": "28990",
+            "velkostOrganizacie": "00",
+            "druhVlastnictva": "2",
+            "stav": null,
+            "nativeRegistryStatus": null,
+            "rpoLifecycle": null
+          },
+          "/registeredOffice": null,
+          "/fiscalAddress": null,
+          "/legalForm": "Spol. s r. o.",
+          "/status": "closed",
+          "/vatRegistered": null,
+          "/vatId": null,
+          "/registryUrl": null,
+          "/foreignName": null
+        },
+        "bodySha256": "143e6874fab470aed597077d7959a803d8ff35216401a63fd61a7c3f42a64c90",
+        "captureSha256": "ae260e72000a59ac664211a51603eec02d0f59bee12bdfea740498f914976452"
+      },
+      "provenance": {
+        "originalObservationSha256": "68b867c31ac8c7aa19626ef7a9c7e35984e40ed3cee6638bf5e4de7f0e3f4ec5",
+        "originalBodyHashes": {
+          "detail": "08d48ef0cd6f2180e025558c770eedf87e69d95c557e869bb5fdc7aa1a87cf71",
+          "search": "a1c65bdb0b7100c459290c4e8e5aaf736a2ccc179191d4aad09d4e926ec1e169"
+        },
+        "source": "https://www.registeruz.sk/cruz-public/api",
+        "preparation": "adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed"
+      },
+      "category": "resolved",
+      "expectedValidation": "verifiedPositive",
+      "reviewer": "Codex source review 2026-11-24",
+      "rationale": "Reviewed refreshed prepared official payload against the preceding source-bound observation: identity, lifecycle and all other retained facts unchanged. Only direct source/request dates and the documented Austrian all-state search scope may differ; dates taken from source fields, not parser output. Previous review retained."
+    },
+    "9376933127e4d62150e0d182acd04e3d5ca7a5b633d30be418e12a0df8b2d3a5": {
+      "observation": {
+        "id": "00611841",
+        "checkedAt": "2026-11-23T23:33:20.405607132Z",
+        "capture": {
+          "detail": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"datumPoslednejUpravy\":\"2026-07-03\",\"datumZalozenia\":\"1991-01-30\",\"datumZrusenia\":\"2021-11-23\",\"dic\":\"2021136689\",\"druhVlastnictva\":\"2\",\"ico\":\"00611841\",\"id\":370,\"kraj\":\"SK021\",\"mesto\":\"Vydrany\",\"nazovUJ\":\"REALITA, s.r.o.\",\"okres\":\"SK0211\",\"pravnaForma\":\"112\",\"psc\":\"93016\",\"sidlo\":\"SK0211502014\",\"skNace\":\"10390\",\"ulica\":\"Studená 193\",\"velkostOrganizacie\":\"00\",\"zdrojDat\":\"SUSR\"}"
+          },
+          "search": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"existujeDalsieId\":false,\"id\":[370]}"
+          }
+        },
+        "bodySha256": "e837f81b29368a0ee82b9882b218d202721b8e943d2a0b0ec56b7d826ace6bd6",
+        "searchSha256": "57b7cd9f8a042855b6985f69b911e8be0e804560235a36420e31aef2f00e8660",
+        "captureSha256": "5ff16ad6c63227afbee0ee7daf732b5113a43b562322a95d864aee27e0eef7b5"
+      },
+      "review": {
+        "fields": {
+          "/country": "SK",
+          "/taxId": "00611841",
+          "/companyName": "REALITA, s.r.o.",
+          "/source": "SlovakRuz",
+          "/registryDetails/provider": "SlovakRuz",
+          "/registryDetails/data": {
+            "id": 370,
+            "ico": "00611841",
+            "nazovUJ": "REALITA, s.r.o.",
+            "dic": "2021136689",
+            "ulica": "Studená 193",
+            "mesto": "Vydrany",
+            "psc": "93016",
+            "pravnaForma": "112",
+            "datumZalozenia": "1991-01-30",
+            "datumZrusenia": "2021-11-23",
+            "datumPoslednejUpravy": "2026-07-03",
+            "zdrojDat": "SUSR",
+            "sidlo": "SK0211502014",
+            "kraj": "SK021",
+            "okres": "SK0211",
+            "skNace": "10390",
+            "velkostOrganizacie": "00",
+            "druhVlastnictva": "2",
+            "stav": null,
+            "nativeRegistryStatus": null,
+            "rpoLifecycle": null
+          },
+          "/registeredOffice": null,
+          "/fiscalAddress": null,
+          "/legalForm": "Spol. s r. o.",
+          "/status": "closed",
+          "/vatRegistered": null,
+          "/vatId": null,
+          "/registryUrl": null,
+          "/foreignName": null
+        },
+        "bodySha256": "e837f81b29368a0ee82b9882b218d202721b8e943d2a0b0ec56b7d826ace6bd6",
+        "captureSha256": "5ff16ad6c63227afbee0ee7daf732b5113a43b562322a95d864aee27e0eef7b5"
+      },
+      "provenance": {
+        "originalObservationSha256": "c74c6195d0a14dd2d96748a7e265d30fa5114c6d1a710f1a57f07747a63b5550",
+        "originalBodyHashes": {
+          "detail": "e6aa8a603a0c62a92bb04e0552fa3c54cf3707250cd3b616aaf1c25dd576e2ed",
+          "search": "826573bd59a751a02aca9993f7ade8d191fa1850859bd0538890afa7a06cd485"
+        },
+        "source": "https://www.registeruz.sk/cruz-public/api",
+        "preparation": "adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed"
+      },
+      "category": "resolved",
+      "expectedValidation": "verifiedPositive",
+      "reviewer": "Codex source review 2026-11-24",
+      "rationale": "Reviewed refreshed prepared official payload against the preceding source-bound observation: identity, lifecycle and all other retained facts unchanged. Only direct source/request dates and the documented Austrian all-state search scope may differ; dates taken from source fields, not parser output. Previous review retained."
+    },
+    "6db48c8d898c13a24a6e061e24c59cc4842d3097e30a58a7dd6f14c1af2305a8": {
+      "observation": {
+        "id": "00893889",
+        "checkedAt": "2026-11-23T23:33:25.464505259Z",
+        "capture": {
+          "detail": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"datumPoslednejUpravy\":\"2026-07-03\",\"datumZalozenia\":\"1991-06-04\",\"datumZrusenia\":\"2014-10-28\",\"dic\":\"2021071525\",\"druhVlastnictva\":\"7\",\"ico\":\"00893889\",\"id\":379,\"kraj\":\"SK010\",\"mesto\":\"Stupava\",\"nazovUJ\":\"M. Češko & Junior - Tehliarske výrobky, spol. s r.o.\",\"okres\":\"SK0106\",\"pravnaForma\":\"112\",\"psc\":\"90031\",\"sidlo\":\"SK0106508233\",\"skNace\":\"23320\",\"ulica\":\"Cementárska 5\",\"velkostOrganizacie\":\"00\",\"zdrojDat\":\"SUSR\"}"
+          },
+          "search": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"existujeDalsieId\":false,\"id\":[379]}"
+          }
+        },
+        "bodySha256": "70fca0019b7275168e6c9c26a4a356de9cc1c7ba116fee80e5e953a97e807e24",
+        "searchSha256": "2df044db6fba420a3b79e64062286f3e669818d8f04a0ecd57365d38f4363d41",
+        "captureSha256": "8629ce0f8147846222f80d2d01fe75d87d99b2cbc18de051528194d9c1346386"
+      },
+      "review": {
+        "fields": {
+          "/country": "SK",
+          "/taxId": "00893889",
+          "/companyName": "M. Češko & Junior - Tehliarske výrobky, spol. s r.o.",
+          "/source": "SlovakRuz",
+          "/registryDetails/provider": "SlovakRuz",
+          "/registryDetails/data": {
+            "id": 379,
+            "ico": "00893889",
+            "nazovUJ": "M. Češko & Junior - Tehliarske výrobky, spol. s r.o.",
+            "dic": "2021071525",
+            "ulica": "Cementárska 5",
+            "mesto": "Stupava",
+            "psc": "90031",
+            "pravnaForma": "112",
+            "datumZalozenia": "1991-06-04",
+            "datumZrusenia": "2014-10-28",
+            "datumPoslednejUpravy": "2026-07-03",
+            "zdrojDat": "SUSR",
+            "sidlo": "SK0106508233",
+            "kraj": "SK010",
+            "okres": "SK0106",
+            "skNace": "23320",
+            "velkostOrganizacie": "00",
+            "druhVlastnictva": "7",
+            "stav": null,
+            "nativeRegistryStatus": null,
+            "rpoLifecycle": null
+          },
+          "/registeredOffice": null,
+          "/fiscalAddress": null,
+          "/legalForm": "Spol. s r. o.",
+          "/status": "closed",
+          "/vatRegistered": null,
+          "/vatId": null,
+          "/registryUrl": null,
+          "/foreignName": null
+        },
+        "bodySha256": "70fca0019b7275168e6c9c26a4a356de9cc1c7ba116fee80e5e953a97e807e24",
+        "captureSha256": "8629ce0f8147846222f80d2d01fe75d87d99b2cbc18de051528194d9c1346386"
+      },
+      "provenance": {
+        "originalObservationSha256": "8e8463fd96911ec7f673e1742be37fa9c422b357085827bf9f5bbd64f228bfc5",
+        "originalBodyHashes": {
+          "detail": "87a8c78a022588a6b327bf5a2b1f5a754a69a162c507c78582eb6a8b1531ca07",
+          "search": "7efaca6e7a9a6bb254b26f7985f3fc0730d865b912599322c9c3f02e44d560d7"
+        },
+        "source": "https://www.registeruz.sk/cruz-public/api",
+        "preparation": "adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed"
+      },
+      "category": "resolved",
+      "expectedValidation": "verifiedPositive",
+      "reviewer": "Codex source review 2026-11-24",
+      "rationale": "Reviewed refreshed prepared official payload against the preceding source-bound observation: identity, lifecycle and all other retained facts unchanged. Only direct source/request dates and the documented Austrian all-state search scope may differ; dates taken from source fields, not parser output. Previous review retained."
+    },
+    "90391936207b17d2fd783d43e06a880636f90040868ff0f925fcfbf9f489e4ce": {
+      "observation": {
+        "id": "00694231",
+        "checkedAt": "2026-11-23T23:33:34.976816458Z",
+        "capture": {
+          "detail": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"datumPoslednejUpravy\":\"2026-07-03\",\"datumZalozenia\":\"1991-01-01\",\"dic\":\"2020428597\",\"druhVlastnictva\":\"2\",\"ico\":\"00694231\",\"id\":402,\"kraj\":\"SK031\",\"mesto\":\"Liptovský Mikuláš\",\"nazovUJ\":\"LIPTRADE, spol. s r.o.\",\"okres\":\"SK0315\",\"pravnaForma\":\"112\",\"psc\":\"03105\",\"sidlo\":\"SK0315510262\",\"skNace\":\"46900\",\"ulica\":\"Mincova 578/64\",\"velkostOrganizacie\":\"02\",\"zdrojDat\":\"SUSR\"}"
+          },
+          "rpoDetail": {
+            "httpStatus": 429,
+            "contentType": "application/json",
+            "retryAfter": "1"
+          },
+          "rpoSearch": {
+            "httpStatus": 200,
+            "contentType": "application/json",
+            "retryAfter": null,
+            "body": "{\"results\":[{\"establishment\":\"1991-01-01\",\"id\":523691,\"identifiers\":[{\"validFrom\":\"1991-12-23\",\"value\":\"00694231\"}]}]}"
+          },
+          "search": {
+            "httpStatus": 200,
+            "contentType": "application/json;charset=UTF-8",
+            "retryAfter": null,
+            "body": "{\"existujeDalsieId\":false,\"id\":[402]}"
+          }
+        },
+        "bodySha256": "06738434ead4c3e572ea370cb3a97c267a2b482b1516c058ec1d06cb828fa6f7",
+        "searchSha256": "db9eb5c9cdbb353150a59cff1dd0ffed539a00fadc3a2bfb94c6882769782f1b",
+        "captureSha256": "850c6e9f99533f37aa2de2fc07d3bd23c8b595452b661bdc2a3c18e75bc266a9"
+      },
+      "review": {
+        "fields": {},
+        "bodySha256": "06738434ead4c3e572ea370cb3a97c267a2b482b1516c058ec1d06cb828fa6f7",
+        "captureSha256": "850c6e9f99533f37aa2de2fc07d3bd23c8b595452b661bdc2a3c18e75bc266a9"
+      },
+      "provenance": {
+        "originalObservationSha256": "dad0082da9ef7c2ee97bc8254f719f0d7f0724a6e4a17f5716590427027453f1",
+        "originalBodyHashes": {
+          "detail": "57149dcb3b694403bbc252fc346c5908afb962c829179cc5ef9219df59e5962a",
+          "rpoSearch": "90aab087be78632cc6d417893a1d4f2946553653c58455f8b8b63f3f281a981d",
+          "search": "7d339e6e6ce021acebfc778fd724531a41e57a65bff33ec16dd62677807429c0"
+        },
+        "source": "https://www.registeruz.sk/cruz-public/api",
+        "preparation": "adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed"
+      },
+      "category": "accessFailure",
+      "expectedValidation": "failed",
+      "reviewer": "Codex source review 2026-11-24",
+      "rationale": "Reviewed captured RPO supplemental detail exchange: HTTP 429 with Retry-After 1 after matched RUZ and RPO search exchanges. Access failure does not establish current lifecycle or absence. Retain prior successful observation and stop country requests.",
+      "expectedError": "nonSuccessHttpStatus"
     }
   },
   "history": {
     "00643581": [
-      "0c6e0acfb324f134e194ab280ce80ae0222ee8bbfcc1b9d00d572b87b6e6c4d3"
+      "0c6e0acfb324f134e194ab280ce80ae0222ee8bbfcc1b9d00d572b87b6e6c4d3",
+      "4fc0001779deb797512b3178b3c5c77d181e6597557d07527f134a590307b77e"
     ],
     "00695254": [
-      "544590a6d421fde632095f07e7908d13485feff5c7a153ede34a0813ba1eaae5"
+      "544590a6d421fde632095f07e7908d13485feff5c7a153ede34a0813ba1eaae5",
+      "aa7b3db88f99db55d225bb97a673acb102e7102dc92b53b7a72bd3ab4977c513"
     ],
     "00633861": [
-      "eca2efecae94cbe2c1c33972ee7e474a9edd621e74617fce3e6f03fc648539b9"
+      "eca2efecae94cbe2c1c33972ee7e474a9edd621e74617fce3e6f03fc648539b9",
+      "a339771ced9f27224c6d1c43266ec864bb7162d94b6e1d8e5636b6a748534294"
     ],
     "00895920": [
-      "f38ad3440de9de601ba980eb8364142e7579aa985507dea0c080d36fab489abb"
+      "f38ad3440de9de601ba980eb8364142e7579aa985507dea0c080d36fab489abb",
+      "09aba4664ed93d189ca3d82e3686d1954d2a30424c34e130fed94e8c49ce1cc6"
     ],
     "00618811": [
-      "c8c4f48b739801b988796ae7b137bd87399e6ec90d91267f26e955cb751969a7"
+      "c8c4f48b739801b988796ae7b137bd87399e6ec90d91267f26e955cb751969a7",
+      "c504ce929ab25f65a87013c922978b16947d9167c427e50a093a73e421f65dce"
     ],
     "00650811": [
-      "c641a571e6726c45a5a63972fa991f3a297db6733e80d559bbb7b244b232531a"
+      "c641a571e6726c45a5a63972fa991f3a297db6733e80d559bbb7b244b232531a",
+      "8d81bb8d63ef62db27cea9f9474e24c18465bf76b4fa2036635054d92125d42c"
     ],
     "00650951": [
-      "6f7a34e8e19a906ddd39339fb9fc5a756e2cbc70db40ec3dfe21a1f0ce799777"
+      "6f7a34e8e19a906ddd39339fb9fc5a756e2cbc70db40ec3dfe21a1f0ce799777",
+      "778e6de64e84bdd9ba630dd9fd031002c83f9ccc22ee26a36f933e4729e195ea"
     ],
     "00684473": [
-      "295150902bd9d25c85e872712641a2df324c145ae06272c54fb077d81e91b8b5"
+      "295150902bd9d25c85e872712641a2df324c145ae06272c54fb077d81e91b8b5",
+      "859c3e613c6970c5fb67104ac48ff3311816cb5e7df6a6e3097a9f3e3d40d907"
     ],
     "00603015": [
-      "a7634c192bc80eff9ec7c672d8c11a3b780cbeb2468619bbbec5f461a47545dc"
+      "a7634c192bc80eff9ec7c672d8c11a3b780cbeb2468619bbbec5f461a47545dc",
+      "ff480ea4d1e9178511c959a4e2ae8e0ab78cac67dc41828cd833315a4cfb6181"
     ],
     "00692221": [
-      "c01b5d6c2a9d1778f9e49503763b6cd5c7ca3da6cd5f188d29cd6f019665e868"
+      "c01b5d6c2a9d1778f9e49503763b6cd5c7ca3da6cd5f188d29cd6f019665e868",
+      "5a1cde0225f6d3f3dc69dc916981f498f55d443a189ea41045c51af30a4eff52"
     ],
     "00684431": [
-      "27b779298fe5205f23bdbf7e137fdde2896b8644bf4ef8733f06222d30c3fc06"
+      "27b779298fe5205f23bdbf7e137fdde2896b8644bf4ef8733f06222d30c3fc06",
+      "e71581dbf6f0b537915d07a9ff915076e3268f19542cc912d2a96baf64dde4ea"
     ],
     "00595004": [
-      "02cff87aaf7f04630eda0f2b8ce541e984a235151d32b5118562157bbf3df1cf"
+      "02cff87aaf7f04630eda0f2b8ce541e984a235151d32b5118562157bbf3df1cf",
+      "6757c241f43085bea236a61e8d9db598caac9839cf2cd7861a0f3d606a0fbc80"
     ],
     "00611841": [
-      "5c3cd1f07a85aad9fd14018e2f2138f96c40e4d9128b5f529755463048fd6d0e"
+      "5c3cd1f07a85aad9fd14018e2f2138f96c40e4d9128b5f529755463048fd6d0e",
+      "9376933127e4d62150e0d182acd04e3d5ca7a5b633d30be418e12a0df8b2d3a5"
     ],
     "00893889": [
-      "ccae1e00d98f991dc36e701e52885a0f5be4bb147fd9e8771c926d1373e7e0ca"
+      "ccae1e00d98f991dc36e701e52885a0f5be4bb147fd9e8771c926d1373e7e0ca",
+      "6db48c8d898c13a24a6e061e24c59cc4842d3097e30a58a7dd6f14c1af2305a8"
     ],
     "00694231": [
-      "a1c398ec77f701fefc8cefe80b2eff74a821aaddc27156f02e2ec978163574fe"
+      "a1c398ec77f701fefc8cefe80b2eff74a821aaddc27156f02e2ec978163574fe",
+      "90391936207b17d2fd783d43e06a880636f90040868ff0f925fcfbf9f489e4ce"
     ],
     "00688151": [
       "931325ecf34e53e7b6b1e0a899f148eb4beb07d21fb5231f6e6195158e15e38c"
@@ -8388,21 +9451,21 @@
     ]
   },
   "current": {
-    "00643581": "0c6e0acfb324f134e194ab280ce80ae0222ee8bbfcc1b9d00d572b87b6e6c4d3",
-    "00695254": "544590a6d421fde632095f07e7908d13485feff5c7a153ede34a0813ba1eaae5",
-    "00633861": "eca2efecae94cbe2c1c33972ee7e474a9edd621e74617fce3e6f03fc648539b9",
-    "00895920": "f38ad3440de9de601ba980eb8364142e7579aa985507dea0c080d36fab489abb",
-    "00618811": "c8c4f48b739801b988796ae7b137bd87399e6ec90d91267f26e955cb751969a7",
-    "00650811": "c641a571e6726c45a5a63972fa991f3a297db6733e80d559bbb7b244b232531a",
-    "00650951": "6f7a34e8e19a906ddd39339fb9fc5a756e2cbc70db40ec3dfe21a1f0ce799777",
-    "00684473": "295150902bd9d25c85e872712641a2df324c145ae06272c54fb077d81e91b8b5",
-    "00603015": "a7634c192bc80eff9ec7c672d8c11a3b780cbeb2468619bbbec5f461a47545dc",
-    "00692221": "c01b5d6c2a9d1778f9e49503763b6cd5c7ca3da6cd5f188d29cd6f019665e868",
-    "00684431": "27b779298fe5205f23bdbf7e137fdde2896b8644bf4ef8733f06222d30c3fc06",
-    "00595004": "02cff87aaf7f04630eda0f2b8ce541e984a235151d32b5118562157bbf3df1cf",
-    "00611841": "5c3cd1f07a85aad9fd14018e2f2138f96c40e4d9128b5f529755463048fd6d0e",
-    "00893889": "ccae1e00d98f991dc36e701e52885a0f5be4bb147fd9e8771c926d1373e7e0ca",
-    "00694231": "a1c398ec77f701fefc8cefe80b2eff74a821aaddc27156f02e2ec978163574fe",
+    "00643581": "4fc0001779deb797512b3178b3c5c77d181e6597557d07527f134a590307b77e",
+    "00695254": "aa7b3db88f99db55d225bb97a673acb102e7102dc92b53b7a72bd3ab4977c513",
+    "00633861": "a339771ced9f27224c6d1c43266ec864bb7162d94b6e1d8e5636b6a748534294",
+    "00895920": "09aba4664ed93d189ca3d82e3686d1954d2a30424c34e130fed94e8c49ce1cc6",
+    "00618811": "c504ce929ab25f65a87013c922978b16947d9167c427e50a093a73e421f65dce",
+    "00650811": "8d81bb8d63ef62db27cea9f9474e24c18465bf76b4fa2036635054d92125d42c",
+    "00650951": "778e6de64e84bdd9ba630dd9fd031002c83f9ccc22ee26a36f933e4729e195ea",
+    "00684473": "859c3e613c6970c5fb67104ac48ff3311816cb5e7df6a6e3097a9f3e3d40d907",
+    "00603015": "ff480ea4d1e9178511c959a4e2ae8e0ab78cac67dc41828cd833315a4cfb6181",
+    "00692221": "5a1cde0225f6d3f3dc69dc916981f498f55d443a189ea41045c51af30a4eff52",
+    "00684431": "e71581dbf6f0b537915d07a9ff915076e3268f19542cc912d2a96baf64dde4ea",
+    "00595004": "6757c241f43085bea236a61e8d9db598caac9839cf2cd7861a0f3d606a0fbc80",
+    "00611841": "9376933127e4d62150e0d182acd04e3d5ca7a5b633d30be418e12a0df8b2d3a5",
+    "00893889": "6db48c8d898c13a24a6e061e24c59cc4842d3097e30a58a7dd6f14c1af2305a8",
+    "00694231": "90391936207b17d2fd783d43e06a880636f90040868ff0f925fcfbf9f489e4ce",
     "00688151": "931325ecf34e53e7b6b1e0a899f148eb4beb07d21fb5231f6e6195158e15e38c",
     "00651559": "b3377b89822672739483a7288a837ae24bbb3417926f24c12b9cbc4198cd383c",
     "00896586": "17016c516bcd6cf01743c3c5ac36ee4c48552b89d3b16bc7319edd1dddb5a47a",
@@ -8606,6 +9669,21 @@
     "1b19f81b4b4000ef6e1f88c5cb6efd47c8d3785b2d0828d0f868c456085000f1",
     "0b0da35341d2d70e5147a15645dc571a927cbf016e1ea4696b5e6ed37aece8b8",
     "bbea4880a9d8e6bf30e74a83d1f9dbb1c625282b18c195cc5f49f3c816baf3be",
-    "80eba8e6420f49d4c8e7a09573c25db794d63bc71037f9db2e39f120014326ab"
+    "80eba8e6420f49d4c8e7a09573c25db794d63bc71037f9db2e39f120014326ab",
+    "4fc0001779deb797512b3178b3c5c77d181e6597557d07527f134a590307b77e",
+    "aa7b3db88f99db55d225bb97a673acb102e7102dc92b53b7a72bd3ab4977c513",
+    "a339771ced9f27224c6d1c43266ec864bb7162d94b6e1d8e5636b6a748534294",
+    "09aba4664ed93d189ca3d82e3686d1954d2a30424c34e130fed94e8c49ce1cc6",
+    "c504ce929ab25f65a87013c922978b16947d9167c427e50a093a73e421f65dce",
+    "8d81bb8d63ef62db27cea9f9474e24c18465bf76b4fa2036635054d92125d42c",
+    "778e6de64e84bdd9ba630dd9fd031002c83f9ccc22ee26a36f933e4729e195ea",
+    "859c3e613c6970c5fb67104ac48ff3311816cb5e7df6a6e3097a9f3e3d40d907",
+    "ff480ea4d1e9178511c959a4e2ae8e0ab78cac67dc41828cd833315a4cfb6181",
+    "5a1cde0225f6d3f3dc69dc916981f498f55d443a189ea41045c51af30a4eff52",
+    "e71581dbf6f0b537915d07a9ff915076e3268f19542cc912d2a96baf64dde4ea",
+    "6757c241f43085bea236a61e8d9db598caac9839cf2cd7861a0f3d606a0fbc80",
+    "9376933127e4d62150e0d182acd04e3d5ca7a5b633d30be418e12a0df8b2d3a5",
+    "6db48c8d898c13a24a6e061e24c59cc4842d3097e30a58a7dd6f14c1af2305a8",
+    "90391936207b17d2fd783d43e06a880636f90040868ff0f925fcfbf9f489e4ce"
   ]
 }

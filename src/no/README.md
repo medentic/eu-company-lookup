@@ -35,7 +35,7 @@ and reviews are preserved. Prepared reviewed observations and history may be com
 and queues remain ignored. Fixtures stay outside the published crate.
 
 The reviewed sample includes at least 200 distinct active companies and separate
-liquidation cases, with complete source-bound offline replay. Failed captures are
+liquidation and bankruptcy cases, with complete source-bound offline replay. Failed captures are
 retained separately and excluded from accepted coverage; a later successful
 observation does not erase an earlier failure.
 

@@ -426,7 +426,7 @@ See the [Greek output examples](docs/examples/gr.md).
 ### Norwegian national verification status
 
 Norwegian Enhetsregisteret lookup meets the national verification gate with at
-least 200 distinct active companies and separate liquidation cases. The complete
+least 200 distinct active companies and separate liquidation and bankruptcy cases. The complete
 accepted sample has live source observations, source-bound reviewed expectations
 and passing offline replay. Historical failed captures remain preserved outside
 accepted coverage. Active status requires complete entity and lifecycle evidence;
