@@ -16,7 +16,14 @@ and [testing/evidence](../docs/development/testing.md) for review semantics.
 | `vies_binary.py` | Locked, hash-checked executable freezing into an explicitly supplied cache. |
 | `vies_verification.py` | Read-only offline distinct 200-valid/1-invalid country gate over loaded evidence and reports. |
 | `vies_recovery.py` | Bounded multi-country recovery, availability observations, deferral and resumable single-ID batches; offline report by default. |
+| `replay_fixtures.py` | Local-only entry point for all committed national, VIES and BULSTAT replays. |
 | `registry_fixtures.py` | Local-only committed registry replay, bounded refresh, explicit acceptance and active coverage. |
+| `vies_fixtures.py` | Local-only versioned VIES source comparisons and historical replay. |
+| `bulstat_fixtures.py` | Local-only prepared BULSTAT fallback-chain history and replay. |
+| `bg_fixtures.py` | Local-only scoped Commercial Register history and replay. |
+| `bg_fixture_preparation.py` | Prepared company fields and contact redaction outside the original full extract. |
+| `registry_fixture_projection.py` | Additional national JSON input allowlists. |
+| `registry_fixture_html.py` | Icelandic company HTML and independently extracted PDF excerpts. |
 | `registry_fixture_data.py` | Prepared payloads, immutable observations/reviews and integrity checks. |
 | `registry_batch.py` | Commercial Register collection/replay workflow. |
 | `bulstat_batch.py` | BULSTAT-specific evidence workflow. |

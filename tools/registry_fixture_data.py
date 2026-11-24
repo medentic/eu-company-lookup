@@ -4,8 +4,18 @@ import hashlib
 import json
 from pathlib import Path
 
-COUNTRIES = ('AT', 'CZ', 'GR', 'NO', 'RO', 'SK')
+COUNTRIES = ('AT', 'BE', 'CZ', 'EE', 'FI', 'FR', 'GR', 'IE', 'IS', 'LT', 'LV', 'NO', 'PL', 'RO', 'SK')
 SOURCES = {
+ 'BE':'https://consult.cbso.nbb.be/api/rs-consult/companies',
+ 'EE':'https://ariregister.rik.ee/eng/api/autocomplete',
+ 'FI':'https://avoindata.prh.fi/opendata-ytj-api/v3/companies',
+ 'FR':'https://recherche-entreprises.api.gouv.fr/search',
+ 'IE':'https://opendata.cro.ie/api/3/action/datastore_search',
+ 'IS':'https://www.skatturinn.is/fyrirtaekjaskra/leit/kennitala',
+ 'LT':'https://get.data.gov.lt/datasets/gov/rc/jar/iregistruoti/JuridinisAsmuo',
+ 'LV':'https://data.gov.lv/dati/api/3/action/datastore_search',
+ 'PL':'https://api-krs.ms.gov.pl/api/krs/',
+
  'AT':'https://justizonline.gv.at/jop/service/fba',
  'CZ':'https://ares.gov.cz/ekonomicke-subjekty-v-be/rest',
  'GR':'https://publicity.businessportal.gr/',
@@ -34,6 +44,10 @@ def nested(value, key, transform):
 # Keep only fields consumed by the adapters. Do not commit full register extracts,
 # personal-role records, credentials, contact channels, financial reports or logs.
 def payload(country, stage, value):
+    from registry_fixture_projection import KEYS, project
+    if country in KEYS:
+        return project(country, value)
+
     if country == 'AT':
         if 'companies' in value:
             out = pick(value, 'numResults companies state')
@@ -94,12 +108,22 @@ def prepare(country, observation, review):
     """Project provider payloads; retain original digests, never copy live outputs."""
     original = copy.deepcopy(observation)
     row = pick(observation, 'id taxId checkedAt completedAt requestDate schemaVersion')
+    failure=observation.get('lookupError') or {}
+    if failure.get('isServiceUnavailable') is True:
+        row['collectionFailure']=pick(failure.get('details') or {},'provider reason upstreamHttpStatus retryAfterSeconds')
     hashes = {}
     def exchange(raw, stage):
         if raw is None: return None
         out = pick(raw, 'httpStatus contentType retryAfter')
         if isinstance(raw.get('body'), str):
             hashes[stage] = sha(raw['body'])
+            if country=='IS' and raw.get('httpStatus')==200:
+                from registry_fixture_html import primary, overview, pdf_excerpt
+                if 'encoding' in raw:out['encoding']=raw['encoding']
+                if stage=='body':out['body']=primary(raw['body'])
+                elif stage=='overview4':out['body']=pdf_excerpt(raw['body'])
+                else:out['body']=overview(raw['body'],int(stage.removeprefix('overview')))
+                return out
             # Non-JSON/error bodies are unnecessary for HTTP failure replay.
             try: body = json.loads(raw['body'])
             except ValueError: body = None
@@ -118,15 +142,32 @@ def prepare(country, observation, review):
         key='transport' if country=='RO' else 'capture'
         row[key]=exchange(observation.get(key),'body')
         if country=='CZ' and isinstance((observation.get(key) or {}).get('ros'),dict):row[key]['ros']=exchange(observation[key]['ros'],'ros')
-        b=(row.get(key) or {}).get('body');row['bodySha256']=sha(b) if b is not None else None
-        if country=='CZ':row['captureSha256']=digest(row['capture'])
+        if country=='IS' and isinstance((observation.get(key) or {}).get('overviewResponses'),list):
+            row[key]['overviewResponses']=[exchange(v,'overview'+str(n)) for n,v in enumerate(observation[key]['overviewResponses'])]
+        if country=='LV' and isinstance((observation.get(key) or {}).get('lifecycle'),dict):
+            row[key]['lifecycle']={k:exchange(v,k) for k,v in observation[key]['lifecycle'].items()}
+        if country=='PL':
+            def branch(raw, stage):
+                out=exchange(raw,stage)
+                if isinstance(raw,dict) and out is not None:
+                    for nested_stage in ('association','full'):
+                        if isinstance(raw.get(nested_stage),dict):
+                            out[nested_stage]=branch(raw[nested_stage],stage+'/'+nested_stage)
+                return out
+            row[key]=branch(observation.get(key),'body')
+        b=(row.get(key) or {}).get('body')
+        if country=='PL' and b is None:
+            cap=row.get(key) or {}
+            b=(cap.get('full') or {}).get('body') or (cap.get('association') or {}).get('body') or ((cap.get('association') or {}).get('full') or {}).get('body')
+        row['bodySha256']=sha(b) if b is not None else None
+        if country in ('CZ','LV','PL','IS'):row['captureSha256']=digest(row['capture'])
     fields=copy.deepcopy(review.get('fields',{}))
     for field in ('/taxId','/companyName','/status'):
         if field in fields and fields[field] is None and field!='/status':raise ValueError('invalid identity review')
     reviewed={'fields':fields,'bodySha256':row['bodySha256']}
     if 'captureSha256' in row:reviewed['captureSha256']=row['captureSha256']
     if 'outcome' in review:reviewed['outcome']=review['outcome']
-    return row,reviewed,{'originalObservationSha256':digest(original),'originalBodyHashes':hashes,'source':SOURCES[country],'preparation':'adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed'}
+    return row,reviewed,{'originalObservationSha256':digest(original),'originalBodyHashes':hashes,'source':SOURCES[country],'preparation':('is-excerpt-v1: selected company HTML; session/cart tokens consistently redacted; PDF recreated from independently extracted identifier/date/status only; original hashes retained' if country=='IS' else 'adapter-fields-v1: unused fields removed; retained values unchanged; fixture hashes recomputed')}
 
 def empty(country):
     return {'schemaVersion':1,'country':country,'activeTarget':200,'records':{},'history':{},'current':{},'replay':[]}
@@ -160,7 +201,10 @@ def validate(corpus):
         assert key==digest(r),'modified immutable fixture record'
         assert r['reviewer'] and r['reviewer'] != 'PENDING' and r['rationale'] and not r['rationale'].startswith('PENDING')
         expected = {'resolved':'verifiedPositive','unresolved':'unresolved','accessFailure':'failed','sourceFailure':'failed','negative':'negativeObservation'}
-        assert r['expectedValidation'] == expected[r['category']]
+        partial_access=(r['category']=='accessFailure' and r['expectedValidation']=='unresolved'
+                        and r['observation'].get('collectionFailure',{}).get('reason')
+                        and r['review']['fields'].get('/status') is None)
+        assert r['expectedValidation'] == expected[r['category']] or partial_access
         if r['category'] == 'resolved':
             assert r['review']['fields'].get('/status') in ('active','closed','inactive','liquidation','bankruptcy','receivership',
                 'liquidationAndReceivership','restructuring','pendingClosure','liquidationStayed','administration')
@@ -178,3 +222,12 @@ def read(path):
 def write(path,data):
     validate(data);path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
     tmp=path.with_suffix('.tmp');tmp.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n');tmp.replace(path)
+
+
+def applicable_history(corpus, observation_identity):
+    """Keep historical observations, using only their latest review revision."""
+    selected={}
+    for identifier,keys in corpus['history'].items():
+        latest={observation_identity(corpus['records'][key]):key for key in keys}
+        selected[identifier]=[key for key in keys if latest[observation_identity(corpus['records'][key])]==key]
+    return selected

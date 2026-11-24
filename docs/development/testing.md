@@ -89,7 +89,7 @@ completion. Normal Python tool tests do not require python-stdnum or a compiler.
 
 ## Local collected-data checks
 
-This section describes the legacy ignored corpora. For the committed AT/CZ/GR/NO/RO/SK
+This section describes the legacy ignored corpora. For the committed national and VIES
 samples, use the [repository fixture workflow](../../tests/fixtures/registry/README.md).
 
 Original observations may contain personal names, contact details and record links.

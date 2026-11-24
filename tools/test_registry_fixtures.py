@@ -65,6 +65,44 @@ class RegistryFixtureTests(unittest.TestCase):
         D.validate(corpus)
         self.assertEqual(F.coverage(corpus)['activeShortfall'], 200)
 
+    def test_restaging_rejects_duplicate_or_unselected_observations(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp).resolve();fixtures=root/'tests/fixtures/registry'
+            c=D.empty('NO');D.add(c,record());D.write(fixtures/'NO/corpus.json',c)
+            directory=root/'target/run';directory.mkdir(parents=True)
+            (directory/'manifest.json').write_text(json.dumps({'ids':['001']}))
+            args=types.SimpleNamespace(country='NO',run_dir=str(directory),docker_image=None)
+            for rows in ([{'id':'001'},{'id':'001'}],[{'id':'002'}]):
+                (directory/'observations.jsonl').write_text(''.join(json.dumps(r)+'\n' for r in rows))
+                with patch.object(F,'ROOT',root),patch.object(F,'FIXTURES',fixtures),patch.object(F,'audit') as audit:
+                    with self.assertRaises(ValueError):F.stage_captured(args)
+                    audit.assert_not_called()
+
+    def test_shared_history_selection_replaces_only_same_observation_review(self):
+        records={'old':{'observation':'day-one','expected':'wrong'},'new':{'observation':'day-one','expected':'correct'},'later':{'observation':'day-two','expected':'new facts'}}
+        c={'records':records,'history':{'001':['old','new','later']}}
+        selected=D.applicable_history(c,lambda r:r['observation'])
+        self.assertEqual(selected,{'001':['new','later']})
+        self.assertEqual(len(c['records']),3)
+
+    def test_partial_access_is_separate_from_unknown_lifecycle(self):
+        c=D.empty('NO');r=record(status=None)
+        r.update(category='accessFailure',expectedValidation='unresolved')
+        D.add(c,r)
+        with self.assertRaises(AssertionError):D.validate(c)
+        c=D.empty('NO');r['observation']['collectionFailure']={'reason':'connection'}
+        D.add(c,r);D.validate(c)
+        self.assertEqual(F.coverage(c)['latestReviewed'],{'accessFailure':1})
+
+    def test_undated_history_does_not_hide_known_freshness_range(self):
+        corpus=D.empty('NO')
+        dated=record('1');undated=record('2');undated['observation'].pop('checkedAt')
+        D.add(corpus,dated);D.add(corpus,undated)
+        report=F.coverage(corpus)
+        self.assertEqual(report['undatedObservations'],1)
+        self.assertEqual(report['reviewedDateRange'],['2026-11-01T00:00:00Z']*2)
+        self.assertEqual(report['observationsByRecordedDate'],{'2026-11-01':1})
+
     def test_preparation_retains_required_fields_and_original_hash(self):
         raw = {'id': '001', 'capture': {'responses': [{
             'httpStatus': 200,

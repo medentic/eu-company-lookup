@@ -1,9 +1,12 @@
 # Live development collectors
 
-Collected observations, input queues and source metadata are local-only. Their
+Raw collected observations and input queues are local-only. Reviewed prepared
+company/VIES excerpts may be committed through the
+[fixture workflow](../../tests/fixtures/registry/README.md), with source hashes and
+immutable review history; replay and refresh remain local-only. Raw evidence and its
 fixture paths are ignored by Git; preserve them locally and never upload them in
-source commits, pull requests, CI logs or artifacts. A fresh clone contains the
-tooling and synthetic tests, not real lookup queues or reviewed response corpora.
+source commits, pull requests, CI logs or artifacts. A fresh clone contains tooling, synthetic tests and the approved prepared
+fixtures; raw lookup queues and original full captures remain local.
 
 
 Collectors produce source observations for development; they are not public library

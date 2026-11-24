@@ -9,9 +9,13 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_FIXTURES = {f'tests/fixtures/registry/{c}/corpus.json'
-                       for c in ('AT', 'CZ', 'GR', 'NO', 'RO', 'SK')} | {
+                       for c in ('AT', 'BE', 'BG', 'CZ', 'EE', 'FI', 'FR', 'GR', 'IE', 'IS', 'LT', 'LV', 'NO', 'PL', 'RO', 'SK')} | {
     'tests/fixtures/registry/README.md',
+    'tests/fixtures/registry/BULSTAT/corpus.json',
 }
+
+REPOSITORY_FIXTURES |= {f'tests/fixtures/registry/VIES/{c}/corpus.json'
+                        for c in 'AT BE BG CY CZ DE DK EE EL ES FI FR HR HU IE IT LT LU LV MT NL PL PT RO SE SI SK XI'.split()}
 
 PUBLIC_FIXTURES = {
     'src/vies/fixtures/valid.xml',

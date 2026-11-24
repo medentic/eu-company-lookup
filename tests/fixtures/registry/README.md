@@ -1,9 +1,9 @@
 # Reviewed registry fixtures
 
 These committed real-response fixtures let a maintainer continue verification from
-a fresh checkout. AT, CZ, GR, NO, RO and SK each have a versioned corpus containing
+a fresh checkout. National adapters and the VIES country samples have versioned corpora containing
 identifiers, prepared source responses, source hashes, reviewed expectations and
-history. Other country collections have not been migrated by this workflow.
+history. Unreviewed queues and original full captures remain local.
 
 Both offline replay and live refresh are **local-only**, explicitly invoked.
 Neither runs in Linux CI or ordinary Cargo tests. The command rejects a true
@@ -63,6 +63,15 @@ source responses, identity/date matching and lifecycle evidence. Copy the templa
 to a review file, select the observed records to accept, review the expected fields
 and categories, and replace every PENDING rationale with a source-bound explanation.
 The tool's actual result is evidence for investigation, not an automatic oracle.
+If preparation was interrupted or improved, re-stage the retained capture without
+another live request:
+
+```sh
+python3 tools/registry_fixtures.py stage --country RO --run-dir target/ro-refresh
+```
+
+This regenerates pending review files, so preserve any manual draft before staging
+again. Accepted corpus history and original capture journals are unchanged.
 
 ```sh
 python3 tools/registry_fixtures.py accept --run-dir target/ro-refresh --review-file target/ro-refresh/reviewed.json --reviewer "Maintainer name"
@@ -86,8 +95,9 @@ No command pushes, publishes or schedules future runs.
 
 ## Format and provenance
 
-Each corpus has content-addressed immutable `records`, per-ID `history`, a
-`current` reference per ID and a `replay` selection. Each record stores an
+National corpora managed by `registry_fixtures.py` have content-addressed immutable
+`records`, per-ID `history`, a `current` reference per ID and a `replay` selection.
+Each record stores an
 observation, source-bound review, reviewer, rationale, classification and provenance.
 Changing a review creates another record rather than editing its predecessor.
 
@@ -107,3 +117,82 @@ for third-party registry data.
 
 Run the [contributor checks](../../../CONTRIBUTING.md#setup-and-checks), including
 source-history and distribution checks, before committing/pushing changes.
+
+
+## Additional national adapters
+
+The registry workflow supports AT, BE, CZ, EE, FI, FR, GR, IE, IS, LT, LV, NO,
+PL, RO and SK. JSON preparation retains adapter inputs and original source hashes;
+Polish officer lists retain only counts where that is all the lifecycle adapter
+consumes. Unknown Polish lifecycle fields stop preparation for review.
+
+Icelandic preparation retains selected company HTML and removes session/cart
+values consistently. Its PDF is a clearly marked prepared excerpt containing only
+the independently extracted company identifier, issue date and status. Original
+captures remain local; original hashes remain in provenance. Preparing a new
+Icelandic PDF requires Poppler (`pdftotext`) and Python ReportLab; set
+`REGISTRY_PDF_PYTHON` to a Python executable with ReportLab when necessary.
+Offline replay uses the prepared PDF and needs neither preparation dependency.
+
+## VIES and Bulgarian Commercial Register
+
+`VIES/<prefix>/corpus.json` and `BG/corpus.json` preserve their existing scoped
+reviews and all accepted/imported observation revisions. These use separate local
+entry points because their collector and replay contracts differ from the other
+national adapters. VIES valid/invalid counts never count as national active cases.
+
+Build the current library test executable locally with `cargo test --locked --lib
+--no-run`, then use its reported path with an existing compatible local Docker
+image (the tools never pull an image):
+
+```sh
+python3 tools/replay_fixtures.py --docker-image "$RUST_IMAGE" --binary "$TEST_BINARY"
+# Or select an individual provider:
+python3 tools/vies_fixtures.py replay --docker-image "$RUST_IMAGE" --binary "$TEST_BINARY"
+python3 tools/vies_fixtures.py coverage
+python3 tools/bg_fixtures.py replay --docker-image "$RUST_IMAGE" --binary "$TEST_BINARY"
+python3 tools/bg_fixtures.py coverage
+```
+
+These commands mount temporary materialized copies over the legacy ignored fixture
+paths inside the container. They never overwrite local legacy corpora, and replay
+runs without container networking. Historical observations replay separately to avoid duplicate identifiers
+overwriting earlier expectations. Superseded reviews remain in history; only the
+latest review of the same captured observation is asserted. Normal CI does not load
+these datasets.
+
+After explicitly bounded collection using the existing collector tools, ingest
+only the selected retained observation files:
+
+```sh
+python3 tools/vies_fixtures.py ingest target/selected-vies/observations.jsonl
+python3 tools/bg_fixtures.py ingest target/selected-bg/observations/000000000.json
+```
+
+Ingestion makes no network requests. It carries forward expectations only when
+retained source facts match the preceding reviewed source. A changed/new source is
+preserved as unresolved without copying parser output into expectations; access
+failures remain separate. Run replay after ingestion and review unresolved sources
+before claiming completion. Undated imported historical samples do not establish
+fresh live coverage. The archived VIES import command is a one-time migration and
+refuses to replace an existing corpus.
+
+The Bulgarian prepared scope excludes roles, financial data and documents, and
+removes contact suffixes embedded in office text from both source and the scoped
+full-address expectation. Original source/review hashes remain in provenance;
+these excerpts do not represent complete official extracts. Negative Commercial
+Register observations remain register-specific, not claims about BULSTAT.
+
+
+BULSTAT has its own corpus at `BULSTAT/corpus.json` and local
+`tools/bulstat_fixtures.py` entry point with the same `replay`, `coverage` and
+`ingest` commands as the Bulgarian Commercial Register workflow. Its prepared
+records retain the complete fallback chain: definitive Commercial Register miss,
+BULSTAT search, then company detail. Only reviewed company rows are retained;
+action/history columns and unrelated sections are removed. Its coverage is
+reported separately from Commercial Register coverage.
+
+A partially captured national lookup can replay as unresolved while the collector
+recorded a transport failure fetching a later required source. Such a fixture
+retains the typed collection failure and is counted as an access failure, not as
+an unresolved company status. Earlier complete observations remain replayable.

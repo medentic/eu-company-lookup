@@ -1,0 +1,1674 @@
+{
+  "schemaVersion": 1,
+  "prefix": "FR",
+  "records": {
+    "95dad4a02c8efc4c786ef24c029fbe8310d46b604919aea2067e879835cd189b": {
+      "vatId": "FR81775670417",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR81775670417",
+        "valid": true,
+        "viesOutput": {
+          "company": "SE LVMH MOET HENNESSY LOUIS VUITTON",
+          "address": "22 AV MONTAIGNE\n75008 PARIS"
+        },
+        "expected": {
+          "address": {
+            "address": "22 AV MONTAIGNE",
+            "address2": null,
+            "city": "PARIS",
+            "postcode": "75008",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR81775670417",
+        "status": "reviewed",
+        "note": "Reviewed delivery lines and postal/locality fields against original VIES source text.",
+        "reviewedAt": "2026-11-13",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v18",
+        "expectedSha256": "f5e2bc49fe153705f99433e1ce5807f020e0ed0e8c621fc60602c508a3cdeb0f"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "b38585b541b28d2c437a470dcc735ac4b4bbc9e670640841458ef443fc22768e",
+        "originalReviewSha256": "b7e9bfac9e76fd94a75ca1fb17aecbe68416eecbb75a25e1cec3868848fb9f28"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "0ba8e12279b70d95f53e363562c671641ae42ac2998136b4bc94a335138e4565": {
+      "vatId": "FR59542051180",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR59542051180",
+        "valid": true,
+        "viesOutput": {
+          "company": "SE TOTALENERGIES SE",
+          "address": "2 PL JEAN MILLIER\n92400 COURBEVOIE"
+        },
+        "expected": {
+          "address": {
+            "address": "2 PL JEAN MILLIER",
+            "address2": null,
+            "city": "COURBEVOIE",
+            "postcode": "92400",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR59542051180",
+        "status": "reviewed",
+        "note": "Reviewed delivery lines and postal/locality fields against original VIES source text.",
+        "reviewedAt": "2026-11-13",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v18",
+        "expectedSha256": "cd75bc04050b9e2f8e32ef9d67fc35e3bc3d11471f4173a2d3c642dbe980a782"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "9a35816c16c8db32903cfb7fa30299601b4cbb01d3e881a5262097a32cad64e2",
+        "originalReviewSha256": "366ced9fb8156a2f1b4e8a30fed30893f6046959d75846d6a40dc6f441d440ed"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "4a46bc54f16ca166c04bf9ffb432518c84db51d9906f7caf383c5acb7f1df63a": {
+      "vatId": "FR76662042449",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR76662042449",
+        "valid": true,
+        "viesOutput": {
+          "company": "SA BNP PARIBAS",
+          "address": ".\n16 BD DES ITALIENS\n75009 PARIS"
+        },
+        "expected": {
+          "address": {
+            "address": ".",
+            "address2": "16 BD DES ITALIENS",
+            "city": "PARIS",
+            "postcode": "75009",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR76662042449",
+        "status": "reviewed",
+        "note": "Reviewed original retry2 SOAP: preserve standalone dot delivery line exactly; street is second delivery line, postal/locality line is 75009 PARIS. No semantic meaning assigned to punctuation.",
+        "reviewedAt": "2026-11-13",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v19",
+        "expectedSha256": "30b0f4ce69b10636ce9d6d942334d0e6e7e64e977ca79e35d62b17b037cc1aea"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "de5233249ae2287d2ae0e6fef9ec13a25e1d0b51a13ae78a4a62e5a435470607",
+        "originalReviewSha256": "724768b1cb7ab2445b7238c0fb48061d1e93dcd0fe42525b04f59d8d73576c06"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "ee9b31bd31717fc44c53aa5f7e883bc1cd22c0987f69c83a5fb7f02f4e485799": {
+      "vatId": "FR66780129987",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR66780129987",
+        "valid": true,
+        "viesOutput": {
+          "company": "SAS RENAULT SAS",
+          "address": "122-122\n122 B AV GAL LECLERC\n92100 BOULOGNE BILLANCOURT"
+        },
+        "expected": {
+          "address": {
+            "address": "122-122",
+            "address2": "122 B AV GAL LECLERC",
+            "city": "BOULOGNE BILLANCOURT",
+            "postcode": "92100",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR66780129987",
+        "status": "reviewed",
+        "note": "Reviewed delivery lines and postal/locality fields against original VIES source text.",
+        "reviewedAt": "2026-11-13",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v18",
+        "expectedSha256": "1256c4e186c78224c9c5f4c352607db83daad1010c5b6933854e65bc0aff25d3"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "43fcecead35a7aace9032b9dbff2a210776c78847e47dad6d1abf896a8e29fb2",
+        "originalReviewSha256": "00dc48b193240bce4523c64f6a1123cae3641ffe60049755935031cad0e0aaf2"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "2801c38e6270c06d9d578402313256a73e020981394424a093587b4ff05f02f5": {
+      "vatId": "FR14652014051",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR14652014051",
+        "valid": true,
+        "viesOutput": {
+          "company": "SA CARREFOUR",
+          "address": "93 AV DE PARIS\n91300 MASSY"
+        },
+        "expected": {
+          "address": {
+            "address": "93 AV DE PARIS",
+            "address2": null,
+            "city": "MASSY",
+            "postcode": "91300",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR14652014051",
+        "status": "reviewed",
+        "note": "Reviewed delivery lines and postal/locality fields against original VIES source text.",
+        "reviewedAt": "2026-11-13",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v18",
+        "expectedSha256": "e567bd66c8878d397f56173716c3cda508d882a4113bc4466d7b48c22b19aee0"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "5212eb136b45c4304746e5f0937f30216056d4ba48a123e9bd56e7609e9d74d0",
+        "originalReviewSha256": "c2f19ac4f46a6748722c9a11b95ad6e6e36ccd0455e9db3d7605cc71088a9289"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "fb2aa7fdce273d52746c0c87f36a86f1c57feed0e60113f60821285d6d393758": {
+      "vatId": "FR60180092447",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR60180092447",
+        "valid": true,
+        "viesOutput": {
+          "company": "EPA ETABLISSEMENT PUBLIC DU MUSEE D'ORSA",
+          "address": "QUAI VALERY GISCARD D'ESTAING\n75007 PARIS"
+        },
+        "expected": {
+          "address": {
+            "address": "QUAI VALERY GISCARD D'ESTAING",
+            "address2": null,
+            "city": "PARIS",
+            "postcode": "75007",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR60180092447",
+        "status": "reviewed",
+        "note": "Reviewed original retry3 SOAP: explicit delivery line followed by postal code and locality. Preserve accents, punctuation and leading postal zeroes without enrichment.",
+        "reviewedAt": "2026-11-13",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v19",
+        "expectedSha256": "3742d35d66102d981f8479dcb173061a6ea8a5bc5f7fdf7ea0f5059d033bebf5"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "7361574240c8b1a26b1a53c7478a7aa2152f1839d803582704291b17fc51d1e2",
+        "originalReviewSha256": "e20aa0458c3493eca7e336c2bd0b341e20fd69c7cc95bfae4f8ec9c1ddf51c22"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "ee00f82e960917ae2128c5c17c506b7677624ffac678b03983b00d9dc130c18d": {
+      "vatId": "FR91385385844",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR91385385844",
+        "valid": true,
+        "viesOutput": {
+          "company": "ASS AGENCE POUR LA PROTECTION DES PROGRA",
+          "address": "25 RUE DE LA PLAINE\n75020 PARIS"
+        },
+        "expected": {
+          "address": {
+            "address": "25 RUE DE LA PLAINE",
+            "address2": null,
+            "city": "PARIS",
+            "postcode": "75020",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR91385385844",
+        "status": "reviewed",
+        "note": "Reviewed original retry2 SOAP: street delivery line and explicit five-digit postal code with PARIS locality; no other address components supplied.",
+        "reviewedAt": "2026-11-13",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v19",
+        "expectedSha256": "ff7c6095b81918b520a28513a079072b67bf0a06107e726f769fb8c398669814"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "0e2390a75c684b06b32a84bd2a5e2e7d6976c536390e6a148d1793084efb2cf4",
+        "originalReviewSha256": "64eabef3fbc9ceaac9352c2a23c99f8fd88cf3e38f71123209f4ae61915f088c"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "f6f4fcd82cf69938d37570d8b284393b70c0973313ca7da350ea91934cb378fa": {
+      "vatId": "FR19451930051",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR19451930051",
+        "valid": true,
+        "viesOutput": {
+          "company": "ET P BUSINESS FRANCE",
+          "address": "77 BD SAINT JACQUES\n75014 PARIS"
+        },
+        "expected": {
+          "address": {
+            "address": "77 BD SAINT JACQUES",
+            "address2": null,
+            "city": "PARIS",
+            "postcode": "75014",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR19451930051",
+        "status": "reviewed",
+        "note": "Reviewed delivery lines and postal/locality fields against original VIES source text.",
+        "reviewedAt": "2026-11-13",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v18",
+        "expectedSha256": "72b615b70cff3a6f13b8cc19afcd45362b217148a44839a2ca2f7d5219ab4bad"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "3104c550a0f5a926c097107ff74df70fa5e3a2e4929c849799dab7aeaa721501",
+        "originalReviewSha256": "599a8d4c10366ae0f5e9416e731dd00e6173c359123f0a59bd4d4a83bc3623e9"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "abd2e9c9e8b3693875bf582bb60be2013b08f8ff2ab0a8f5ff932188a31a88a6": {
+      "vatId": "FR55809707094",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR55809707094",
+        "valid": true,
+        "viesOutput": {
+          "company": "SAS MYCOWORK",
+          "address": "54 RUE GRENETA\n75002 PARIS"
+        },
+        "expected": {
+          "address": {
+            "address": "54 RUE GRENETA",
+            "address2": null,
+            "city": "PARIS",
+            "postcode": "75002",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR55809707094",
+        "status": "reviewed",
+        "note": "Reviewed delivery lines and postal/locality fields against original VIES source text.",
+        "reviewedAt": "2026-11-13",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v18",
+        "expectedSha256": "ec3ceb4e5d181edc4fe5177d4d86eb23d296b5a42f298cddd8b90457150ef61e"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "88134a72ecca2ab54f236c156feff14363c3a81974a8b2179fb60725b8078189",
+        "originalReviewSha256": "6dc7802d18b9dd1427afce22aebfc7fed0fded7489e9aadbe0e8ee89ba4bd6af"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "4fe8987d7c18c0e4006f94977407368286866151606771527a5a4de49ed0e352": {
+      "vatId": "FR00451518021",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR00451518021",
+        "valid": true,
+        "viesOutput": {
+          "company": "SAS NEOMETSYS",
+          "address": "1 ESP COMPANS CAFFARELLI\n31000 TOULOUSE"
+        },
+        "expected": {
+          "address": {
+            "address": "1 ESP COMPANS CAFFARELLI",
+            "address2": null,
+            "city": "TOULOUSE",
+            "postcode": "31000",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR00451518021",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "6ce7549eea8b4e7a1ac722436a5bb2c7ea588746fb63f68ae458ca21ce4f6a36"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "7e21c5932d1e835954546284e36ce6d1d2946603cee58e4a0ba6160db62ff9e6",
+        "originalReviewSha256": "05dcae08bd0ea7e9d532ec6f4d2530d48095c7c80df7f92a1b7ded0db36905df"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "503d22446718ce9ce9b93870b4efaff9ec9c4eb3cacb3c36a35306d88be05a2e": {
+      "vatId": "FR00500670443",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR00500670443",
+        "valid": false,
+        "viesOutput": {
+          "company": null,
+          "address": ""
+        },
+        "expected": {
+          "address": {
+            "address": null,
+            "address2": null,
+            "city": null,
+            "postcode": null,
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR00500670443",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "b4a101c98f26b7a9d803ec88c37736c26a66ce2e10b504277eacca79d1e067c8"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "88cab52b0a736f793efb4b845a23ea544ccbc4a269ebd51dad7b34e96533af73",
+        "originalReviewSha256": "807bbba39ae744c56a61b632fff305763f4baf6fdf073fb5145cd83b2bc55eb0"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "72ba12be467f0de09b68dcc369b745a880d46bc3eae4090ba4355660148973fe": {
+      "vatId": "FR00692021470",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR00692021470",
+        "valid": true,
+        "viesOutput": {
+          "company": "ETUDES ET PRODUCTIONS SCHLUMBERGER",
+          "address": "1 RUE HENRI BECQUEREL\n92140 CLAMART"
+        },
+        "expected": {
+          "address": {
+            "address": "1 RUE HENRI BECQUEREL",
+            "address2": null,
+            "city": "CLAMART",
+            "postcode": "92140",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR00692021470",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "248d2e9801bec885c47b81ce8e4362f24912d76b76ac291e45dc5d6ade48d65b"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "eb51b90388d222ed76a11755604510eb3c591be17ef4c60184da963c163a7ca4",
+        "originalReviewSha256": "a9283795300b3059ba48c0a5c6d55881892cb03df5bad1ca76b8573c269583ed"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "42dfd1d3a9bbf3f9ec8c80aff51054c548d529b43c2a2933ab877125585b9b36": {
+      "vatId": "FR00852661230",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR00852661230",
+        "valid": true,
+        "viesOutput": {
+          "company": "DEEPLIFE",
+          "address": "SARL PEROT SERVICES Péricentre 3\n26 AV DE THIES\n14000 CAEN"
+        },
+        "expected": {
+          "address": {
+            "address": "SARL PEROT SERVICES Péricentre 3",
+            "address2": "26 AV DE THIES",
+            "city": "CAEN",
+            "postcode": "14000",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR00852661230",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "ce10072636ba503d9ea52f56a9d439af8aad2cae400eabadf2634e851cc1283f"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "16710f91b1ccbb3adcfe4583c53202b34eed3578d09ddd98b27cf90540deb7f7",
+        "originalReviewSha256": "078ce411048f68b014f6026fd088c68421f65429457592758169be95e92fefe4"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "b62cee5ac53a5be14abb98a1597a6dcf59b7136c2cc437178640cec165bc7258": {
+      "vatId": "FR00883649238",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR00883649238",
+        "valid": false,
+        "viesOutput": {
+          "company": null,
+          "address": ""
+        },
+        "expected": {
+          "address": {
+            "address": null,
+            "address2": null,
+            "city": null,
+            "postcode": null,
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR00883649238",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "b4a101c98f26b7a9d803ec88c37736c26a66ce2e10b504277eacca79d1e067c8"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "9cb9a0cd07acb59747446c4ba8d91db6be3e1b3b1b975e375beb8f65371b5356",
+        "originalReviewSha256": "885ed887f44cb3005bf8bb1943aca1753615c6b96bb06af3eac1973b2c8cb711"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "8fd3bafb0c47aecaf4e17bc67691518cfef26d05bad0c0c4d84ad15e9d55b0fa": {
+      "vatId": "FR00884983958",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR00884983958",
+        "valid": true,
+        "viesOutput": {
+          "company": "SAS ALTRNATIV COM",
+          "address": "10 RUE DE LA PAIX\n75002 PARIS"
+        },
+        "expected": {
+          "address": {
+            "address": "10 RUE DE LA PAIX",
+            "address2": null,
+            "city": "PARIS",
+            "postcode": "75002",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR00884983958",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "407954527bfef7d2708b7842ce903fcb7653ee8464398782464ee67869350ea3"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "af96f1ad73bcd8691e0f40fa3c739869346c5ea956f2d7b63b90a2c9f49ff779",
+        "originalReviewSha256": "1fab935fa58780e64235e0b961a102fac1039dfccc87d5f9fed086177a290a6b"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "0a4bb61fd67f6de35538bf74219decc7bda2816c3fe80fe60bf5da36482265e5": {
+      "vatId": "FR00889252540",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR00889252540",
+        "valid": true,
+        "viesOutput": {
+          "company": "SAS PAL FRANCE",
+          "address": "13 RUE SAINTE URSULE\n31000 TOULOUSE"
+        },
+        "expected": {
+          "address": {
+            "address": "13 RUE SAINTE URSULE",
+            "address2": null,
+            "city": "TOULOUSE",
+            "postcode": "31000",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR00889252540",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "67dc1039c91328c413c623f5b05eeb22f591cff4f5206ea735fbcff5cc63e51b"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "d53ec33bd10167ee6b973590dc3e9647353256b0df3b2e9fd96ff0a7a2f947a1",
+        "originalReviewSha256": "a632dfb4f1cab31b6d291cb93bda9f3d2257de325b9419e5d5dd1af4b65ce623"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "9fc7163dc264926a6240bd537413e89b4af20c03eca5b4c4209c0db870800ffb": {
+      "vatId": "FR01378901946",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR01378901946",
+        "valid": true,
+        "viesOutput": {
+          "company": "SA WORLDLINE",
+          "address": "1 PL DES DEGRES\n92800 PUTEAUX"
+        },
+        "expected": {
+          "address": {
+            "address": "1 PL DES DEGRES",
+            "address2": null,
+            "city": "PUTEAUX",
+            "postcode": "92800",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR01378901946",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "f07480dbc1618df58e4299d489630ea0a6af9c7822c8f9ee7364e6214361c8c7"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "a499cbd07c0b07a785c927e41250e24389910248fecd0605195d52450b546994",
+        "originalReviewSha256": "725fe0e6b12f4f10c8190079a6124a41cb2e48ffe09c11abe9f9ec0871778c71"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "a1b4f2501c5f6b7ec2124a3405f19e484855e43139f2f334a0f83accfe1d8b3f": {
+      "vatId": "FR01383470937",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR01383470937",
+        "valid": true,
+        "viesOutput": {
+          "company": "SAS THALES SIX GTS FRANCE SAS",
+          "address": "4 AV DES LOUVRESSES\n92230 GENNEVILLIERS"
+        },
+        "expected": {
+          "address": {
+            "address": "4 AV DES LOUVRESSES",
+            "address2": null,
+            "city": "GENNEVILLIERS",
+            "postcode": "92230",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR01383470937",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "9d192d52e13413a9de7ee1e9a609744fbd3d5de8cb21b017c7f301af06f256d8"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "305ffc58a472f1a585993419d616c1e8bd9deb00f5d1571f0e82868bec407822",
+        "originalReviewSha256": "1d8f5ab734e93b5d24ed4828da5e3953041e2abe4cdbb8895edc993b3b68372c"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "440c18a6272422d06647dcdb6ab1462bd73eb4ee676e3f672a3069e9b95db682": {
+      "vatId": "FR01602048506",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR01602048506",
+        "valid": true,
+        "viesOutput": {
+          "company": "SNC SERVIER AFFAIRES MEDICALES",
+          "address": "35 RUE DE VERDUN\n92150 SURESNES"
+        },
+        "expected": {
+          "address": {
+            "address": "35 RUE DE VERDUN",
+            "address2": null,
+            "city": "SURESNES",
+            "postcode": "92150",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR01602048506",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "ed0fce2f535b6893a1df56a6d5773bc15bd365939ddc4c4699810853d08ffa80"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "33c6964e40f5dbfa0b28ed7b4949521acf02720bd810e26cf56ac8bae8e182a0",
+        "originalReviewSha256": "31ec05e063002cf889be43ec9e5e78d7773fbb916e212e6c8e7127aa8a9fb2d8"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "b09c0a5f27aaf65c0abd867b1de74c53666af2bc12eecbd38f459d541d90cf0a": {
+      "vatId": "FR01797636396",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR01797636396",
+        "valid": true,
+        "viesOutput": {
+          "company": "SAS INSTANT SYSTEM",
+          "address": "240 AV EVARISTE GALOIS\n06410 BIOT"
+        },
+        "expected": {
+          "address": {
+            "address": "240 AV EVARISTE GALOIS",
+            "address2": null,
+            "city": "BIOT",
+            "postcode": "06410",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR01797636396",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "82a2befb1c1bc6c8292879da51b20f8818b4deb9658c8f23d0403747739646c2"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "78ac888a5e64a68edb10807c63ab33a806a13987172e6914d705a2f4e1e2d7ea",
+        "originalReviewSha256": "dd4cf463529351e5836e0a58d16da7948a5ac0d28e681dd107563f96c1a483cc"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "8a348b4024efc48c5837b8c8e8dae05909174c7561124ce59142fcb7532c1c2a": {
+      "vatId": "FR01822195244",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR01822195244",
+        "valid": true,
+        "viesOutput": {
+          "company": "SAS VOXIST",
+          "address": "CHEZ HELLODOM\n14 AV DU GEN DE GAULLE\n94160 ST MANDE"
+        },
+        "expected": {
+          "address": {
+            "address": "CHEZ HELLODOM",
+            "address2": "14 AV DU GEN DE GAULLE",
+            "city": "ST MANDE",
+            "postcode": "94160",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR01822195244",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "82e63c973d6a30d7fe9f2e88b49907453c623520c3a9e770fe1cc274a19b1310"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "ca3d379d0492ec00ddb455e5f3e52c05e99b092092b28cf465e22dce31781617",
+        "originalReviewSha256": "7dd88af9c6a4e8811bba16fa98eee23e769b3b9a2876c8bb392e43e2f728ae8f"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "178c08e3bffefa7a07fb9167835a9938e0096371b25c9a7c05031bf38725ba7b": {
+      "vatId": "FR01828963710",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR01828963710",
+        "valid": true,
+        "viesOutput": {
+          "company": "SAS WYVRN",
+          "address": "BURO CLUB\n12 PL SAINT HUBERT\n59800 LILLE"
+        },
+        "expected": {
+          "address": {
+            "address": "BURO CLUB",
+            "address2": "12 PL SAINT HUBERT",
+            "city": "LILLE",
+            "postcode": "59800",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR01828963710",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "6a049b9da09b78e26e635c9af87636ea4a85ea563b0088aa2334f48f34514d3a"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "cf26ad1d6d7ef481b37670e17632d2f4e3e59d9a70954bed5853c0f48bdfe0be",
+        "originalReviewSha256": "5e1b1fe2b0e7b4ef0fe4c8959b63ffa2b741b9aa0e2fcb25b51c044abe8c8e80"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "952433d07d183723ea9ba621a3966fc25d69f7e5a8e64b0627dee1d2d93191c6": {
+      "vatId": "FR01851519702",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR01851519702",
+        "valid": true,
+        "viesOutput": {
+          "company": "SAS AQEMIA",
+          "address": "231 RUE SAINT-HONORE\n75001 PARIS"
+        },
+        "expected": {
+          "address": {
+            "address": "231 RUE SAINT-HONORE",
+            "address2": null,
+            "city": "PARIS",
+            "postcode": "75001",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR01851519702",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "429e49e4c4a7b6c024f61b0f976cb3f11b26525f7ce003e64a9e51bef4a2b74b"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "852872fc260335c09f3b53f5fa5f926d2b06164eb46f57064c2b177c3b3912af",
+        "originalReviewSha256": "6bd5014635360901cd75d5d77099acd6489c7b7215aa0ded93f054652a2456f9"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "d40c2f7289d95c18cf44098b159c802cb5de1cf5a4a55b680485dde3e5115cf7": {
+      "vatId": "FR02345038244",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR02345038244",
+        "valid": true,
+        "viesOutput": {
+          "company": "SA INSAVALOR",
+          "address": "66 BD NIELS BOHR\n69100 VILLEURBANNE"
+        },
+        "expected": {
+          "address": {
+            "address": "66 BD NIELS BOHR",
+            "address2": null,
+            "city": "VILLEURBANNE",
+            "postcode": "69100",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR02345038244",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "56d519eaf958c89772e3905ccd3ba79dbaca19536c6861e020311fd63b3c1976"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "e876dad8097528b3eac428526dd3e6a183b78f0c8ea3ad98dc68045905c0d881",
+        "originalReviewSha256": "356105ba2b39812cafb69ed09c88a377e631d7eb3785d3c9aae632ecd0504657"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "63be4524b41b319c6281420157f3e296b357538cae3dc80a2e3175ab49876c56": {
+      "vatId": "FR02478080146",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR02478080146",
+        "valid": true,
+        "viesOutput": {
+          "company": "SA ALGAIA",
+          "address": "ZONE INDUSTRIELLE DE MENEZ BRAS\n18 MOULIN NEUF\n29870 LANNILIS"
+        },
+        "expected": {
+          "address": {
+            "address": "ZONE INDUSTRIELLE DE MENEZ BRAS",
+            "address2": "18 MOULIN NEUF",
+            "city": "LANNILIS",
+            "postcode": "29870",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR02478080146",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "938a2b4fb64f5dca83a3612499e2ffe718d07e5fe6a0ffb9d4b8dba9bac58fc1"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "27c865a0954e66b2fda2458b709e61e8bd9692d632c073af7e4b1e1acbd69168",
+        "originalReviewSha256": "15ec0c04d05318a4d6b71049d0aa1cbba430df1f19e54f70e56c015b88513b42"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "d0dddd30698b20e9bbe126603144def74898d79828f8df35919d2ce513b9f044": {
+      "vatId": "FR02509460325",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR02509460325",
+        "valid": true,
+        "viesOutput": {
+          "company": "SAS BULANE",
+          "address": "ECOPARC DE FABREGUES\n79 RUE MEZIERE CHRISTIN\n34690 FABREGUES"
+        },
+        "expected": {
+          "address": {
+            "address": "ECOPARC DE FABREGUES",
+            "address2": "79 RUE MEZIERE CHRISTIN",
+            "city": "FABREGUES",
+            "postcode": "34690",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR02509460325",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "7ff0bda72c47730c1f89039f484ebac05230c0b4cc98ce5294cfe522345cf6b0"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "62bb9c00e392fca9df1c8180574ebc2f10a5745371496e933f6d61426949d058",
+        "originalReviewSha256": "9f32d3ea29f1276aa2e6f9d275d4c37a87caa62c02ebf66197297f58497e4215"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "e0683aedcc3259a14cf80ae601af4182cef41a15ef717c6c32febe130cecfcb4": {
+      "vatId": "FR02830186169",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR02830186169",
+        "valid": true,
+        "viesOutput": {
+          "company": "SASU QAIR MARINE",
+          "address": "ZAC CAMBACERES\n120 RUE MARYAM MIRZAKHANI\n34000 MONTPELLIER"
+        },
+        "expected": {
+          "address": {
+            "address": "ZAC CAMBACERES",
+            "address2": "120 RUE MARYAM MIRZAKHANI",
+            "city": "MONTPELLIER",
+            "postcode": "34000",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR02830186169",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "3f7447fe5c4f3df612944fd9ffe82ce3823f443df7ee8ca157b2a22921b87b87"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "040d7a000c18dfb1bb54fd9348b3c9435f3ef3e38a40d44a1afea0ce9ac95837",
+        "originalReviewSha256": "891b1c30489f2a7163ab05fdf0b974cf9d0ed6df63a255632bd78ff271706768"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "f68451885fbdddb64e5ec053a8ca457e3d9103012361e59c5ce5d86a2b4eaed5": {
+      "vatId": "FR02881583850",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR02881583850",
+        "valid": true,
+        "viesOutput": {
+          "company": "SAS BLUENAV",
+          "address": "80 AV DU GEN LECLERC\n33260 LA TESTE DE BUCH"
+        },
+        "expected": {
+          "address": {
+            "address": "80 AV DU GEN LECLERC",
+            "address2": null,
+            "city": "LA TESTE DE BUCH",
+            "postcode": "33260",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR02881583850",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "b7cfdacc380ccc4d5cdf67fc29368c000fa21af068ae88d06f8fd9d301121432"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "aa0194242f281374e622cc232e8c2500d539dc784e09be100a8acbaf555ee6b2",
+        "originalReviewSha256": "4b0a2efc37c96e3202f8ba3f213829380bab805a5987df7960af04078703490b"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "825ce6b810b337ad21fab63b05bb3f92df3af106ab83ca2cce81b5bb22e44d73": {
+      "vatId": "FR02922408240",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR02922408240",
+        "valid": true,
+        "viesOutput": {
+          "company": "HIQUTE DIAMOND",
+          "address": "AV HENRI COLIN\n92230 GENNEVILLIERS"
+        },
+        "expected": {
+          "address": {
+            "address": "AV HENRI COLIN",
+            "address2": null,
+            "city": "GENNEVILLIERS",
+            "postcode": "92230",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR02922408240",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "3f620dd14533e81292c50143cac1bd477f259f0a6aa68b88da24d1de822a218c"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "0145e9a5185fa7d521bdd970f707f9808d01bcd166d054895ecdf7c41b73f460",
+        "originalReviewSha256": "e17b2798267b2a8245bdbd74592d8c7cc7d4b7c5f9e43b8bdd8747a4747cc7d0"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "e956f308575bed6efe7a37f433a71d0ddff922062b6be38142c163065a6aaacf": {
+      "vatId": "FR03314722026",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR03314722026",
+        "valid": true,
+        "viesOutput": {
+          "company": "SAS AUMOVIO France",
+          "address": "1 AV PAUL OURLIAC\n31100 TOULOUSE"
+        },
+        "expected": {
+          "address": {
+            "address": "1 AV PAUL OURLIAC",
+            "address2": null,
+            "city": "TOULOUSE",
+            "postcode": "31100",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR03314722026",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "5f2af7711dc87d7c26943a9c2afded5589f52aebb82809fb61a6ca5670127d66"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "fbf19c7025623ef5399a13e6a8f06eced18736302830cb1667937b6769751c59",
+        "originalReviewSha256": "cb891758940d2c9350b0e8e2b1f56bc91aab6e9c05548a52aae19f273f352288"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "f5559362494b48689dcd773cce8c2048e1d208c596be6c8c73acaf1b4c8b6415": {
+      "vatId": "FR03340679711",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR03340679711",
+        "valid": true,
+        "viesOutput": {
+          "company": "COOP PORC ARMOR EVOLUTION",
+          "address": "Z I TRES LE BOIS\nRUE MONGE\n22600 LOUDEAC"
+        },
+        "expected": {
+          "address": {
+            "address": "Z I TRES LE BOIS",
+            "address2": "RUE MONGE",
+            "city": "LOUDEAC",
+            "postcode": "22600",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR03340679711",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "0eb036732265a1445f96719dda483ecf10b15da69e0eed043ee8aaa34b936811"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "5b9a617bc620d188ad0eec5022e9b50b9a9168fbc8363d0b5fad95e001ab0448",
+        "originalReviewSha256": "a9ea40e1f44385d13511b6514664a6b4380a7e9b4735aecd89a9f9d859d08012"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "31cb58bee23daff1cb45eccc32be2ea842c608525ce539859ae74fa92da35d49": {
+      "vatId": "FR03421066812",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR03421066812",
+        "valid": true,
+        "viesOutput": {
+          "company": "SA IMAGENE",
+          "address": "38 ALL MEGEVIE\n33170 GRADIGNAN"
+        },
+        "expected": {
+          "address": {
+            "address": "38 ALL MEGEVIE",
+            "address2": null,
+            "city": "GRADIGNAN",
+            "postcode": "33170",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR03421066812",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "cb511f88fc02f4efc29d441ee60c925120ba1865aaf49f091e0cf48becc05230"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "0615df3a186ef861b358284ed1c3eb5d81f195ff76cc175a97e7df6a706fc88f",
+        "originalReviewSha256": "834f5f69ca6bdea5df4312498b1830f7e9d52bd2e1ec490ed422dfb40b8dbd2e"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "872608d2664d3cd0996042f7b2cb30277ee9e00eaa272712774154e551bde77f": {
+      "vatId": "FR03439556952",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR03439556952",
+        "valid": true,
+        "viesOutput": {
+          "company": "SAS TUNNEL EURALPIN LYON TURIN",
+          "address": "BATIMENT LINKLAB\n455 CHE DE LA CASSINE\n73000 CHAMBERY"
+        },
+        "expected": {
+          "address": {
+            "address": "BATIMENT LINKLAB",
+            "address2": "455 CHE DE LA CASSINE",
+            "city": "CHAMBERY",
+            "postcode": "73000",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR03439556952",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "0e4d4b49a360a75c754a7c91dbd4bf5347c76fb4287c107852efe08ce5f0cc42"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "d9102d769b93e7cc515c0544579b64dab92ae2dcd0bfabc21641ccc6ac31521f",
+        "originalReviewSha256": "809e7dab9dc8450371592adacd2815f0ccc226be334510ba42d3c59cebce2f84"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "7caa748bb45bb26cce90be802ef5a538d2338f5cb5c5c418cd2c3806de55e793": {
+      "vatId": "FR03453541054",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR03453541054",
+        "valid": true,
+        "viesOutput": {
+          "company": "SA BIOCORP PRODUCTION",
+          "address": "PARC IND TECH LAVAUR LA BECHADE\n63500 ISSOIRE"
+        },
+        "expected": {
+          "address": {
+            "address": "PARC IND TECH LAVAUR LA BECHADE",
+            "address2": null,
+            "city": "ISSOIRE",
+            "postcode": "63500",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR03453541054",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "27fffb1afe8f75ee35831e5427ade662db19645ef99b880adc2ac7003e32ea53"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "eca6326b8e7faa75477f8ab53e100ad6adf260a9c0e2f0468a944761deb666a0",
+        "originalReviewSha256": "fb7245cdcda2b9973865408342a6a9435f8365ea6971c9e4d8866c83e0b3cf5d"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "3be298cd29ea91eec15aa39dd8e58fce91fc87a68acda86059f95be1593b6964": {
+      "vatId": "FR03792516478",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR03792516478",
+        "valid": true,
+        "viesOutput": {
+          "company": "SAS HELIOSLITE",
+          "address": "SAVOIE TECHNOLAC BAT MODUL B LOT 101\n27 ALLEE LAC D AIGUEBELETTE\n73370 LE BOURGET DU LAC"
+        },
+        "expected": {
+          "address": {
+            "address": "SAVOIE TECHNOLAC BAT MODUL B LOT 101",
+            "address2": "27 ALLEE LAC D AIGUEBELETTE",
+            "city": "LE BOURGET DU LAC",
+            "postcode": "73370",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR03792516478",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "048d95690f244774ccb118ebc64a0049f060bc02cc97a3468a9e8513c98ad9d9"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "11b17b57cfce5248bd5bfd0f09f0d157edbfcbcc054d1f5d6a449f34d201b5bb",
+        "originalReviewSha256": "d41a647b0bf465c525fb7f4422e8460bf1ea57924588a1d7fbf5a1e85fe98988"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "5e2ef828a670741e4d63a77c572c930c71c0e3e4f50314dca11c021834f9e3df": {
+      "vatId": "FR03813196490",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR03813196490",
+        "valid": false,
+        "viesOutput": {
+          "company": null,
+          "address": ""
+        },
+        "expected": {
+          "address": {
+            "address": null,
+            "address2": null,
+            "city": null,
+            "postcode": null,
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR03813196490",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "b4a101c98f26b7a9d803ec88c37736c26a66ce2e10b504277eacca79d1e067c8"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "da61ad22f8df16070f92dfcfc94221862bd8c47df8f1c5ae4f1609bf3f0f9ee7",
+        "originalReviewSha256": "dcc2a55d5fefc8e7451179d850f4d75040160ec3eefaf4ef4884ef036208035f"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "763b49120fddbbc0e6e588a9f563137b24b4b6fa8d4b2b69a27d15923affbb20": {
+      "vatId": "FR03833485204",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR03833485204",
+        "valid": true,
+        "viesOutput": {
+          "company": "ARGALY",
+          "address": "113 MTE DE LA GRANDE MARIE\n73370 LE BOURGET DU LAC"
+        },
+        "expected": {
+          "address": {
+            "address": "113 MTE DE LA GRANDE MARIE",
+            "address2": null,
+            "city": "LE BOURGET DU LAC",
+            "postcode": "73370",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR03833485204",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-17",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v22",
+        "expectedSha256": "1b9d86a7c8616f7ec14988b067e7696234df8d4f7b085513d121c4968f2fd5f0"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "c069d1e634f0c79d931467eb43f1dc60da9e05f5f50e6440064108c42c8804f7",
+        "originalReviewSha256": "c9c0051829bdbe36788c3ab9152ec1f69e4faf51c27c43500997f6e6594b0922"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "d9775d672997d56cc392f115f6702b89194e48c5dbfee44a07d8b513d73b675f": {
+      "vatId": "FR03899340541",
+      "observedAt": "",
+      "category": "reviewed",
+      "case": {
+        "vatId": "FR03899340541",
+        "valid": true,
+        "viesOutput": {
+          "company": "SAS IZONICS",
+          "address": "30 RUE DE GRAMONT\n75002 PARIS"
+        },
+        "expected": {
+          "address": {
+            "address": "30 RUE DE GRAMONT",
+            "address2": null,
+            "city": "PARIS",
+            "postcode": "75002",
+            "region": null,
+            "country": "France",
+            "countryISO2": "FR"
+          }
+        }
+      },
+      "review": {
+        "vatId": "FR03899340541",
+        "status": "reviewed",
+        "note": "Matched original SOAP identity/validity. Reviewed established postal layout or withheld fields; no output-derived expectations. Negative responses counted separately.",
+        "reviewedAt": "2026-11-18",
+        "reviewVersion": 1,
+        "normalizationVersion": "address-rules-v24",
+        "expectedSha256": "70834c7acb5ca3c134fd9a2fbe7db47ba5e4a0c967ea5e00f44e574da45b33b7"
+      },
+      "provenance": {
+        "source": "VIES archived source fields",
+        "originalCaseSha256": "11c5c996ef3b0c0d164d7cbfe613b438cd453cb26fab35743430ee60a91cc2f0",
+        "originalReviewSha256": "06ad13c47cdd5a4ec672189ced52aed1d7bbfe3c3abf9923db8123ec1d1c0f14"
+      },
+      "rationale": "Imported existing source-bound reviewed address fixture unchanged; original observation timestamp not asserted."
+    },
+    "b85a825230b0414eac25af099a1d17353dfbb187b930480ea0e0076044a8f852": {
+      "vatId": "FR81775670417",
+      "observedAt": "2026-11-24T01:04:02.360964095Z",
+      "observation": {
+        "schemaVersion": 2,
+        "vatId": "FR81775670417",
+        "checkedAt": "2026-11-24T01:04:02.360964095Z",
+        "totalMs": 16289,
+        "attempts": [
+          {
+            "attempt": 1,
+            "startedAtMs": 0,
+            "durationMs": 16288,
+            "httpStatus": 200,
+            "retryAfter": null,
+            "rawBody": "<env:Envelope xmlns:env=\"http://schemas.xmlsoap.org/soap/envelope/\"><env:Header/><env:Body><env:Fault><faultcode>env:Server</faultcode><faultstring>MS_MAX_CONCURRENT_REQ</faultstring></env:Fault></env:Body></env:Envelope>",
+            "error": {
+              "code": "memberStateRateLimit"
+            }
+          }
+        ]
+      },
+      "provenance": {
+        "source": "https://ec.europa.eu/taxation_customs/vies/services/checkVatService",
+        "originalObservationSha256": "8734760edb50709b35bf6014a1c8bfeb66aa79525b2da9b8b042020893f5e504"
+      },
+      "category": "accessFailure",
+      "rationale": "Captured provider/transport error; no matched VAT validity or company lifecycle assertion."
+    }
+  },
+  "history": {
+    "FR81775670417": [
+      "95dad4a02c8efc4c786ef24c029fbe8310d46b604919aea2067e879835cd189b",
+      "b85a825230b0414eac25af099a1d17353dfbb187b930480ea0e0076044a8f852"
+    ],
+    "FR59542051180": [
+      "0ba8e12279b70d95f53e363562c671641ae42ac2998136b4bc94a335138e4565"
+    ],
+    "FR76662042449": [
+      "4a46bc54f16ca166c04bf9ffb432518c84db51d9906f7caf383c5acb7f1df63a"
+    ],
+    "FR66780129987": [
+      "ee9b31bd31717fc44c53aa5f7e883bc1cd22c0987f69c83a5fb7f02f4e485799"
+    ],
+    "FR14652014051": [
+      "2801c38e6270c06d9d578402313256a73e020981394424a093587b4ff05f02f5"
+    ],
+    "FR60180092447": [
+      "fb2aa7fdce273d52746c0c87f36a86f1c57feed0e60113f60821285d6d393758"
+    ],
+    "FR91385385844": [
+      "ee00f82e960917ae2128c5c17c506b7677624ffac678b03983b00d9dc130c18d"
+    ],
+    "FR19451930051": [
+      "f6f4fcd82cf69938d37570d8b284393b70c0973313ca7da350ea91934cb378fa"
+    ],
+    "FR55809707094": [
+      "abd2e9c9e8b3693875bf582bb60be2013b08f8ff2ab0a8f5ff932188a31a88a6"
+    ],
+    "FR00451518021": [
+      "4fe8987d7c18c0e4006f94977407368286866151606771527a5a4de49ed0e352"
+    ],
+    "FR00500670443": [
+      "503d22446718ce9ce9b93870b4efaff9ec9c4eb3cacb3c36a35306d88be05a2e"
+    ],
+    "FR00692021470": [
+      "72ba12be467f0de09b68dcc369b745a880d46bc3eae4090ba4355660148973fe"
+    ],
+    "FR00852661230": [
+      "42dfd1d3a9bbf3f9ec8c80aff51054c548d529b43c2a2933ab877125585b9b36"
+    ],
+    "FR00883649238": [
+      "b62cee5ac53a5be14abb98a1597a6dcf59b7136c2cc437178640cec165bc7258"
+    ],
+    "FR00884983958": [
+      "8fd3bafb0c47aecaf4e17bc67691518cfef26d05bad0c0c4d84ad15e9d55b0fa"
+    ],
+    "FR00889252540": [
+      "0a4bb61fd67f6de35538bf74219decc7bda2816c3fe80fe60bf5da36482265e5"
+    ],
+    "FR01378901946": [
+      "9fc7163dc264926a6240bd537413e89b4af20c03eca5b4c4209c0db870800ffb"
+    ],
+    "FR01383470937": [
+      "a1b4f2501c5f6b7ec2124a3405f19e484855e43139f2f334a0f83accfe1d8b3f"
+    ],
+    "FR01602048506": [
+      "440c18a6272422d06647dcdb6ab1462bd73eb4ee676e3f672a3069e9b95db682"
+    ],
+    "FR01797636396": [
+      "b09c0a5f27aaf65c0abd867b1de74c53666af2bc12eecbd38f459d541d90cf0a"
+    ],
+    "FR01822195244": [
+      "8a348b4024efc48c5837b8c8e8dae05909174c7561124ce59142fcb7532c1c2a"
+    ],
+    "FR01828963710": [
+      "178c08e3bffefa7a07fb9167835a9938e0096371b25c9a7c05031bf38725ba7b"
+    ],
+    "FR01851519702": [
+      "952433d07d183723ea9ba621a3966fc25d69f7e5a8e64b0627dee1d2d93191c6"
+    ],
+    "FR02345038244": [
+      "d40c2f7289d95c18cf44098b159c802cb5de1cf5a4a55b680485dde3e5115cf7"
+    ],
+    "FR02478080146": [
+      "63be4524b41b319c6281420157f3e296b357538cae3dc80a2e3175ab49876c56"
+    ],
+    "FR02509460325": [
+      "d0dddd30698b20e9bbe126603144def74898d79828f8df35919d2ce513b9f044"
+    ],
+    "FR02830186169": [
+      "e0683aedcc3259a14cf80ae601af4182cef41a15ef717c6c32febe130cecfcb4"
+    ],
+    "FR02881583850": [
+      "f68451885fbdddb64e5ec053a8ca457e3d9103012361e59c5ce5d86a2b4eaed5"
+    ],
+    "FR02922408240": [
+      "825ce6b810b337ad21fab63b05bb3f92df3af106ab83ca2cce81b5bb22e44d73"
+    ],
+    "FR03314722026": [
+      "e956f308575bed6efe7a37f433a71d0ddff922062b6be38142c163065a6aaacf"
+    ],
+    "FR03340679711": [
+      "f5559362494b48689dcd773cce8c2048e1d208c596be6c8c73acaf1b4c8b6415"
+    ],
+    "FR03421066812": [
+      "31cb58bee23daff1cb45eccc32be2ea842c608525ce539859ae74fa92da35d49"
+    ],
+    "FR03439556952": [
+      "872608d2664d3cd0996042f7b2cb30277ee9e00eaa272712774154e551bde77f"
+    ],
+    "FR03453541054": [
+      "7caa748bb45bb26cce90be802ef5a538d2338f5cb5c5c418cd2c3806de55e793"
+    ],
+    "FR03792516478": [
+      "3be298cd29ea91eec15aa39dd8e58fce91fc87a68acda86059f95be1593b6964"
+    ],
+    "FR03813196490": [
+      "5e2ef828a670741e4d63a77c572c930c71c0e3e4f50314dca11c021834f9e3df"
+    ],
+    "FR03833485204": [
+      "763b49120fddbbc0e6e588a9f563137b24b4b6fa8d4b2b69a27d15923affbb20"
+    ],
+    "FR03899340541": [
+      "d9775d672997d56cc392f115f6702b89194e48c5dbfee44a07d8b513d73b675f"
+    ]
+  },
+  "current": {
+    "FR81775670417": "b85a825230b0414eac25af099a1d17353dfbb187b930480ea0e0076044a8f852",
+    "FR59542051180": "0ba8e12279b70d95f53e363562c671641ae42ac2998136b4bc94a335138e4565",
+    "FR76662042449": "4a46bc54f16ca166c04bf9ffb432518c84db51d9906f7caf383c5acb7f1df63a",
+    "FR66780129987": "ee9b31bd31717fc44c53aa5f7e883bc1cd22c0987f69c83a5fb7f02f4e485799",
+    "FR14652014051": "2801c38e6270c06d9d578402313256a73e020981394424a093587b4ff05f02f5",
+    "FR60180092447": "fb2aa7fdce273d52746c0c87f36a86f1c57feed0e60113f60821285d6d393758",
+    "FR91385385844": "ee00f82e960917ae2128c5c17c506b7677624ffac678b03983b00d9dc130c18d",
+    "FR19451930051": "f6f4fcd82cf69938d37570d8b284393b70c0973313ca7da350ea91934cb378fa",
+    "FR55809707094": "abd2e9c9e8b3693875bf582bb60be2013b08f8ff2ab0a8f5ff932188a31a88a6",
+    "FR00451518021": "4fe8987d7c18c0e4006f94977407368286866151606771527a5a4de49ed0e352",
+    "FR00500670443": "503d22446718ce9ce9b93870b4efaff9ec9c4eb3cacb3c36a35306d88be05a2e",
+    "FR00692021470": "72ba12be467f0de09b68dcc369b745a880d46bc3eae4090ba4355660148973fe",
+    "FR00852661230": "42dfd1d3a9bbf3f9ec8c80aff51054c548d529b43c2a2933ab877125585b9b36",
+    "FR00883649238": "b62cee5ac53a5be14abb98a1597a6dcf59b7136c2cc437178640cec165bc7258",
+    "FR00884983958": "8fd3bafb0c47aecaf4e17bc67691518cfef26d05bad0c0c4d84ad15e9d55b0fa",
+    "FR00889252540": "0a4bb61fd67f6de35538bf74219decc7bda2816c3fe80fe60bf5da36482265e5",
+    "FR01378901946": "9fc7163dc264926a6240bd537413e89b4af20c03eca5b4c4209c0db870800ffb",
+    "FR01383470937": "a1b4f2501c5f6b7ec2124a3405f19e484855e43139f2f334a0f83accfe1d8b3f",
+    "FR01602048506": "440c18a6272422d06647dcdb6ab1462bd73eb4ee676e3f672a3069e9b95db682",
+    "FR01797636396": "b09c0a5f27aaf65c0abd867b1de74c53666af2bc12eecbd38f459d541d90cf0a",
+    "FR01822195244": "8a348b4024efc48c5837b8c8e8dae05909174c7561124ce59142fcb7532c1c2a",
+    "FR01828963710": "178c08e3bffefa7a07fb9167835a9938e0096371b25c9a7c05031bf38725ba7b",
+    "FR01851519702": "952433d07d183723ea9ba621a3966fc25d69f7e5a8e64b0627dee1d2d93191c6",
+    "FR02345038244": "d40c2f7289d95c18cf44098b159c802cb5de1cf5a4a55b680485dde3e5115cf7",
+    "FR02478080146": "63be4524b41b319c6281420157f3e296b357538cae3dc80a2e3175ab49876c56",
+    "FR02509460325": "d0dddd30698b20e9bbe126603144def74898d79828f8df35919d2ce513b9f044",
+    "FR02830186169": "e0683aedcc3259a14cf80ae601af4182cef41a15ef717c6c32febe130cecfcb4",
+    "FR02881583850": "f68451885fbdddb64e5ec053a8ca457e3d9103012361e59c5ce5d86a2b4eaed5",
+    "FR02922408240": "825ce6b810b337ad21fab63b05bb3f92df3af106ab83ca2cce81b5bb22e44d73",
+    "FR03314722026": "e956f308575bed6efe7a37f433a71d0ddff922062b6be38142c163065a6aaacf",
+    "FR03340679711": "f5559362494b48689dcd773cce8c2048e1d208c596be6c8c73acaf1b4c8b6415",
+    "FR03421066812": "31cb58bee23daff1cb45eccc32be2ea842c608525ce539859ae74fa92da35d49",
+    "FR03439556952": "872608d2664d3cd0996042f7b2cb30277ee9e00eaa272712774154e551bde77f",
+    "FR03453541054": "7caa748bb45bb26cce90be802ef5a538d2338f5cb5c5c418cd2c3806de55e793",
+    "FR03792516478": "3be298cd29ea91eec15aa39dd8e58fce91fc87a68acda86059f95be1593b6964",
+    "FR03813196490": "5e2ef828a670741e4d63a77c572c930c71c0e3e4f50314dca11c021834f9e3df",
+    "FR03833485204": "763b49120fddbbc0e6e588a9f563137b24b4b6fa8d4b2b69a27d15923affbb20",
+    "FR03899340541": "d9775d672997d56cc392f115f6702b89194e48c5dbfee44a07d8b513d73b675f"
+  }
+}

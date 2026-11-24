@@ -16,7 +16,7 @@ import registry_fixture_data as data
 
 ROOT=Path(__file__).resolve().parents[1]
 FIXTURES=ROOT/'tests/fixtures/registry'
-LIVE={'AT':'live_firmenbuch_batch','CZ':'live_ares_batch','GR':'live_gemi_batch',
+LIVE={'IS':'live_registry_batch','BE':'live_nbb_batch','EE':'live_registry_batch','FI':'live_prh_batch','FR':'live_recherche_batch','IE':'live_registry_batch','LT':'live_registry_batch','LV':'live_registry_batch','PL':'live_registry_batch','AT':'live_firmenbuch_batch','CZ':'live_ares_batch','GR':'live_gemi_batch',
       'NO':'live_registry_batch','RO':'live_anaf_batch','SK':'live_registry_batch'}
 
 def path_in_repo(path):
@@ -78,9 +78,12 @@ def coverage(corpus):
         if r['category']=='resolved' and r['expectedValidation']=='verifiedPositive':counts[status]+=1
         else:counts[r['category']]+=1
         row=r['observation'];dates.append(row.get('checkedAt',row.get('completedAt',row.get('requestDate','unknown'))))
+    known_dates=[stamp for stamp in dates if isinstance(stamp,str) and stamp and stamp!='unknown']
     return {'country':corpus['country'],'latestReviewed':dict(sorted(counts.items())),
             'activeTarget':corpus['activeTarget'],'activeShortfall':max(0,corpus['activeTarget']-counts['active']),
-            'reviewedDateRange':[min(dates),max(dates)],'replaySnapshots':len(corpus['replay']),
+            'reviewedDateRange':[min(known_dates),max(known_dates)] if known_dates else None,
+            'undatedObservations':len(dates)-len(known_dates),
+            'observationsByRecordedDate':dict(sorted(collections.Counter(stamp[:10] for stamp in known_dates).items())),'replaySnapshots':len(corpus['replay']),
             'preservedReviewRevisions':len(corpus['records']),
             'meaning':'Latest accepted observations per identifier, not a live-status assertion; pending refreshes are not accepted coverage.'}
 
@@ -106,9 +109,20 @@ def refresh(args):
     if country=='RO':manifest['requestDate']=datetime.datetime.now(ZoneInfo('Europe/Bucharest')).date().isoformat()
     (directory/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
     exit_code=cargo(args,country.lower()+'::probe::'+LIVE[country],{country+'_RUN_DIR':str(directory)},online=True)
+    return stage_captured(args, exit_code)
+
+def stage_captured(args, exit_code=None):
+    """Prepare retained collector output without making any live request."""
+    country=args.country;corpus=data.read(corpus_path(country))
+    directory=path_in_repo(args.run_dir);directory.relative_to(ROOT/'target')
+    ids=json.loads((directory/'manifest.json').read_text())['ids']
+    if not isinstance(ids,list) or not 1<=len(ids)<=100 or any(not isinstance(i,str) or not i for i in ids) or len(ids)!=len(set(ids)):
+        raise ValueError('retained manifest must select 1–100 distinct identifiers')
     journal=directory/'observations.jsonl'
     if not journal.exists():raise RuntimeError('collector failed before producing a journal')
     rows=[json.loads(line) for line in journal.read_text().splitlines()];staged={};template={}
+    if len({r.get('id',r.get('taxId')) for r in rows})!=len(rows):raise ValueError('duplicate observed identifiers')
+    if not {r.get('id',r.get('taxId')) for r in rows}<=set(ids):raise ValueError('unexpected observed identifier')
     for original in rows:
         identifier=original.get('id',original.get('taxId'));old_key=corpus['current'].get(identifier);old=corpus['records'].get(old_key,{})
         row,review,provenance=data.prepare(country,original,old.get('review',{'fields':{'/taxId':identifier,'/status':None}}))
@@ -126,9 +140,9 @@ def refresh(args):
     (directory/'staged.json').write_text(json.dumps({'country':country,'records':staged},ensure_ascii=False,indent=2)+'\n')
     (directory/'review-template.json').write_text(json.dumps(template,ensure_ascii=False,indent=2)+'\n')
     (directory/'changes.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
-    print('Saved pending refresh:',directory.relative_to(ROOT),'; observed',len(rows),'of',len(ids),'; collector exit',exit_code)
+    print('Saved pending refresh:',directory.relative_to(ROOT),'; observed',len(rows),'of',len(ids),'; collector exit',exit_code if exit_code is not None else 'unrecorded')
     print('Accepted fixtures and offline expectations have NOT changed. Review source bodies and edit a copy of review-template.json, then accept.')
-    return 0 if exit_code==0 and len(rows)==len(ids) else 2
+    return 0 if exit_code in (None,0) and len(rows)==len(ids) else 2
 
 def accept(args):
     # Serialize accepted writes so concurrent local reviews cannot discard history.
@@ -175,11 +189,13 @@ def main():
     p=sub.add_parser('replay');p.add_argument('--country',action='append',choices=data.COUNTRIES)
     p=sub.add_parser('coverage');p.add_argument('--country',action='append',choices=data.COUNTRIES);p.add_argument('--require-active',action='store_true',help='Fail if latest reviewed active count is below 200')
     p=sub.add_parser('refresh');p.add_argument('--country',required=True,choices=data.COUNTRIES);p.add_argument('--ids',nargs='+');p.add_argument('--limit',type=int,choices=range(1,101));p.add_argument('--run-dir',required=True)
+    p=sub.add_parser('stage');p.add_argument('--country',required=True,choices=data.COUNTRIES);p.add_argument('--run-dir',required=True)
     p=sub.add_parser('accept');p.add_argument('--run-dir',required=True);p.add_argument('--review-file',required=True);p.add_argument('--reviewer',required=True)
     args=parser.parse_args()
     if os.environ.get('CI','').lower() not in ('','0','false'):parser.error('This workflow is local-only; do not execute it in CI.')
     if args.command=='replay':return replay(args)
     if args.command=='refresh':return refresh(args)
+    if args.command=='stage':return stage_captured(args)
     if args.command=='accept':return accept(args)
     reports=[coverage(data.read(corpus_path(c))) for c in args.country or data.COUNTRIES];print(json.dumps(reports,ensure_ascii=False,indent=2))
     return int(args.require_active and any(r['activeShortfall'] for r in reports))
