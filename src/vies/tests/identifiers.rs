@@ -127,7 +127,11 @@ fn formats_and_capabilities_cover_the_same_jurisdictions() {
             .collect();
         assert_eq!(vat_providers.len(), 1);
         let provider = vat_providers[0];
-        assert_eq!(provider.operations.len(), 3);
+        assert_eq!(provider.operations.len(), 4);
+        assert!(provider.supports(
+            crate::Operation::ViesResultPdf,
+            crate::IdentifierScheme::Vat
+        ));
         assert_eq!(
             provider.languages,
             LanguageSupport {

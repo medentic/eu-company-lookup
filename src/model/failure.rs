@@ -35,6 +35,8 @@ pub(crate) enum LookupFailure {
     /// HTTP client could not be initialized.
     #[error("could not initialize the HTTP client")]
     ClientInitialization,
+    #[error("VIES PDF unavailable: {0}")]
+    ViesPdf(&'static str),
     /// Shared global capacity or the country's active slot is occupied.
     #[error("client capacity is occupied; try later")]
     Busy,

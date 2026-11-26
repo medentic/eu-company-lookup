@@ -146,6 +146,12 @@ impl From<super::LookupFailure> for LookupError {
                 I::InvalidConfiguration
             }
             F::ClientInitialization => I::InitializationFailed,
+            F::ViesPdf(reason) => {
+                details.reason = Some(reason);
+                details.provider = Some(super::Provider::Vies);
+                details.operation = Some(super::Operation::ViesResultPdf);
+                I::DocumentUnavailable
+            }
             F::Busy => I::Busy,
             F::DeadlineExceeded => {
                 details.reason = Some("timeout");

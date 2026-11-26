@@ -2,7 +2,7 @@
 
 [All examples](README.md) · [Main README](../../README.md#examples) · [VIES reference](../reference/vies.md)
 
-VIES VAT lookup supports all 28 VAT prefixes. These examples describe the 5.0 API, including local checksum preflight. They use synthetic SOAP responses, not live VAT observations or identifiers to query.
+VIES VAT lookup supports all 28 VAT prefixes. These examples describe the 5.1 API, including local checksum preflight. They use synthetic SOAP responses, not live VAT observations or identifiers to query.
 
 ## Input
 
@@ -11,6 +11,18 @@ let result = client.lookup_vat("BG123456786").await;
 ```
 
 The result is `Result<VatLookupResult, LookupError>`. See [serialization](README.md#serialize-success-and-failure). `is_vat_valid` makes its own request and returns `Result<bool, LookupError>`; read `result.valid` when you already have the full result.
+
+## Printable evidence
+
+```rust,ignore
+let pdf = client.vies_result_pdf("BG123456786", "FI20774740").await?;
+```
+
+This call returns PDF bytes. A matched positive or negative result includes
+the corresponding VIES verdict, request date and consultation number. Withheld
+company details stay as displayed on the page. A blank reference, a result for
+another VAT number, an outage or an incomplete print yields an error.
+See the [accountant PDF reference](../reference/vies.md#accountant-pdf).
 
 ## Positive case: valid VAT
 

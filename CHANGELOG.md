@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.1.0
+
+- Add requester-aware VIES result PDFs with the consultation number, single-page
+  A4 printing and edit restrictions.
+
 ## 5.0.0
 
 - Update locked cookie and URL dependencies to patched versions for

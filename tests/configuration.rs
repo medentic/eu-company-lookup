@@ -54,3 +54,36 @@ fn lookup_futures_can_be_used_on_a_multithreaded_runtime() {
     assert!(format!("{client:?}").starts_with("Client { vies:"));
     assert!(format!("{registry:?}").starts_with("BgRegistryClient { config:"));
 }
+
+#[tokio::test]
+async fn pdf_requires_enabled_vies_and_two_valid_vat_ids_before_starting_browser() {
+    use eu_company_lookup::{ClientBuilder, ClientConfig, ErrorId, Operation, VatId};
+    let disabled = ClientBuilder::empty().build().unwrap();
+    let error = disabled.vies_result_pdf("bad", "bad").await.unwrap_err();
+    assert_eq!(error.id, ErrorId::OperationDisabled);
+    assert_eq!(error.details.operation, Some(Operation::ViesResultPdf));
+    let client = ClientBuilder::empty()
+        .vies(Default::default())
+        .build()
+        .unwrap();
+    let error = client
+        .vies_result_pdf("BG123456786", None)
+        .await
+        .unwrap_err();
+    assert_eq!(error.details.reason, Some("requester_vat_required"));
+    let mut config = ClientConfig::default();
+    config.requester_vat = Some(VatId::parse("FI20774740").unwrap());
+    let client = ClientBuilder::empty().vies(config).build().unwrap();
+    assert_eq!(
+        client
+            .vies_result_pdf("BG123456786", "bad")
+            .await
+            .unwrap_err()
+            .id,
+        ErrorId::InvalidInput
+    );
+    assert_eq!(
+        client.vies_result_pdf("bad", None).await.unwrap_err().id,
+        ErrorId::InvalidInput
+    );
+}

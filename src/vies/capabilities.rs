@@ -21,6 +21,7 @@ pub(crate) fn catalog() -> Vec<JurisdictionCapabilities> {
                     Operation::ValidateVatSyntax,
                     Operation::LookupVat,
                     Operation::IsVatValid,
+                    Operation::ViesResultPdf,
                 ]
                 .into_iter()
                 .map(|op| crate::OperationCapabilities::new(op, IdentifierScheme::Vat))

@@ -31,6 +31,8 @@ error_catalog! {
         "Client configuration is invalid. Inspect the configuration reason."),
     InitializationFailed => ("initialization_failed", "Lookup could not start",
         "The HTTP client could not initialize."),
+    DocumentUnavailable => ("document_unavailable", "VAT document could not be saved",
+        "The browser or PDF processing could not produce a complete verified document. Inspect the reason."),
     Busy => ("busy", "Verification is busy",
         "Local capacity or admission timing prevented sending a request."),
     RateLimited => ("rate_limited", "Too many verification requests",

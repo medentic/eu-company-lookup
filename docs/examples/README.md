@@ -4,6 +4,8 @@
 
 Explore complete success and error JSON plus provider-specific edge cases. There is one page for each implemented national adapter and one for [VIES](vies.md), whose result shape is shared across its 28 supported VAT prefixes. Countries with no national adapter are listed in the [main support table](../../README.md#country-support); they have no national success output to demonstrate.
 
+Version 5.1 adds a [printable VIES result](vies.md#printable-evidence) with a consultation number.
+
 ## Choose an example
 
 | Country | Company country code | National source | Availability |

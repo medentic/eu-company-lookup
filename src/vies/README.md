@@ -21,6 +21,10 @@ only after those decisions. [transport.rs](transport.rs) exchanges bounded SOAP 
 configured European Commission `checkVatService` endpoint. There are no automatic
 retries. Do not copy collector retry experiments into runtime behavior implicitly.
 
+[pdf/mod.rs](pdf/mod.rs) owns requester-aware form submission and same-page printing.
+[pdf/document.rs](pdf/document.rs) verifies the rendered fields and A4 dimensions
+and applies the owner permissions before bytes leave the adapter.
+
 ## SOAP mapping
 
 [soap.rs](soap.rs) validates namespaces, payload shape, required fields, duplicate

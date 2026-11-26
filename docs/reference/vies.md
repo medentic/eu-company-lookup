@@ -4,6 +4,52 @@
 `Client::is_vat_valid` performs the same request and returns its validity flag.
 Neither operation checks company registration in a national business register.
 
+## Accountant PDF
+
+`Client::vies_result_pdf(checked_vat, requester_vat)` returns
+`Result<Vec<u8>, LookupError>`. Pass two country-prefixed VAT IDs, or set
+`ClientConfig::requester_vat` once and pass `None` as the second argument.
+
+```rust,no_run
+use eu_company_lookup::{ClientBuilder, ClientConfig, VatId};
+
+# async fn example(checked_vat: &str, my_vat: &str) -> Result<(), Box<dyn std::error::Error>> {
+let mut config = ClientConfig::default();
+config.requester_vat = Some(VatId::parse(my_vat)?);
+let client = ClientBuilder::empty().vies(config).build()?;
+let pdf = client.vies_result_pdf(checked_vat, None).await?;
+# Ok(())
+# }
+```
+
+An explicit requester overrides the default for that call, including across
+clones and concurrent calls. Invalid identifiers fail before Chromium starts.
+Supplying neither requester returns `invalid_configuration`.
+
+The operation starts a private temporary headless Chrome or Chromium profile.
+Install a browser that can launch under the application's account and Poppler's
+`pdftotext` on its PATH (Debian/Ubuntu package `poppler-utils`, Homebrew `poppler`). If necessary,
+set `CHROME` to the browser executable. The adapter submits the English VIES web
+form once, checks the displayed country, VAT number, verdict, date and consultation
+number, then prints that page. One document can report either a matched valid
+or a matched invalid number. A missing consultation number, unavailable service,
+or mismatched identifier returns an error. Check the printed verdict before
+using the document for a decision.
+
+The browser tries portrait A4 at progressively smaller scales down to 75%.
+It verifies one page and A4 dimensions, applies the PDF permissions, then
+verifies the displayed result fields can be read from the finished bytes. A document that cannot fit legibly returns `document_unavailable`.
+The file allows password-free opening, copying and high-quality printing. Its
+AES-256 owner permissions restrict editing in viewers that honor PDF permissions.
+The date comes from VIES. An edit restriction provides no independent timestamp
+or tamper-evident signature.
+
+Browser lookups share admission and cooldowns with SOAP lookups. Set
+`ClientConfig::pdf_timeout` to change their separate total deadline (default
+60 seconds, maximum 300 seconds). SOAP response-body limits and raw HTTP
+diagnostics apply to the HTTP adapter. The library leaves archiving and
+file naming to its caller.
+
 ## National services and availability
 
 The request path is application → this library → EU VIES → the relevant national

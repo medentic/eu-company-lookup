@@ -11,7 +11,7 @@ Async Rust lookups for **EU VAT numbers (VIES)** and national company or taxpaye
 information. Returns typed company details, source-preserving addresses and a
 shared error object with stable IDs.
 
-Version **5.0** provides national lookup for **Austria, Belgium, Bulgaria,
+Version **5.1** provides national lookup for **Austria, Belgium, Bulgaria,
 Czechia, Estonia, Finland, France, Greece, Iceland, Ireland, Latvia, Lithuania,
 Norway, Poland, Romania and Slovakia**, plus all 28 supported VIES VAT prefixes.
 Implementation and reviewed live coverage are separate; see the
@@ -42,7 +42,7 @@ Version 5.0 replaces Chrono with Jiff datetime types; see the
 
 ```toml
 [dependencies]
-eu-company-lookup = "5.0"
+eu-company-lookup = "5.1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "time"] }
 serde_json = "1" # To print the JSON shown below.
 ```
@@ -101,6 +101,24 @@ negative VIES response. A timeout or provider failure returns an error.
 Only need a boolean? `client.is_vat_valid("BG131129282").await` returns
 `Result<bool, LookupError>`. It makes its own request; use `result.valid` if you
 already have the full result. [VIES input rules and field meanings](docs/reference/vies.md).
+
+### Save a VIES result for an accountant
+
+Pass the checked VAT number first and your requester VAT number second. The method
+prints the official result page and returns a single A4 PDF as bytes. This operation requires Chrome or
+Chromium and Poppler’s `pdftotext` executable.
+
+```rust,no_run
+# async fn receipt(client: &eu_company_lookup::Client, checked_vat: &str, requester_vat: &str) -> Result<(), Box<dyn std::error::Error>> {
+let pdf = client.vies_result_pdf(checked_vat, requester_vat).await?;
+std::fs::write("vies-result.pdf", pdf)?;
+# Ok(())
+# }
+```
+
+Web applications can send the bytes as `application/pdf`. See the
+[PDF reference](docs/reference/vies.md#accountant-pdf) for configuring the requester once,
+the consultation number requirement and PDF permissions.
 
 ### Look up a company across supported countries
 

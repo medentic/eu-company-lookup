@@ -52,6 +52,8 @@ pub enum Operation {
     LookupVat,
     /// Boolean convenience wrapper around the same check.
     IsVatValid,
+    /// Browser-printed VIES result with a consultation number.
+    ViesResultPdf,
     /// Country-independent lookup of an explicitly typed national identifier.
     LookupCompany,
     /// Offline Bulgarian business-identifier syntax check.

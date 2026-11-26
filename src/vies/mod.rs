@@ -4,6 +4,7 @@ mod checksum;
 mod client;
 mod failure;
 mod identifiers;
+mod pdf;
 #[cfg(test)]
 mod reporting;
 mod soap;

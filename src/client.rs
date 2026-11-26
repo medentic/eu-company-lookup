@@ -433,6 +433,24 @@ impl Client {
             .lookup_vat(value)
             .await
     }
+    /// Print a matched VIES result with its consultation number as a locked A4 PDF.
+    /// Pass a requester VAT ID explicitly, or pass `None` to use
+    /// [`ClientConfig::requester_vat`]. The returned bytes open without a password.
+    pub async fn vies_result_pdf<'a>(
+        &self,
+        checked_vat: &str,
+        requester_vat: impl Into<Option<&'a str>>,
+    ) -> Result<Vec<u8>, LookupError> {
+        self.vies
+            .as_ref()
+            .ok_or_else(|| disabled(Operation::ViesResultPdf, IdentifierScheme::Vat))?
+            .result_pdf(checked_vat, requester_vat.into())
+            .await
+    }
+    #[cfg(test)]
+    pub(crate) fn set_pdf_test_url(&mut self, url: String) {
+        self.vies.as_mut().unwrap().pdf_test_url = Some(url);
+    }
     /// Boolean convenience over the same VIES observation; failures never become false.
     pub async fn is_vat_valid(&self, value: &str) -> Result<bool, LookupError> {
         let vies = self

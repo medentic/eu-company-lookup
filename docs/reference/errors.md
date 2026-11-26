@@ -51,6 +51,7 @@ VIES EL maps to GR and XI maps to GB.
 | `unexpected_response` | Verification could not be completed | Unexpected HTTP status, malformed data, schema change or unknown protocol fault. |
 | `response_mismatch` | Verification response could not be confirmed | Response identifies a different subject. |
 | `response_too_large` | Verification could not be completed | Response exceeded the configured transport size bound. |
+| `document_unavailable` | VAT document could not be saved | Browser startup, missing consultation number, incomplete A4 print or PDF processing failure. Inspect `details.reason`. |
 | `not_found` | No matching company record found | Identified registry sources definitively missed; not VAT invalidity. |
 | `unresolved_data` | Company status could not be resolved | Matched record has missing, unsupported or ambiguous lifecycle evidence; neither a registry miss nor an outage. |
 | `unknown_error` | Verification could not be completed | Generic fallback; no validity conclusion follows. |

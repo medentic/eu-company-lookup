@@ -40,6 +40,10 @@ pub struct ClientConfig {
     pub max_response_bytes: usize,
     /// Capture raw HTTP requests/responses in errors. Default: false; may expose sensitive data.
     pub raw_debug: bool,
+    /// Default requester for VIES PDF checks. A per-call requester takes precedence.
+    pub requester_vat: Option<VatId>,
+    /// Total deadline for the browser PDF operation, including admission. Default: 60 seconds.
+    pub pdf_timeout: Duration,
 }
 
 impl Default for ClientConfig {
@@ -53,6 +57,8 @@ impl Default for ClientConfig {
             failure_cooldown: Duration::from_secs(60),
             max_response_bytes: 65_536,
             raw_debug: false,
+            requester_vat: None,
+            pdf_timeout: Duration::from_secs(60),
         }
     }
 }
@@ -99,6 +105,8 @@ pub(crate) struct ViesClient {
     config: ClientConfig,
     state: Arc<State>,
     endpoint: String,
+    #[cfg(test)]
+    pub(crate) pdf_test_url: Option<String>,
 }
 
 impl std::fmt::Debug for ViesClient {
@@ -111,6 +119,15 @@ impl std::fmt::Debug for ViesClient {
 
 impl ViesClient {
     pub(crate) fn with_config(config: ClientConfig) -> Result<Self, LookupError> {
+        if let Some(requester) = &config.requester_vat {
+            super::checksum::validate(requester)?;
+        }
+        if config.pdf_timeout.is_zero() || config.pdf_timeout > Duration::from_secs(300) {
+            return Err(crate::model::LookupFailure::InvalidConfiguration(
+                "PDF timeout must be positive and <= 300 seconds",
+            )
+            .into());
+        }
         if config.timeout.is_zero()
             || config.timeout > Duration::from_secs(300)
             || config.connect_timeout.is_zero()
@@ -161,6 +178,8 @@ impl ViesClient {
             config,
             state,
             endpoint: ENDPOINT.into(),
+            #[cfg(test)]
+            pdf_test_url: None,
         })
     }
 
@@ -176,9 +195,13 @@ impl ViesClient {
             async {
                 let vat = validate_vat_syntax(vat_id)?;
                 super::checksum::validate(&vat)?;
-                self.lookup_with_deadline(&vat, Instant::now() + self.config.timeout)
-                    .await
-                    .map_err(LookupError::from)
+                self.with_admission(
+                    &vat,
+                    Instant::now() + self.config.timeout,
+                    self.fetch_vat_result(&vat),
+                )
+                .await
+                .map_err(LookupError::from)
             },
         )
         .await
@@ -197,11 +220,39 @@ impl ViesClient {
         })
     }
 
-    async fn lookup_with_deadline(
+    pub(crate) async fn result_pdf(
+        &self,
+        checked: &str,
+        requester: Option<&str>,
+    ) -> Result<Vec<u8>, LookupError> {
+        let checked = validate_vat_syntax(checked)?;
+        super::checksum::validate(&checked)?;
+        let requester = match requester {
+            Some(value) => validate_vat_syntax(value)?,
+            None => self.config.requester_vat.clone().ok_or(
+                crate::model::LookupFailure::InvalidConfiguration("requester_vat_required"),
+            )?,
+        };
+        super::checksum::validate(&requester)?;
+        let url = super::pdf::FORM_URL;
+        #[cfg(test)]
+        let url = self.pdf_test_url.as_deref().unwrap_or(url);
+        let result = self
+            .with_admission(
+                &checked,
+                Instant::now() + self.config.pdf_timeout,
+                super::pdf::capture(url, &checked, &requester),
+            )
+            .await;
+        result.map_err(LookupError::from)
+    }
+
+    async fn with_admission<T>(
         &self,
         vat: &VatId,
         deadline: Instant,
-    ) -> Result<VatLookupResult, Failure> {
+        operation: impl Future<Output = Result<T, Failure>>,
+    ) -> Result<T, Failure> {
         let _permit = self
             .state
             .capacity
@@ -238,7 +289,7 @@ impl ViesClient {
             return Err(Failure::from(crate::model::LookupFailure::Busy));
         }
         country.next_start = Instant::now() + self.config.country_start_interval;
-        let result = tokio::time::timeout_at(deadline, self.fetch_vat_result(vat))
+        let result = tokio::time::timeout_at(deadline, operation)
             .await
             .unwrap_or(Err(Failure::from(
                 crate::model::LookupFailure::DeadlineExceeded,
